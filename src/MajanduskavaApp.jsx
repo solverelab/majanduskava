@@ -1,41 +1,54 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * MajanduskavaApp.jsx
- * - Mitmeleheline majanduskava vorm (KrtS § 41 lg 1 p 1–5 loogika)
- * - Lapselihtne täitmine, professionaalne väljund
- * - Automaat-arvutused, validatsioonid, hoiatused
- * - localStorage autosave + eksport (print/PDF)
- *
- * NB! See on front-end MVP. SaaS-iks: hiljem lisad auth + andmebaasi + multi-ühingud.
+ * MajanduskavaApp.jsx (refaktoritud MVP – kõik kokkulepitud parandused sees)
+ * - Bränd: ainult "Majanduskava"
+ * - Sammud / sõnastused uuendatud
+ * - Hooneosad (EHR loogika) + maksete jaotus pindala alusel (standardmudel)
+ * - Reeglid/hoiatused: mitteblokeeriv reserv < miinimum; blokeeriv jaotusbaas=0 või summa=0
+ * - Eelarvetabelid: ridasid saab lisada/kustutada, vaba tekst rida nimeks
+ * - Numbrid: sisestus lubab "," ja "."; tühjad väljad (ei näita "0"); kuvamine "10 000.00 eurot"
+ * - Tagasi/Edasi nupud all (sidebar jääb)
+ * - PDF/print väljund lõpeb allkirjastamise plokiga
+ * - EI SISALDA Claude API integratsiooni
  */
 
 // ------------------------- utils -------------------------
-const LS_KEY = "solverelab_majanduskava_v1";
+const LS_KEY = "solvere_majanduskava_v2";
 
-const euro = (n) => {
-  const x = Number.isFinite(n) ? n : 0;
-  return x.toLocaleString("et-EE", { style: "currency", currency: "EUR" });
+const num = (v) => {
+  if (v === "" || v === null || v === undefined) return 0;
+  const cleaned = String(v).replace(/\s/g, "").replace(",", ".");
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : 0;
 };
+
+const clampNonNeg = (v) => {
+  const x = num(v);
+  return x < 0 ? 0 : x;
+};
+
+const round2 = (n) => Math.round(num(n) * 100) / 100;
+
+function formatNumberSpaceDot(n, digits = 2) {
+  const x = Number.isFinite(n) ? n : 0;
+  // en-US gives 10,000.00 -> replace commas with spaces
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })
+    .format(x)
+    .replace(/,/g, " ");
+}
+
+const eurot = (n) => `${formatNumberSpaceDot(num(n), 2)} eurot`;
 
 const pct = (n, digits = 3) => {
   const x = Number.isFinite(n) ? n : 0;
   return `${x.toFixed(digits)}%`;
 };
 
-const num = (v) => {
-  if (v === "" || v === null || v === undefined) return 0;
-  const cleaned = String(v).replace(",", ".").replace(/\s/g, "");
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : 0;
-};
-
 const uid = () => Math.random().toString(36).slice(2, 10);
-
-function clampNonNeg(n) {
-  const x = num(n);
-  return x < 0 ? 0 : x;
-}
 
 function sum(arr, pick = (x) => x) {
   return arr.reduce((acc, it) => acc + num(pick(it)), 0);
@@ -45,62 +58,143 @@ function diff(plan, prev) {
   return num(plan) - num(prev);
 }
 
-function round2(n) {
-  const x = num(n);
-  return Math.round(x * 100) / 100;
-}
-
 // ------------------------- defaults -------------------------
+
 const DEFAULT_CONDITION = [
-  { id: "roof", label: "Katus ja katusekate", status: "hea", last: "", next: "", notes: "" },
-  { id: "facade", label: "Välisseinad ja fassaad", status: "hea", last: "", next: "", notes: "" },
-  { id: "windows", label: "Aknad ja välisuksed", status: "hea", last: "", next: "", notes: "" },
-  { id: "foundation", label: "Vundament / kelder", status: "hea", last: "", next: "", notes: "" },
-  { id: "stair", label: "Trepikojad ja üldruumid", status: "hea", last: "", next: "", notes: "" },
-  { id: "heating", label: "Küttesüsteem (torustik/radiaatorid)", status: "hea", last: "", next: "", notes: "" },
-  { id: "hotwater", label: "Soe tarbevesi", status: "hea", last: "", next: "", notes: "" },
-  { id: "water", label: "Vesi ja kanalisatsioon", status: "hea", last: "", next: "", notes: "" },
-  { id: "electric", label: "Elektrisüsteem ja valgustus", status: "hea", last: "", next: "", notes: "" },
-  { id: "vent", label: "Ventilatsioon", status: "hea", last: "", next: "", notes: "" },
-  { id: "lift", label: "Lift (kui on)", status: "hea", last: "", next: "", notes: "" },
-  { id: "yard", label: "Territoorium ja haljastus", status: "hea", last: "", next: "", notes: "" },
+  {
+    id: "roof",
+    label: "Katus ja katusekate",
+    status: "hea",
+    last: "",
+    next: "",
+    notes: "",
+    noteHint: "nt lekked puuduvad / vihmaveesüsteemi seisukord kontrollitud ...",
+  },
+  {
+    id: "facade",
+    label: "Välisseinad ja fassaad",
+    status: "hea",
+    last: "",
+    next: "",
+    notes: "",
+    noteHint: "nt pragusid ei tähelda / vajab vuukide kontrolli ...",
+  },
+  {
+    id: "windows",
+    label: "Aknad ja välisuksed",
+    status: "hea",
+    last: "",
+    next: "",
+    notes: "",
+    noteHint: "nt tihendid kulunud / vahetusvajadus osaline ...",
+  },
+  {
+    id: "foundation",
+    label: "Vundament / kelder",
+    status: "hea",
+    last: "",
+    next: "",
+    notes: "",
+    noteHint: "nt niiskusnähtusid ei ole / drenaaž vajab auditit ...",
+  },
+  {
+    id: "stair",
+    label: "Trepikojad ja üldruumid",
+    status: "hea",
+    last: "",
+    next: "",
+    notes: "",
+    noteHint: "nt valgustus töötab / seinapinnad vajavad värskendust ...",
+  },
+  {
+    id: "heating",
+    label: "Küttesüsteem (sõlmed/torustik/radiaatorid)",
+    status: "hea",
+    last: "",
+    next: "",
+    notes: "",
+    noteHint: "nt tasakaalustamine tehtud / lekkeid ei tuvastatud ...",
+  },
+  {
+    id: "hotwater",
+    label: "Soe tarbevesi",
+    status: "hea",
+    last: "",
+    next: "",
+    notes: "",
+    noteHint: "nt boileri/soojussõlme hooldus tehtud ...",
+  },
+  {
+    id: "water",
+    label: "Vesi ja kanalisatsioon",
+    status: "hea",
+    last: "",
+    next: "",
+    notes: "",
+    noteHint: "nt püstakute seisukord / ummistused / lekked ...",
+  },
+  {
+    id: "electric",
+    label: "Elektrisüsteem ja valgustus",
+    status: "hea",
+    last: "",
+    next: "",
+    notes: "",
+    noteHint: "nt peakilbi audit / avariivalgustus ...",
+  },
+  {
+    id: "vent",
+    label: "Ventilatsioon",
+    status: "hea",
+    last: "",
+    next: "",
+    notes: "",
+    noteHint: "nt puhastus/õhuhulkade mõõtmine ...",
+  },
+  {
+    id: "lift",
+    label: "Lift (kui on)",
+    status: "hea",
+    last: "",
+    next: "",
+    notes: "",
+    noteHint: "nt hooldusleping / rikked viimase 12 kuu jooksul ...",
+  },
+  {
+    id: "yard",
+    label: "Krunt ja väliala (teed, haljastus, piirded)",
+    status: "hea",
+    last: "",
+    next: "",
+    notes: "",
+    noteHint: "nt lumekoristus/katendid/haljastuse hooldus ...",
+  },
 ];
 
 const DEFAULT_INCOME = [
-  { id: "advances", label: "Majandamiskulude ettemaksed korteriomanikelt (§ 40 lg 1)", prev: 0, plan: 0 },
-  { id: "repairFund", label: "Remondifond – laekumised korteriomanikelt (KrtS § 41 lg 1 p 4)", prev: 0, plan: 0 },
-  { id: "reserveFund", label: "Reservkapitali laekumised (KrtS § 48)", prev: 0, plan: 0 },
-  { id: "rent", label: "Renditulud (ühisruumide üür vms)", prev: 0, plan: 0 },
-  { id: "subsidy", label: "Toetused ja sihtfinantseerimine", prev: 0, plan: 0 },
-  { id: "otherIncome", label: "Muud tulud", prev: 0, plan: 0 },
+  { id: "advances", label: "Majandamiskulude ettemaksed korteriomanikelt (KrtS § 40 lg 1)", prev: "", plan: "" },
+  { id: "repairFundIn", label: "Remondifondi laekumised (KrtS § 41 lg 1 p 4)", prev: "", plan: "" },
+  { id: "reserveFundIn", label: "Reservkapitali laekumised (KrtS § 48)", prev: "", plan: "" },
+  { id: "rent", label: "Renditulud (ühisruumide üür vms)", prev: "", plan: "" },
+  { id: "subsidy", label: "Toetused ja sihtfinantseerimine", prev: "", plan: "" },
 ];
 
 const DEFAULT_RUNNING = [
-  { id: "heat", label: "Soojusenergia (küttekulud)", prev: 0, plan: 0, group: "Energia" },
-  { id: "electricCommon", label: "Elekter (üldruumid/õuevalgustus)", prev: 0, plan: 0, group: "Energia" },
-  { id: "waterSewer", label: "Vesi ja kanalisatsioon", prev: 0, plan: 0, group: "Vesi" },
-  { id: "gas", label: "Gaas (kui kohaldub)", prev: 0, plan: 0, group: "Energia" },
-
-  { id: "waste", label: "Prügivedu ja jäätmekäitlus", prev: 0, plan: 0, group: "Hooldus" },
-  { id: "chimney", label: "Korstnapühkimine / seadmete hooldus", prev: 0, plan: 0, group: "Hooldus" },
-  { id: "liftService", label: "Liftihooldus", prev: 0, plan: 0, group: "Hooldus" },
-  { id: "fireSafety", label: "Tuleohutus (kustutid/signalisatsioon)", prev: 0, plan: 0, group: "Hooldus" },
-  { id: "snow", label: "Lumekoristus ja heakord", prev: 0, plan: 0, group: "Hooldus" },
-  { id: "landscape", label: "Haljastus ja territoorium", prev: 0, plan: 0, group: "Hooldus" },
-  { id: "insurance", label: "Kindlustus (hoone/vastutus)", prev: 0, plan: 0, group: "Hooldus" },
-
-  { id: "manager", label: "Valitseja/halduslepingu tasu", prev: 0, plan: 0, group: "Teenused" },
-  { id: "accounting", label: "Raamatupidamisteenus", prev: 0, plan: 0, group: "Teenused" },
-  { id: "bankFees", label: "Pangakulud ja tehingutasud", prev: 0, plan: 0, group: "Teenused" },
-  { id: "legal", label: "Juriidilised ja notariteenused", prev: 0, plan: 0, group: "Teenused" },
-  { id: "otherRunning", label: "Muud jooksvad kulud", prev: 0, plan: 0, group: "Teenused" },
+  { id: "heat", label: "Soojusenergia (küttekulud)", prev: "", plan: "", group: "Energia" },
+  { id: "electricCommon", label: "Elekter (üldruumid/õuevalgustus)", prev: "", plan: "", group: "Energia" },
+  { id: "waterSewer", label: "Vesi ja kanalisatsioon (üldtarbimine)", prev: "", plan: "", group: "Vesi" },
+  { id: "waste", label: "Prügivedu ja jäätmekäitlus", prev: "", plan: "", group: "Hooldus" },
+  { id: "insurance", label: "Kindlustus (hoone/vastutus)", prev: "", plan: "", group: "Hooldus" },
+  { id: "manager", label: "Valitseja/halduslepingu tasu", prev: "", plan: "", group: "Teenused" },
+  { id: "accounting", label: "Raamatupidamisteenus", prev: "", plan: "", group: "Teenused" },
+  { id: "bankFees", label: "Pangakulud ja tehingutasud", prev: "", plan: "", group: "Teenused" },
+  { id: "legal", label: "Juriidilised ja notariteenused", prev: "", plan: "", group: "Teenused" },
 ];
 
 const DEFAULT_INVEST = [
-  { id: "plannedWorks", label: "Remondifondist finantseeritavad tööd (vt “Maja tervis”)", prev: 0, plan: 0 },
-  { id: "loanPrincipal", label: "Laenu põhiosa tagasimaksed", prev: 0, plan: 0 },
-  { id: "loanInterest", label: "Laenu intressimaksed", prev: 0, plan: 0 },
-  { id: "otherInvest", label: "Muud investeeringud / erakorralised kulud", prev: 0, plan: 0 },
+  { id: "plannedWorks", label: "Remondifondist finantseeritavad tööd (vt “Tehniline seisukord ja kavandatavad tööd”)", prev: "", plan: "" },
+  { id: "loanPrincipal", label: "Laenu põhiosa tagasimaksed", prev: "", plan: "" },
+  { id: "loanInterest", label: "Laenu intressimaksed", prev: "", plan: "" },
 ];
 
 const DEFAULT_HEAT_MONTHS = [
@@ -116,14 +210,13 @@ const DEFAULT_HEAT_MONTHS = [
   "Oktober",
   "November",
   "Detsember",
-].map((m) => ({ id: uid(), month: m, qtyMWh: 0, pricePerMWh: 0, prevCost: 0 }));
+].map((m) => ({ id: uid(), month: m, qtyMWh: "", pricePerMWh: "", prevCost: "" }));
 
 const DEFAULT_OTHER_ENERGY = [
-  { id: "elec", label: "Elekter (üldruumid)", unit: "kWh", qty: 0, price: 0, prevCost: 0 },
-  { id: "waterCold", label: "Vesi (külm)", unit: "m³", qty: 0, price: 0, prevCost: 0 },
-  { id: "waterHot", label: "Vesi (soe)", unit: "m³", qty: 0, price: 0, prevCost: 0 },
-  { id: "sewer", label: "Kanalisatsioon", unit: "m³", qty: 0, price: 0, prevCost: 0 },
-  { id: "gas2", label: "Gaas (kui kohaldub)", unit: "m³", qty: 0, price: 0, prevCost: 0 },
+  { id: "elec", label: "Elekter (üldruumid)", unit: "kWh", qty: "", price: "", prevCost: "" },
+  { id: "waterCold", label: "Vesi (külm)", unit: "m³", qty: "", price: "", prevCost: "" },
+  { id: "waterHot", label: "Vesi (soe)", unit: "m³", qty: "", price: "", prevCost: "" },
+  { id: "sewer", label: "Kanalisatsioon", unit: "m³", qty: "", price: "", prevCost: "" },
 ];
 
 const makeInitial = () => ({
@@ -138,17 +231,20 @@ const makeInitial = () => ({
     meetingDate: "",
     protocolNo: "",
   },
+
+  // EHR / ehitise üldinfo (valikuline, eeltäidetav tulevikus)
   building: {
-    aptCount: 0,
-    shareDenom: 1000,
-    totalArea: 0,
-    buildYear: "",
-    floors: "",
+    ehrCode: "",
+    firstUseYear: "",
+    cadastral: "",
+    purposeArea: "", // kasutamise otstarbe pind (m²)
+    floors: "", // korruselisus
   },
+
   condition: DEFAULT_CONDITION,
-  plannedWorks: [
-    { id: uid(), desc: "Näide: Trepikoja värvimine", type: "remont", period: "04.2026–05.2026", cost: 0, funding: "remondifond" },
-  ],
+
+  plannedWorks: [], // alguses tühi (ei tule näiteid)
+
   notes: { worksNotes: "" },
 
   budget: {
@@ -157,18 +253,29 @@ const makeInitial = () => ({
     invest: DEFAULT_INVEST,
   },
 
-  apartments: [
-    { id: uid(), unit: "Korter 1", owner: "", shareNum: 0 },
-    { id: uid(), unit: "Korter 2", owner: "", shareNum: 0 },
+  // Hooneosad (EHR loogika) – eeltäidetav tulevikus, praegu käsitsi
+  units: [
+    { id: uid(), partNo: "1", type: "Eluruum", rooms: "", entryFloor: "", area: "", includeInAllocation: true, owner: "" },
+    { id: uid(), partNo: "2", type: "Eluruum", rooms: "", entryFloor: "", area: "", includeInAllocation: true, owner: "" },
   ],
 
   funds: {
-    reserveStart: 0,
-    reserveIn: 0,
-    reserveOut: 0,
-    repairStart: 0,
-    repairIn: 0,
-    repairOutOther: 0, // lisaks planeeritud töödele (kui vaja)
+    reserveStart: "",
+    reserveIn: "",
+    reserveOut: "",
+    repairStart: "",
+    repairIn: "",
+    repairOutOther: "",
+    // otsuse paindlikkus: üldkoosolek võib otsustada reservi suurendamise üle (mitte lihtsalt miinimum)
+    reserveTarget: "", // valikuline eesmärk
+    reserveTargetReason: "", // valikuline selgitus protokolli jaoks
+  },
+
+  allocation: {
+    // Standard: pindala alusel (lihtne, EHR-ist tulev). Juriidiline märkus: peab vastama kaasomandi osadele / kokkuleppele.
+    confirmMatchesCoOwnership: false,
+    overrideExists: "ei", // "ei" | "jah"
+    overrideNote: "",
   },
 
   energy: {
@@ -177,15 +284,20 @@ const makeInitial = () => ({
   },
 
   confirmation: {
+    meetingType: "fyysiline", // fyysiline | elektrooniline | kirjalik
     meetingDate: "",
     meetingPlace: "",
+    votesTotalOwners: "",
+    votesPresent: "",
     votesFor: "",
     votesAgainst: "",
     votesAbstain: "",
     protocolNo: "",
     effectiveFrom: "",
+    effectiveTo: "",
     retroactive: "ei",
     retroactiveReason: "",
+    decisionText: "",
   },
 });
 
@@ -223,14 +335,21 @@ function Input({ value, onChange, placeholder, type = "text", className = "", ..
 }
 
 function NumberInput({ value, onChange, placeholder, className = "", step = "0.01", ...rest }) {
+  // we keep it as text to allow "," or "." input freely
   return (
     <Input
-      type="number"
-      step={step}
-      value={value}
-      onChange={(v) => onChange(v === "" ? "" : num(v))}
+      type="text"
+      value={value ?? ""}
+      onChange={(v) => {
+        // allow empty
+        if (v === "") return onChange("");
+        // allow digits, spaces, comma, dot, minus (minus will be clamped by caller if needed)
+        const cleaned = String(v).replace(/[^\d.,\s-]/g, "");
+        onChange(cleaned);
+      }}
       placeholder={placeholder}
       className={className}
+      inputMode="decimal"
       {...rest}
     />
   );
@@ -281,6 +400,20 @@ function Btn({ children, onClick, tone = "primary", disabled = false, className 
   );
 }
 
+function Checkbox({ checked, onChange, label }) {
+  return (
+    <label className="flex items-start gap-2 text-sm">
+      <input
+        type="checkbox"
+        checked={!!checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-1 h-4 w-4 rounded border-slate-300"
+      />
+      <span className="text-slate-700">{label}</span>
+    </label>
+  );
+}
+
 // ------------------------- main app -------------------------
 export default function MajanduskavaApp() {
   const [data, setData] = useState(() => {
@@ -288,7 +421,6 @@ export default function MajanduskavaApp() {
       const raw = localStorage.getItem(LS_KEY);
       if (!raw) return makeInitial();
       const parsed = JSON.parse(raw);
-      // lihtne merge: kui tulevikus lisad välju, hoiab defaulti alles
       return { ...makeInitial(), ...parsed };
     } catch {
       return makeInitial();
@@ -315,19 +447,20 @@ export default function MajanduskavaApp() {
 
   const steps = useMemo(
     () => [
-      { title: "Maja pass", subtitle: "Ühingu ja maja põhiandmed" },
-      { title: "Maja tervis", subtitle: "Seisukord + planeeritud tööd (KrtS § 41 lg 1 p 1)" },
+      { title: "Üldandmed", subtitle: "Korteriühistu ja ehitise põhiandmed (eeltäidetav registritest)" },
+      { title: "Tehniline seisukord ja kavandatavad tööd", subtitle: "Seisukord + planeeritud tööd (KrtS § 41 lg 1 p 1)" },
       { title: "Raha plaan", subtitle: "Tulud ja kulud (KrtS § 41 lg 1 p 2)" },
-      { title: "Korteriomanike maksed", subtitle: "Jaotus kaasomandi osa järgi (KrtS § 40, § 41 lg 1 p 3)" },
-      { title: "Reserv ja remondifond", subtitle: "Fondid + reservi miinimum 1/12 (KrtS § 48; § 41 lg 1 p 4)" },
-      { title: "Energia prognoos", subtitle: "Kogused ja hinnad (KrtS § 41 lg 1 p 5)" },
-      { title: "Kinnitus", subtitle: "Üldkoosoleku otsuse andmed + väljatrükk" },
+      { title: "Hooneosad ja maksed", subtitle: "Jaotus pindala alusel (standardmudel) + kontrollid" },
+      { title: "Reserv ja remondifond", subtitle: "Fondid (KrtS § 48; KrtS § 41 lg 1 p 4)" },
+      { title: "Energia prognoos", subtitle: "Kuu- ja aastaprognoos (KrtS § 41 lg 1 p 5)" },
+      { title: "Kinnitus", subtitle: "Üldkoosoleku otsuse andmed + PDF allkirjastamiseks (KrtS § 41 lg 3)" },
     ],
     []
   );
 
   // ------------------------- derived calculations -------------------------
-  const plannedWorksTotal = useMemo(() => sum(data.plannedWorks, (w) => w.cost), [data.plannedWorks]);
+
+  const plannedWorksTotal = useMemo(() => round2(sum(data.plannedWorks, (w) => w.cost)), [data.plannedWorks]);
 
   const incomeTotals = useMemo(() => {
     const prev = sum(data.budget.income, (x) => x.prev);
@@ -342,7 +475,6 @@ export default function MajanduskavaApp() {
   }, [data.budget.running]);
 
   const investTotals = useMemo(() => {
-    // plannedWorks rida (invest.plannedWorks) võiks automaatselt peegeldada “Maja tervis” tööde summat
     const mapped = data.budget.invest.map((r) => (r.id === "plannedWorks" ? { ...r, plan: plannedWorksTotal } : r));
     const prev = sum(mapped, (x) => x.prev);
     const plan = sum(mapped, (x) => x.plan);
@@ -360,45 +492,43 @@ export default function MajanduskavaApp() {
 
   const fundsDerived = useMemo(() => {
     const reserveEnd = round2(num(data.funds.reserveStart) + num(data.funds.reserveIn) - num(data.funds.reserveOut));
-    // remondifondi kasutus: planeeritud tööd + lisakasutus
     const repairOut = round2(plannedWorksTotal + num(data.funds.repairOutOther));
     const repairEnd = round2(num(data.funds.repairStart) + num(data.funds.repairIn) - repairOut);
     return { reserveEnd, repairOut, repairEnd };
   }, [data.funds, plannedWorksTotal]);
 
-  const shareDiagnostics = useMemo(() => {
-    const denom = num(data.building.shareDenom) || 0;
-    const sumShares = sum(data.apartments, (a) => a.shareNum);
-    const ok = denom > 0 && round2(sumShares) === round2(denom);
-    return { denom, sumShares: round2(sumShares), ok };
-  }, [data.apartments, data.building.shareDenom]);
+  // Hooneosade (pind) diagnostika ja jaotus
+  const unitDiagnostics = useMemo(() => {
+    const included = data.units.filter((u) => u.includeInAllocation);
+    const totalAreaIncluded = round2(sum(included, (u) => u.area));
+    const ok = totalAreaIncluded > 0.0000001;
+    return { totalAreaIncluded, ok, includedCount: included.length, totalCount: data.units.length };
+  }, [data.units]);
 
   const payments = useMemo(() => {
-    const denom = shareDiagnostics.denom;
-    if (!denom) return [];
+    if (!unitDiagnostics.ok) return [];
+    const totalCostYear = round2(runningTotals.plan + investTotals.plan);
 
-    const monthlyTotal = round2((runningTotals.plan + investTotals.plan) / 12);
-    const monthlyRunning = round2(runningTotals.plan / 12);
-    const monthlyInvest = round2(investTotals.plan / 12);
+    return data.units
+      .filter((u) => u.includeInAllocation)
+      .map((u) => {
+        const area = num(u.area);
+        const share = unitDiagnostics.totalAreaIncluded ? area / unitDiagnostics.totalAreaIncluded : 0;
+        const yearTotal = round2(totalCostYear * share);
+        const monthTotal = round2(yearTotal / 12);
+        const monthRun = round2((runningTotals.plan * share) / 12);
+        const monthInvest = round2((investTotals.plan * share) / 12);
 
-    return data.apartments.map((a) => {
-      const shareNum = num(a.shareNum);
-      const share = denom ? shareNum / denom : 0;
-      const yearTotal = round2((runningTotals.plan + investTotals.plan) * share);
-      const monthTotal = round2(monthlyTotal * share);
-      const monthRun = round2(monthlyRunning * share);
-      const monthInvest = round2(monthlyInvest * share);
-
-      return {
-        ...a,
-        sharePct: share * 100,
-        yearTotal,
-        monthTotal,
-        monthRun,
-        monthInvest,
-      };
-    });
-  }, [data.apartments, shareDiagnostics.denom, runningTotals.plan, investTotals.plan]);
+        return {
+          ...u,
+          sharePct: share * 100,
+          yearTotal,
+          monthTotal,
+          monthRun,
+          monthInvest,
+        };
+      });
+  }, [data.units, unitDiagnostics.ok, unitDiagnostics.totalAreaIncluded, runningTotals.plan, investTotals.plan]);
 
   const energyDerived = useMemo(() => {
     const heatRows = data.energy.heatMonths.map((r) => {
@@ -426,39 +556,36 @@ export default function MajanduskavaApp() {
   const errors = useMemo(() => {
     const e = {};
 
-    // Step 0: meta/building
+    // Step 0: meta
     if (!data.meta.name.trim()) e.meta_name = "Palun sisesta korteriühistu nimi.";
     if (!data.meta.regCode.trim()) e.meta_reg = "Palun sisesta registrikood.";
     if (!data.meta.address.trim()) e.meta_addr = "Palun sisesta aadress.";
     if (!data.meta.meetingDate.trim()) e.meta_meeting = "Palun sisesta üldkoosoleku kuupäev (või plaanitav kuupäev).";
-    if (num(data.building.shareDenom) <= 0) e.build_denom = "Kaasomandi osade koguarv (nimetaja) peab olema > 0.";
 
-    // Step 3: shares
-    if (!shareDiagnostics.ok) {
-      e.shares_sum = `Kaasomandi osade summa peab võrduma nimetajaga. Hetkel: summa ${shareDiagnostics.sumShares}, nimetaja ${shareDiagnostics.denom}.`;
-    }
+    // Step 3: allocation base (area)
+    if (!unitDiagnostics.ok) e.alloc_base = "Jaotuse aluseks oleva pindala summa peab olema > 0 (vali hooneosad ja sisesta pindalad).";
 
     // Step 4: reserve minimum check (informatiivne, mitte blokeeriv)
-    const reserveEnd = fundsDerived.reserveEnd;
-    if (reserveEnd + 1e-9 < reserveMinimum) {
-      e.reserve_min = `Hoiatus: reservkapital perioodi lõpus (${euro(reserveEnd)}) on väiksem kui seaduslik miinimum 1/12 aasta kuludest (${euro(reserveMinimum)}).`;
+    if (fundsDerived.reserveEnd + 1e-9 < reserveMinimum) {
+      e.reserve_min = `Hoiatus: reservkapital perioodi lõpus (${eurot(fundsDerived.reserveEnd)}) on väiksem kui seaduslik miinimum 1/12 aasta kuludest (${eurot(reserveMinimum)}) (KrtS § 48).`;
     }
 
-    // Step 6: confirmation
-    // (mitte blokeeriv: SaaS-is võib lubada mustandina)
+    // Standardmudeli juriidiline kinnitus (informatiivne, kuid soovitatav)
+    if (!data.allocation.confirmMatchesCoOwnership) {
+      e.alloc_confirm = "Soovitus: kinnita, et pindalapõhine jaotus vastab ühistu kaasomandi osadele või kehtivale kokkuleppele.";
+    }
+
     return e;
-  }, [data, shareDiagnostics, fundsDerived.reserveEnd, reserveMinimum]);
+  }, [data, unitDiagnostics.ok, fundsDerived.reserveEnd, reserveMinimum]);
 
   const stepHasBlockingErrors = (s) => {
-    // blokeerime vaid “Maja pass” ja “Maksed” kriitilised vead
-    if (s === 0) return Boolean(errors.meta_name || errors.meta_reg || errors.meta_addr || errors.meta_meeting || errors.build_denom);
-    if (s === 3) return Boolean(errors.shares_sum);
+    if (s === 0) return Boolean(errors.meta_name || errors.meta_reg || errors.meta_addr || errors.meta_meeting);
+    if (s === 3) return Boolean(errors.alloc_base);
     return false;
   };
 
   // ------------------------- handlers -------------------------
   const update = (path, value) => {
-    // path: "meta.name" jne
     setData((prev) => {
       const copy = structuredClone(prev);
       const keys = path.split(".");
@@ -499,7 +626,7 @@ export default function MajanduskavaApp() {
       let cur = copy;
       for (const k of keys) cur = cur[k];
       const next = cur.filter((x) => x.id !== id);
-      // kirjutame tagasi
+
       const parentKeys = keys.slice(0, -1);
       let parent = copy;
       for (const k of parentKeys) parent = parent[k];
@@ -515,9 +642,7 @@ export default function MajanduskavaApp() {
     setStep(0);
   };
 
-  const printPdf = () => {
-    window.print();
-  };
+  const printPdf = () => window.print();
 
   // ------------------------- render -------------------------
   const toneForResult = (n) => {
@@ -528,13 +653,12 @@ export default function MajanduskavaApp() {
 
   const topBadges = (
     <div className="flex flex-wrap items-center gap-2">
-      <Pill tone="info">KrtS § 41 vorm • dünaamiline</Pill>
-      <Pill tone={toneForResult(budgetResult.plan)}>Tulemus (plaan): {euro(budgetResult.plan)}</Pill>
+      <Pill tone={toneForResult(budgetResult.plan)}>Tulemus (plaan): {eurot(budgetResult.plan)}</Pill>
       <Pill tone={fundsDerived.reserveEnd + 1e-9 < reserveMinimum ? "warn" : "ok"}>
-        Reserv lõpus: {euro(fundsDerived.reserveEnd)} • miin {euro(reserveMinimum)}
+        Reserv lõpus: {eurot(fundsDerived.reserveEnd)} • miin {eurot(reserveMinimum)}
       </Pill>
-      <Pill tone={shareDiagnostics.ok ? "ok" : "warn"}>
-        Osakaalud: {shareDiagnostics.sumShares}/{shareDiagnostics.denom}
+      <Pill tone={unitDiagnostics.ok ? "ok" : "warn"}>
+        Jaotusbaas (pind): {unitDiagnostics.ok ? `${formatNumberSpaceDot(unitDiagnostics.totalAreaIncluded, 2)} m²` : "—"}
       </Pill>
     </div>
   );
@@ -548,16 +672,15 @@ export default function MajanduskavaApp() {
           .no-print { display: none !important; }
           .print-only { display: block !important; }
           .page { break-inside: avoid; }
+          a[href]:after { content: ""; } /* keep clean */
         }
       `}</style>
 
       <div className="no-print border-b bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
           <div>
-            <div className="text-sm font-semibold text-blue-700">Solvere Lab • Majanduskava</div>
-            <div className="text-xs text-slate-600">
-              Lihtne täita. Arvutab ise. Vastab KrtS § 41 lg 1 p 1–5 loogikale.
-            </div>
+            <div className="text-lg font-semibold text-slate-900">Majanduskava</div>
+            <div className="text-xs text-slate-600">Struktureeritud vorm • automaatarvutused • PDF allkirjastamiseks</div>
           </div>
           <div className="flex items-center gap-2">
             <Btn tone="ghost" onClick={printPdf}>Prindi / salvesta PDF</Btn>
@@ -615,34 +738,15 @@ export default function MajanduskavaApp() {
 
         {/* Main */}
         <div className="space-y-4">
-          <div className="no-print flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-semibold">{steps[step].title}</h1>
-              <p className="text-sm text-slate-600">{steps[step].subtitle}</p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Btn tone="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
-                Tagasi
-              </Btn>
-              <Btn
-                onClick={() => {
-                  if (stepHasBlockingErrors(step)) return;
-                  setStep((s) => Math.min(steps.length - 1, s + 1));
-                }}
-                disabled={step === steps.length - 1 || stepHasBlockingErrors(step)}
-              >
-                Edasi
-              </Btn>
-            </div>
+          <div className="no-print">
+            <h1 className="text-xl font-semibold">{steps[step].title}</h1>
+            <p className="text-sm text-slate-600">{steps[step].subtitle}</p>
           </div>
 
-          {step === 0 && (
-            <PagePass data={data} update={update} errors={errors} />
-          )}
+          {step === 0 && <PageGeneral data={data} update={update} errors={errors} />}
 
           {step === 1 && (
-            <PageHealth
+            <PageTechWorks
               data={data}
               updateRow={updateRow}
               addRow={addRow}
@@ -656,6 +760,8 @@ export default function MajanduskavaApp() {
             <PageBudget
               data={data}
               updateRow={updateRow}
+              addRow={addRow}
+              removeRow={removeRow}
               plannedWorksTotal={plannedWorksTotal}
               incomeTotals={incomeTotals}
               runningTotals={runningTotals}
@@ -665,16 +771,17 @@ export default function MajanduskavaApp() {
           )}
 
           {step === 3 && (
-            <PagePayments
+            <PageUnitsPayments
               data={data}
               updateRow={updateRow}
               addRow={addRow}
               removeRow={removeRow}
-              shareDiagnostics={shareDiagnostics}
+              unitDiagnostics={unitDiagnostics}
               payments={payments}
               runningTotals={runningTotals}
               investTotals={investTotals}
               errors={errors}
+              update={update}
             />
           )}
 
@@ -690,9 +797,7 @@ export default function MajanduskavaApp() {
             />
           )}
 
-          {step === 5 && (
-            <PageEnergy data={data} updateRow={updateRow} energyDerived={energyDerived} />
-          )}
+          {step === 5 && <PageEnergy data={data} updateRow={updateRow} energyDerived={energyDerived} />}
 
           {step === 6 && (
             <PageConfirm
@@ -702,13 +807,41 @@ export default function MajanduskavaApp() {
               runningTotals={runningTotals}
               investTotals={investTotals}
               budgetResult={budgetResult}
-              shareDiagnostics={shareDiagnostics}
+              unitDiagnostics={unitDiagnostics}
               fundsDerived={fundsDerived}
               reserveMinimum={reserveMinimum}
               energyDerived={energyDerived}
               printPdf={printPdf}
             />
           )}
+
+          {/* Bottom navigation (no-print) */}
+          <div className="no-print sticky bottom-4 z-10">
+            <div className="rounded-2xl border bg-white/90 p-3 shadow-sm backdrop-blur">
+              <div className="flex items-center justify-between gap-2">
+                <Btn tone="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
+                  Tagasi
+                </Btn>
+                <div className="text-xs text-slate-600">
+                  Samm {step + 1} / {steps.length}
+                </div>
+                <Btn
+                  onClick={() => {
+                    if (stepHasBlockingErrors(step)) return;
+                    setStep((s) => Math.min(steps.length - 1, s + 1));
+                  }}
+                  disabled={step === steps.length - 1 || stepHasBlockingErrors(step)}
+                >
+                  Edasi
+                </Btn>
+              </div>
+              {stepHasBlockingErrors(step) ? (
+                <div className="mt-2 text-xs text-rose-600">
+                  Palun täida sammu kohustuslikud väljad enne edasi liikumist.
+                </div>
+              ) : null}
+            </div>
+          </div>
 
           {/* Print-only summary */}
           <div className="print-only hidden">
@@ -719,7 +852,7 @@ export default function MajanduskavaApp() {
               runningTotals={runningTotals}
               investTotals={investTotals}
               budgetResult={budgetResult}
-              shareDiagnostics={shareDiagnostics}
+              unitDiagnostics={unitDiagnostics}
               fundsDerived={fundsDerived}
               reserveMinimum={reserveMinimum}
               energyDerived={energyDerived}
@@ -733,13 +866,11 @@ export default function MajanduskavaApp() {
 }
 
 // ------------------------- Pages -------------------------
-function PagePass({ data, update, errors }) {
+
+function PageGeneral({ data, update, errors }) {
   return (
     <div className="space-y-4">
-      <Section
-        title="A. Korteriühistu andmed"
-        subtitle="Sisesta põhiandmed. Need lähevad majanduskava päisesse."
-      >
+      <Section title="A. Korteriühistu andmed" subtitle="Andmed on eeltäidetavad Äriregistrist (käsitsi saab alati parandada).">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
             <Label>Korteriühistu nimi</Label>
@@ -758,7 +889,7 @@ function PagePass({ data, update, errors }) {
           </div>
           <div className="md:col-span-2">
             <Label>Juhatuse liige (nimi + kontakt)</Label>
-            <Input value={data.meta.board} onChange={(v) => update("meta.board", v)} placeholder="nt Ilona, tel 5xxx xxxx, email ..." />
+            <Input value={data.meta.board} onChange={(v) => update("meta.board", v)} placeholder="nt nimi, telefon, e-post" />
           </div>
         </div>
       </Section>
@@ -767,7 +898,7 @@ function PagePass({ data, update, errors }) {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <div>
             <Label>Majandusaasta (aasta)</Label>
-            <NumberInput value={data.meta.year} onChange={(v) => update("meta.year", clampNonNeg(v))} step="1" />
+            <NumberInput value={String(data.meta.year ?? "")} onChange={(v) => update("meta.year", v === "" ? "" : clampNonNeg(v))} />
           </div>
           <div>
             <Label>Periood algus</Label>
@@ -790,33 +921,32 @@ function PagePass({ data, update, errors }) {
         </div>
 
         <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-          <div className="font-semibold">Õiguslik info (automaatne märkus)</div>
+          <div className="font-semibold">Õiguslik info</div>
           <ul className="mt-1 list-disc pl-5">
-            <li>Majanduskava kujutab korteriühistu eelarvet KrtS § 41 lg 1 p-de 1–5 tähenduses.</li>
-            <li>Kehtestab üldkoosolek lihthäälteenamusega (KrtS §§ 35, 41 lg 3).</li>
+            <li>Majanduskava on eelarve KrtS § 41 lg 1 p 1–5 tähenduses.</li>
+            <li>Kehtestab üldkoosolek häälteenamusega (KrtS § 41 lg 3).</li>
             <li>Kui uut kava ei kehtestata, kehtib eelmine kava (KrtS § 41 lg 5).</li>
           </ul>
         </div>
       </Section>
 
-      <Section title="C. Korteriomandite ülevaade" subtitle="Need numbrid aitavad arvutada korteriomanike maksed.">
+      <Section title="C. Ehitise üldinfo" subtitle="Andmed on eeltäidetavad Ehitisregistrist (valikuline). Käsitsi saab parandada.">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
-            <Label>Korterite arv</Label>
-            <NumberInput value={data.building.aptCount} onChange={(v) => update("building.aptCount", clampNonNeg(v))} step="1" />
+            <Label>Ehitisregistri kood</Label>
+            <Input value={data.building.ehrCode} onChange={(v) => update("building.ehrCode", v)} placeholder="nt 123456789" />
           </div>
           <div>
-            <Label>Kaasomandi osade koguarv (nimetaja)</Label>
-            <NumberInput value={data.building.shareDenom} onChange={(v) => update("building.shareDenom", clampNonNeg(v))} step="1" />
-            {errors.build_denom ? <div className="mt-1 text-xs text-rose-600">{errors.build_denom}</div> : null}
+            <Label>Esmase kasutuselevõtu aasta</Label>
+            <Input value={data.building.firstUseYear} onChange={(v) => update("building.firstUseYear", v)} placeholder="nt 1986" />
           </div>
           <div>
-            <Label>Korterite koguüldpind (m²)</Label>
-            <NumberInput value={data.building.totalArea} onChange={(v) => update("building.totalArea", clampNonNeg(v))} />
+            <Label>Katastritunnus</Label>
+            <Input value={data.building.cadastral} onChange={(v) => update("building.cadastral", v)} placeholder="nt 78401:..." />
           </div>
-          <div>
-            <Label>Elamu ehitusaasta</Label>
-            <Input value={data.building.buildYear} onChange={(v) => update("building.buildYear", v)} placeholder="nt 1986" />
+          <div className="md:col-span-2">
+            <Label>Kasutamise otstarbe pind (m²)</Label>
+            <NumberInput value={data.building.purposeArea} onChange={(v) => update("building.purposeArea", v)} placeholder="nt 436.30" />
           </div>
           <div>
             <Label>Korruselisus</Label>
@@ -828,7 +958,7 @@ function PagePass({ data, update, errors }) {
   );
 }
 
-function PageHealth({ data, updateRow, addRow, removeRow, update, plannedWorksTotal }) {
+function PageTechWorks({ data, updateRow, addRow, removeRow, update, plannedWorksTotal }) {
   const statusOptions = [
     { value: "hea", label: "🟢 Hea" },
     { value: "jalgida", label: "🟡 Vajab jälgimist" },
@@ -851,7 +981,7 @@ function PageHealth({ data, updateRow, addRow, removeRow, update, plannedWorksTo
 
   return (
     <div className="space-y-4">
-      <Section title="I. Hoone üldseisukord" subtitle="Vali seisukord. Kui tahad, lisa ka kuupäev ja märkus.">
+      <Section title="I. Hoone üldseisukord">
         <div className="space-y-3">
           {data.condition.map((row) => (
             <div key={row.id} className="rounded-2xl border p-3">
@@ -865,16 +995,20 @@ function PageHealth({ data, updateRow, addRow, removeRow, update, plannedWorksTo
                   <Select value={row.status} onChange={(v) => updateRow("condition", row.id, { status: v })} options={statusOptions} />
                 </div>
                 <div>
-                  <Label>Viimane ülevaatus</Label>
+                  <Label>Viimane ülevaatus (valikuline)</Label>
                   <Input value={row.last} onChange={(v) => updateRow("condition", row.id, { last: v })} placeholder="kk.aaaa" />
                 </div>
                 <div>
-                  <Label>Järgmine ülevaatus</Label>
+                  <Label>Järgmine ülevaatus (valikuline)</Label>
                   <Input value={row.next} onChange={(v) => updateRow("condition", row.id, { next: v })} placeholder="kk.aaaa" />
                 </div>
                 <div className="md:col-span-5">
-                  <Label>Märkused</Label>
-                  <Input value={row.notes} onChange={(v) => updateRow("condition", row.id, { notes: v })} placeholder="nt pragusid ei tähelda / vaja tellida audit ..." />
+                  <Label>Märkused (valikuline)</Label>
+                  <Input
+                    value={row.notes}
+                    onChange={(v) => updateRow("condition", row.id, { notes: v })}
+                    placeholder={row.noteHint || "Märkus..."}
+                  />
                 </div>
               </div>
             </div>
@@ -883,11 +1017,17 @@ function PageHealth({ data, updateRow, addRow, removeRow, update, plannedWorksTo
       </Section>
 
       <Section
-        title="II. Planeeritud tööd ja toimingud"
-        subtitle="Kirjuta tööd lihtsas keeles. Lisa ligikaudne maksumus."
-        right={<Pill tone="info">Kokku: {euro(plannedWorksTotal)}</Pill>}
+        title="II. Kavandatavad tööd ja toimingud"
+        subtitle="Lisa tööd, ajakava, eeldatav maksumus ja rahastusallikas."
+        right={<Pill tone="info">Kokku: {eurot(plannedWorksTotal)}</Pill>}
       >
         <div className="space-y-3">
+          {data.plannedWorks.length === 0 ? (
+            <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+              Tööd puuduvad. Lisa vajadusel vähemalt üks rida.
+            </div>
+          ) : null}
+
           {data.plannedWorks.map((w) => (
             <div key={w.id} className="rounded-2xl border p-3">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
@@ -904,11 +1044,11 @@ function PageHealth({ data, updateRow, addRow, removeRow, update, plannedWorksTo
                   <Input value={w.period} onChange={(v) => updateRow("plannedWorks", w.id, { period: v })} placeholder="nt 04.2026–05.2026" />
                 </div>
                 <div>
-                  <Label>Maksumus (€)</Label>
-                  <NumberInput value={w.cost} onChange={(v) => updateRow("plannedWorks", w.id, { cost: clampNonNeg(v) })} />
+                  <Label>Maksumus</Label>
+                  <NumberInput value={w.cost} onChange={(v) => updateRow("plannedWorks", w.id, { cost: v })} placeholder="nt 3500.00" />
                 </div>
                 <div>
-                  <Label>Raha tuleb</Label>
+                  <Label>Rahastus</Label>
                   <Select value={w.funding} onChange={(v) => updateRow("plannedWorks", w.id, { funding: v })} options={fundingOptions} />
                 </div>
                 <div className="flex items-end">
@@ -924,7 +1064,7 @@ function PageHealth({ data, updateRow, addRow, removeRow, update, plannedWorksTo
             <Btn
               tone="ghost"
               onClick={() =>
-                addRow("plannedWorks", { id: uid(), desc: "", type: "remont", period: "", cost: 0, funding: "remondifond" })
+                addRow("plannedWorks", { id: uid(), desc: "", type: "remont", period: "", cost: "", funding: "remondifond" })
               }
             >
               + Lisa töö
@@ -933,13 +1073,13 @@ function PageHealth({ data, updateRow, addRow, removeRow, update, plannedWorksTo
         </div>
 
         <div className="mt-4">
-          <Label>Täiendavad märkused / selgitused</Label>
+          <Label>Täiendavad märkused / selgitused (valikuline)</Label>
           <textarea
             value={data.notes.worksNotes}
             onChange={(e) => update("notes.worksNotes", e.target.value)}
             className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-200 focus:ring-2"
             rows={4}
-            placeholder="Kirjelda täpsemalt: probleemid, pooleli tööd, riskid, prioriteedid..."
+            placeholder="Kirjelda riskid, prioriteedid, olulised eeldused, pooleliolevad tööd..."
           />
         </div>
       </Section>
@@ -947,20 +1087,18 @@ function PageHealth({ data, updateRow, addRow, removeRow, update, plannedWorksTo
   );
 }
 
-function BudgetTable({ title, rows, onChangeRow, totals, lockPlanId, lockPlanValue }) {
+function BudgetTableEditable({ title, rows, onChangeRow, onAddRow, onRemoveRow, totals, lockPlanId, lockPlanValue }) {
   return (
-    <Section
-      title={title}
-      right={<Pill tone="info">Plaan kokku: {euro(totals.plan)}</Pill>}
-    >
+    <Section title={title} right={<Pill tone="info">Plaan kokku: {eurot(totals.plan)}</Pill>}>
       <div className="overflow-auto">
-        <table className="min-w-[900px] w-full text-sm">
+        <table className="min-w-[980px] w-full text-sm">
           <thead className="text-left text-xs text-slate-600">
             <tr>
               <th className="py-2 pr-3">Rida</th>
               <th className="py-2 pr-3">Eelmine aasta tegelik</th>
               <th className="py-2 pr-3">Kavandatav</th>
               <th className="py-2 pr-3">Muutus</th>
+              <th className="py-2 pr-3"></th>
             </tr>
           </thead>
           <tbody>
@@ -972,40 +1110,59 @@ function BudgetTable({ title, rows, onChangeRow, totals, lockPlanId, lockPlanVal
               return (
                 <tr key={r.id} className="border-t">
                   <td className="py-2 pr-3">
-                    <div className="font-medium">{r.label}</div>
-                    {r.group ? <div className="text-xs text-slate-500">{r.group}</div> : null}
+                    <Input
+                      value={r.label}
+                      onChange={(v) => onChangeRow(r.id, { label: v })}
+                      placeholder="Rida nimetus"
+                      className="min-w-[320px]"
+                      disabled={planLocked}
+                    />
+                    {r.group ? <div className="mt-1 text-xs text-slate-500">{r.group}</div> : null}
                   </td>
                   <td className="py-2 pr-3">
-                    <NumberInput value={r.prev} onChange={(v) => onChangeRow(r.id, { prev: clampNonNeg(v) })} />
+                    <NumberInput value={r.prev} onChange={(v) => onChangeRow(r.id, { prev: v })} placeholder="0.00" />
                   </td>
                   <td className="py-2 pr-3">
                     {planLocked ? (
-                      <div className="rounded-xl bg-slate-50 px-3 py-2">{euro(planValue)}</div>
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">{eurot(planValue)}</div>
                     ) : (
-                      <NumberInput value={r.plan} onChange={(v) => onChangeRow(r.id, { plan: clampNonNeg(v) })} />
+                      <NumberInput value={r.plan} onChange={(v) => onChangeRow(r.id, { plan: v })} placeholder="0.00" />
                     )}
-                    {planLocked ? <div className="mt-1 text-xs text-slate-500">Võetakse automaatselt “Maja tervis” töödest.</div> : null}
+                    {planLocked ? <div className="mt-1 text-xs text-slate-500">Võetakse automaatselt kavandatud tööde summast.</div> : null}
                   </td>
                   <td className="py-2 pr-3">
-                    <div className="font-medium">{euro(d)}</div>
+                    <div className="font-medium">{eurot(d)}</div>
+                  </td>
+                  <td className="py-2 pr-3">
+                    {planLocked ? (
+                      <span className="text-xs text-slate-400">—</span>
+                    ) : (
+                      <Btn tone="danger" onClick={() => onRemoveRow(r.id)}>Kustuta</Btn>
+                    )}
                   </td>
                 </tr>
               );
             })}
+
             <tr className="border-t bg-slate-50">
               <td className="py-2 pr-3 font-semibold">KOKKU</td>
-              <td className="py-2 pr-3 font-semibold">{euro(totals.prev)}</td>
-              <td className="py-2 pr-3 font-semibold">{euro(totals.plan)}</td>
-              <td className="py-2 pr-3 font-semibold">{euro(totals.diff)}</td>
+              <td className="py-2 pr-3 font-semibold">{eurot(totals.prev)}</td>
+              <td className="py-2 pr-3 font-semibold">{eurot(totals.plan)}</td>
+              <td className="py-2 pr-3 font-semibold">{eurot(totals.diff)}</td>
+              <td className="py-2 pr-3"></td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-3">
+        <Btn tone="ghost" onClick={onAddRow}>+ Lisa rida</Btn>
       </div>
     </Section>
   );
 }
 
-function PageBudget({ data, updateRow, plannedWorksTotal, incomeTotals, runningTotals, investTotals, budgetResult }) {
+function PageBudget({ data, updateRow, addRow, removeRow, plannedWorksTotal, incomeTotals, runningTotals, investTotals, budgetResult }) {
   const investRows = investTotals.mapped;
 
   const onIncome = (id, patch) => updateRow("budget.income", id, patch);
@@ -1018,45 +1175,59 @@ function PageBudget({ data, updateRow, plannedWorksTotal, incomeTotals, runningT
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm font-semibold">Eelarve kokkuvõte</div>
           <div className="flex flex-wrap gap-2">
-            <Pill tone="info">Tulud: {euro(incomeTotals.plan)}</Pill>
-            <Pill tone="info">Jooksvad kulud: {euro(runningTotals.plan)}</Pill>
-            <Pill tone="info">Investeeringud: {euro(investTotals.plan)}</Pill>
-            <Pill tone={budgetResult.plan > 0 ? "ok" : budgetResult.plan < 0 ? "bad" : "warn"}>
-              Tulemus: {euro(budgetResult.plan)}
-            </Pill>
+            <Pill tone="info">Tulud: {eurot(incomeTotals.plan)}</Pill>
+            <Pill tone="info">Jooksvad kulud: {eurot(runningTotals.plan)}</Pill>
+            <Pill tone="info">Investeeringud: {eurot(investTotals.plan)}</Pill>
+            <Pill tone={budgetResult.plan > 0 ? "ok" : budgetResult.plan < 0 ? "bad" : "warn"}>Tulemus: {eurot(budgetResult.plan)}</Pill>
           </div>
         </div>
         <div className="mt-2 text-xs text-slate-600">
-          🟦 sisesta sina • ⚫ arvutab süsteem • Investeeringute real “Remondifondi tööd” tuleb automaatselt planeeritud tööde summast ({euro(plannedWorksTotal)}).
+          Investeeringute real “Remondifondist finantseeritavad tööd” võetakse summa automaatselt kavandatud töödest ({eurot(plannedWorksTotal)}).
         </div>
       </div>
 
-      <BudgetTable title="A. Tulud (KrtS § 41 lg 1 p 2)" rows={data.budget.income} onChangeRow={onIncome} totals={incomeTotals} />
+      <BudgetTableEditable
+        title="A. Tulud (KrtS § 41 lg 1 p 2)"
+        rows={data.budget.income}
+        onChangeRow={onIncome}
+        totals={incomeTotals}
+        onAddRow={() => addRow("budget.income", { id: uid(), label: "", prev: "", plan: "" })}
+        onRemoveRow={(id) => removeRow("budget.income", id)}
+      />
 
-      <BudgetTable title="B. Jooksvad majandamiskulud" rows={data.budget.running} onChangeRow={onRunning} totals={runningTotals} />
+      <BudgetTableEditable
+        title="B. Jooksvad majandamiskulud"
+        rows={data.budget.running}
+        onChangeRow={onRunning}
+        totals={runningTotals}
+        onAddRow={() => addRow("budget.running", { id: uid(), label: "", prev: "", plan: "", group: "" })}
+        onRemoveRow={(id) => removeRow("budget.running", id)}
+      />
 
-      <BudgetTable
+      <BudgetTableEditable
         title="C. Remondi- ja investeerimiskulud"
         rows={investRows}
         onChangeRow={onInvest}
         totals={{ prev: investTotals.prev, plan: investTotals.plan, diff: investTotals.diff }}
         lockPlanId="plannedWorks"
         lockPlanValue={plannedWorksTotal}
+        onAddRow={() => addRow("budget.invest", { id: uid(), label: "", prev: "", plan: "" })}
+        onRemoveRow={(id) => removeRow("budget.invest", id)}
       />
 
       <Section title="D. Tulemi selgitus" subtitle="Tulemus = Tulud – Jooksvad kulud – Investeeringud">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="rounded-2xl border bg-slate-50 p-3">
             <div className="text-xs text-slate-600">Tulud (plaan)</div>
-            <div className="text-lg font-semibold">{euro(incomeTotals.plan)}</div>
+            <div className="text-lg font-semibold">{eurot(incomeTotals.plan)}</div>
           </div>
           <div className="rounded-2xl border bg-slate-50 p-3">
             <div className="text-xs text-slate-600">Kulud (plaan)</div>
-            <div className="text-lg font-semibold">{euro(runningTotals.plan + investTotals.plan)}</div>
+            <div className="text-lg font-semibold">{eurot(runningTotals.plan + investTotals.plan)}</div>
           </div>
           <div className="rounded-2xl border bg-slate-50 p-3">
             <div className="text-xs text-slate-600">Tulemus (plaan)</div>
-            <div className="text-lg font-semibold">{euro(budgetResult.plan)}</div>
+            <div className="text-lg font-semibold">{eurot(budgetResult.plan)}</div>
             <div className="mt-1">
               <Pill tone={budgetResult.plan > 0 ? "ok" : budgetResult.plan < 0 ? "bad" : "warn"}>
                 {budgetResult.plan > 0 ? "Ülejääk" : budgetResult.plan < 0 ? "Puudujääk" : "Tasakaalus"}
@@ -1069,107 +1240,225 @@ function PageBudget({ data, updateRow, plannedWorksTotal, incomeTotals, runningT
   );
 }
 
-function PagePayments({ data, updateRow, addRow, removeRow, shareDiagnostics, payments, runningTotals, investTotals, errors }) {
-  const monthlyRunning = round2(runningTotals.plan / 12);
-  const monthlyInvest = round2(investTotals.plan / 12);
+function PageUnitsPayments({ data, updateRow, addRow, removeRow, unitDiagnostics, payments, runningTotals, investTotals, errors, update }) {
+  const monthlyRunningTotal = round2(runningTotals.plan / 12);
+  const monthlyInvestTotal = round2(investTotals.plan / 12);
+
+  const typeOptions = [
+    { value: "Eluruum", label: "Eluruum" },
+    { value: "Mitteeluruum", label: "Mitteeluruum" },
+    { value: "Üldkasutatav pind", label: "Üldkasutatav pind" },
+    { value: "Tehnopind", label: "Tehnopind" },
+  ];
 
   return (
     <div className="space-y-4">
-      <Section title="A. Kulu kokkuvõte" subtitle="Need summad jaotatakse korteriomanike vahel kaasomandi osa järgi (KrtS § 40 lg 1).">
+      <Section title="A. Kulu kokkuvõte" subtitle="Need summad jaotatakse hooneosade vahel valitud jaotusbaasi alusel.">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="rounded-2xl border bg-slate-50 p-3">
             <div className="text-xs text-slate-600">Jooksvad kulud / kuu</div>
-            <div className="text-lg font-semibold">{euro(monthlyRunning)}</div>
+            <div className="text-lg font-semibold">{eurot(monthlyRunningTotal)}</div>
           </div>
           <div className="rounded-2xl border bg-slate-50 p-3">
             <div className="text-xs text-slate-600">Investeeringud / kuu</div>
-            <div className="text-lg font-semibold">{euro(monthlyInvest)}</div>
+            <div className="text-lg font-semibold">{eurot(monthlyInvestTotal)}</div>
           </div>
           <div className="rounded-2xl border bg-slate-50 p-3">
             <div className="text-xs text-slate-600">Kokku / kuu</div>
-            <div className="text-lg font-semibold">{euro(monthlyRunning + monthlyInvest)}</div>
+            <div className="text-lg font-semibold">{eurot(monthlyRunningTotal + monthlyInvestTotal)}</div>
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Pill tone={shareDiagnostics.ok ? "ok" : "warn"}>
-            Osakaalude kontroll: summa {shareDiagnostics.sumShares} / nimetaja {shareDiagnostics.denom}
-          </Pill>
-          {!shareDiagnostics.ok ? <Pill tone="warn">Paranda osakaalud, muidu makseid ei saa õigesti arvutada.</Pill> : null}
+        <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+          <div className="font-semibold">Standardmudel (A): jaotus pindala alusel</div>
+          <div className="mt-1">
+            See vorm kasutab standardmudelit, kus majandamiskulud jaotatakse hooneosade pindala proportsioonis.
+            Kui põhikirjas või korteriomanike kokkuleppes on teistsugune jaotus (KrtS § 40 lg 2), siis kasuta eraldi lahendust / lisa protokolli selgitus.
+          </div>
         </div>
 
-        {errors.shares_sum ? <div className="mt-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{errors.shares_sum}</div> : null}
+        <div className="mt-3 space-y-2">
+          <Checkbox
+            checked={data.allocation.confirmMatchesCoOwnership}
+            onChange={(v) => update("allocation.confirmMatchesCoOwnership", v)}
+            label="Kinnitan, et pindalapõhine jaotus vastab ühistu kaasomandi osadele või kehtivale kokkuleppele."
+          />
+          {errors.alloc_confirm ? <div className="text-xs text-amber-800">{errors.alloc_confirm}</div> : null}
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div>
+              <Label>Kas põhikirjas/kokkuleppes on teistsugune jaotus? (KrtS § 40 lg 2)</Label>
+              <Select
+                value={data.allocation.overrideExists}
+                onChange={(v) => update("allocation.overrideExists", v)}
+                options={[
+                  { value: "ei", label: "Ei" },
+                  { value: "jah", label: "Jah" },
+                ]}
+              />
+            </div>
+            <div>
+              <Label>Märkus (valikuline)</Label>
+              <Input
+                value={data.allocation.overrideNote}
+                onChange={(v) => update("allocation.overrideNote", v)}
+                placeholder="nt jaotus tarbimise/põhikirja alusel – standardmudelit ei kasutata täies ulatuses"
+              />
+            </div>
+          </div>
+        </div>
+
+        {errors.alloc_base ? (
+          <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{errors.alloc_base}</div>
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Pill tone="info">
+              Jaotusbaas (arvestuses): {formatNumberSpaceDot(unitDiagnostics.totalAreaIncluded, 2)} m²
+            </Pill>
+            <Pill tone="info">Hooneosi arvestuses: {unitDiagnostics.includedCount}/{unitDiagnostics.totalCount}</Pill>
+          </div>
+        )}
       </Section>
 
       <Section
-        title="B. Korteriomandid ja maksed"
-        subtitle="Lisa kõik korterid (või impordi hiljem). Kaasomandi osa: lugeja / nimetaja."
+        title="B. Hooneosad (EHR loogika) ja maksed"
+        subtitle="Hooneosad on eeltäidetavad Ehitisregistrist. Käsitsi saad lisada, muuta ja valida, kas hooneosa läheb jaotuses arvesse."
         right={
           <Btn
             tone="ghost"
-            onClick={() => addRow("apartments", { id: uid(), unit: `Korter ${data.apartments.length + 1}`, owner: "", shareNum: 0 })}
+            onClick={() =>
+              addRow("units", {
+                id: uid(),
+                partNo: String(data.units.length + 1),
+                type: "Eluruum",
+                rooms: "",
+                entryFloor: "",
+                area: "",
+                includeInAllocation: true,
+                owner: "",
+              })
+            }
           >
-            + Lisa korter
+            + Lisa hooneosa
           </Btn>
         }
       >
         <div className="overflow-auto">
-          <table className="min-w-[1100px] w-full text-sm">
+          <table className="min-w-[1300px] w-full text-sm">
             <thead className="text-left text-xs text-slate-600">
               <tr>
-                <th className="py-2 pr-3">Korteriomand / omanik</th>
-                <th className="py-2 pr-3">Kaasomandi osa (lugeja)</th>
-                <th className="py-2 pr-3">Osakaal</th>
-                <th className="py-2 pr-3">Aastas</th>
-                <th className="py-2 pr-3">Kuus</th>
-                <th className="py-2 pr-3">sh jooksev / kuu</th>
-                <th className="py-2 pr-3">sh invest / kuu</th>
+                <th className="py-2 pr-3">Osa nr</th>
+                <th className="py-2 pr-3">Hooneosa tüüp</th>
+                <th className="py-2 pr-3">Tubade arv (valikuline)</th>
+                <th className="py-2 pr-3">Sissepääsu korrus (valikuline)</th>
+                <th className="py-2 pr-3">Hooneosa pind (m²)</th>
+                <th className="py-2 pr-3">Arvestada jaotuses</th>
+                <th className="py-2 pr-3">Omanik (valikuline)</th>
                 <th className="py-2 pr-3"></th>
               </tr>
             </thead>
             <tbody>
-              {payments.map((p) => (
-                <tr key={p.id} className="border-t">
+              {data.units.map((u) => (
+                <tr key={u.id} className="border-t">
                   <td className="py-2 pr-3">
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                      <Input value={p.unit} onChange={(v) => updateRow("apartments", p.id, { unit: v })} placeholder="nt Korter 12" />
-                      <Input value={p.owner} onChange={(v) => updateRow("apartments", p.id, { owner: v })} placeholder="Omanik (valikuline)" />
-                    </div>
+                    <Input value={u.partNo} onChange={(v) => updateRow("units", u.id, { partNo: v })} placeholder="1" className="max-w-[80px]" />
                   </td>
                   <td className="py-2 pr-3">
-                    <NumberInput value={p.shareNum} onChange={(v) => updateRow("apartments", p.id, { shareNum: clampNonNeg(v) })} step="1" />
-                    <div className="mt-1 text-xs text-slate-500">/ {shareDiagnostics.denom}</div>
+                    <Select value={u.type} onChange={(v) => updateRow("units", u.id, { type: v })} options={typeOptions} />
                   </td>
-                  <td className="py-2 pr-3 font-medium">{pct(p.sharePct, 3)}</td>
-                  <td className="py-2 pr-3 font-medium">{euro(p.yearTotal)}</td>
-                  <td className="py-2 pr-3 font-medium">{euro(p.monthTotal)}</td>
-                  <td className="py-2 pr-3">{euro(p.monthRun)}</td>
-                  <td className="py-2 pr-3">{euro(p.monthInvest)}</td>
                   <td className="py-2 pr-3">
-                    <Btn tone="danger" onClick={() => removeRow("apartments", p.id)}>Kustuta</Btn>
+                    <Input value={u.rooms} onChange={(v) => updateRow("units", u.id, { rooms: v })} placeholder="nt 2" className="max-w-[140px]" />
+                  </td>
+                  <td className="py-2 pr-3">
+                    <Input value={u.entryFloor} onChange={(v) => updateRow("units", u.id, { entryFloor: v })} placeholder="nt 1" className="max-w-[160px]" />
+                  </td>
+                  <td className="py-2 pr-3">
+                    <NumberInput value={u.area} onChange={(v) => updateRow("units", u.id, { area: v })} placeholder="nt 64.60" className="max-w-[160px]" />
+                  </td>
+                  <td className="py-2 pr-3">
+                    <Select
+                      value={u.includeInAllocation ? "jah" : "ei"}
+                      onChange={(v) => updateRow("units", u.id, { includeInAllocation: v === "jah" })}
+                      options={[
+                        { value: "jah", label: "Jah" },
+                        { value: "ei", label: "Ei" },
+                      ]}
+                      className="max-w-[120px]"
+                    />
+                    {!u.includeInAllocation && (u.type === "Eluruum" || u.type === "Mitteeluruum") ? (
+                      <div className="mt-1 text-xs text-amber-800">Hoiatus: eluruum/mitteeluruum on jäetud jaotusest välja.</div>
+                    ) : null}
+                  </td>
+                  <td className="py-2 pr-3">
+                    <Input value={u.owner} onChange={(v) => updateRow("units", u.id, { owner: v })} placeholder="valikuline" />
+                  </td>
+                  <td className="py-2 pr-3">
+                    <Btn tone="danger" onClick={() => removeRow("units", u.id)}>Kustuta</Btn>
                   </td>
                 </tr>
               ))}
-
               <tr className="border-t bg-slate-50">
-                <td className="py-2 pr-3 font-semibold">KOKKU</td>
-                <td className="py-2 pr-3 font-semibold">{shareDiagnostics.sumShares} / {shareDiagnostics.denom}</td>
-                <td className="py-2 pr-3 font-semibold">{shareDiagnostics.ok ? "100%" : "—"}</td>
-                <td className="py-2 pr-3 font-semibold">{euro(sum(payments, (x) => x.yearTotal))}</td>
-                <td className="py-2 pr-3 font-semibold">{euro(sum(payments, (x) => x.monthTotal))}</td>
-                <td className="py-2 pr-3 font-semibold">{euro(sum(payments, (x) => x.monthRun))}</td>
-                <td className="py-2 pr-3 font-semibold">{euro(sum(payments, (x) => x.monthInvest))}</td>
-                <td className="py-2 pr-3"></td>
+                <td className="py-2 pr-3 font-semibold" colSpan={4}>KOKKU (arvestuses)</td>
+                <td className="py-2 pr-3 font-semibold">{formatNumberSpaceDot(unitDiagnostics.totalAreaIncluded, 2)} m²</td>
+                <td className="py-2 pr-3 font-semibold">{unitDiagnostics.includedCount}/{unitDiagnostics.totalCount}</td>
+                <td className="py-2 pr-3" colSpan={2}></td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-          <div className="font-semibold">Õiguslik märkus</div>
-          <div className="mt-1">
-            KrtS § 40 lg 1: korteriomanikud teevad perioodilisi ettemakseid vastavalt oma kaasomandi osa suurusele.
-            Erinev jaotus on lubatud ainult põhikirja alusel (KrtS § 40 lg 2).
+        <div className="mt-4 rounded-2xl border bg-white p-4">
+          <div className="text-sm font-semibold">Maksete jaotus (aastas / kuus)</div>
+          <div className="mt-2 overflow-auto">
+            <table className="min-w-[1100px] w-full text-sm">
+              <thead className="text-left text-xs text-slate-600">
+                <tr>
+                  <th className="py-2 pr-3">Osa nr</th>
+                  <th className="py-2 pr-3">Tüüp</th>
+                  <th className="py-2 pr-3">Pind</th>
+                  <th className="py-2 pr-3">Osakaal</th>
+                  <th className="py-2 pr-3">Aastas</th>
+                  <th className="py-2 pr-3">Kuus</th>
+                  <th className="py-2 pr-3">sh jooksev / kuu</th>
+                  <th className="py-2 pr-3">sh invest / kuu</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((p) => (
+                  <tr key={p.id} className="border-t">
+                    <td className="py-2 pr-3">{p.partNo}</td>
+                    <td className="py-2 pr-3">{p.type}</td>
+                    <td className="py-2 pr-3">{formatNumberSpaceDot(num(p.area), 2)} m²</td>
+                    <td className="py-2 pr-3 font-medium">{pct(p.sharePct, 3)}</td>
+                    <td className="py-2 pr-3 font-medium">{eurot(p.yearTotal)}</td>
+                    <td className="py-2 pr-3 font-medium">{eurot(p.monthTotal)}</td>
+                    <td className="py-2 pr-3">{eurot(p.monthRun)}</td>
+                    <td className="py-2 pr-3">{eurot(p.monthInvest)}</td>
+                  </tr>
+                ))}
+                {payments.length ? (
+                  <tr className="border-t bg-slate-50">
+                    <td className="py-2 pr-3 font-semibold" colSpan={4}>KOKKU</td>
+                    <td className="py-2 pr-3 font-semibold">{eurot(sum(payments, (x) => x.yearTotal))}</td>
+                    <td className="py-2 pr-3 font-semibold">{eurot(sum(payments, (x) => x.monthTotal))}</td>
+                    <td className="py-2 pr-3 font-semibold">{eurot(sum(payments, (x) => x.monthRun))}</td>
+                    <td className="py-2 pr-3 font-semibold">{eurot(sum(payments, (x) => x.monthInvest))}</td>
+                  </tr>
+                ) : (
+                  <tr className="border-t">
+                    <td className="py-3 pr-3 text-slate-500" colSpan={8}>Maksete arvutamiseks sisesta hooneosade pindalad ja vali, mis läheb jaotuses arvesse.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+            <div className="font-semibold">Õiguslik märkus</div>
+            <div className="mt-1">
+              KrtS § 40 lg 1: korteriomanikud teevad perioodilisi ettemakseid vastavalt oma kaasomandi osa suurusele.
+              Teistsugune jaotus võib tuleneda põhikirjast või korteriomanike kokkuleppest (KrtS § 40 lg 2).
+            </div>
           </div>
         </div>
       </Section>
@@ -1180,57 +1469,89 @@ function PagePayments({ data, updateRow, addRow, removeRow, shareDiagnostics, pa
 function PageFunds({ data, update, plannedWorksTotal, annualCostsPlanned, reserveMinimum, fundsDerived, errors }) {
   return (
     <div className="space-y-4">
-      <Section title="A. Reservkapital (KrtS § 48)" subtitle="Reserv peab olema vähemalt 1/12 aasta eeldatavatest kuludest.">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <Section
+        title="A. Reservkapital (KrtS § 48)"
+        subtitle="Reserv peab olema vähemalt 1/12 aasta eeldatavatest kuludest. Üldkoosolek võib otsustada ka suurema sihttaseme."
+      >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
           <div>
             <Label>Algjääk</Label>
-            <NumberInput value={data.funds.reserveStart} onChange={(v) => update("funds.reserveStart", clampNonNeg(v))} />
+            <NumberInput value={data.funds.reserveStart} onChange={(v) => update("funds.reserveStart", v)} placeholder="0.00" />
           </div>
           <div>
             <Label>Laekumised</Label>
-            <NumberInput value={data.funds.reserveIn} onChange={(v) => update("funds.reserveIn", clampNonNeg(v))} />
+            <NumberInput value={data.funds.reserveIn} onChange={(v) => update("funds.reserveIn", v)} placeholder="0.00" />
           </div>
           <div>
             <Label>Kasutamine</Label>
-            <NumberInput value={data.funds.reserveOut} onChange={(v) => update("funds.reserveOut", clampNonNeg(v))} />
+            <NumberInput value={data.funds.reserveOut} onChange={(v) => update("funds.reserveOut", v)} placeholder="0.00" />
+          </div>
+          <div>
+            <Label>Sihttase (valikuline)</Label>
+            <NumberInput value={data.funds.reserveTarget} onChange={(v) => update("funds.reserveTarget", v)} placeholder="nt 5000.00" />
           </div>
           <div className="rounded-2xl border bg-slate-50 p-3">
             <div className="text-xs text-slate-600">Lõppjääk (eeldatav)</div>
-            <div className="text-lg font-semibold">{euro(fundsDerived.reserveEnd)}</div>
-            <div className="mt-1 text-xs text-slate-600">Miinimum: {euro(reserveMinimum)}</div>
+            <div className="text-lg font-semibold">{eurot(fundsDerived.reserveEnd)}</div>
+            <div className="mt-1 text-xs text-slate-600">Miinimum (1/12): {eurot(reserveMinimum)}</div>
             {errors.reserve_min ? <div className="mt-2 text-xs text-amber-800">{errors.reserve_min}</div> : <Pill tone="ok">OK</Pill>}
           </div>
         </div>
 
+        <div className="mt-3">
+          <Label>Sihttaseme põhjendus (valikuline, protokolli jaoks)</Label>
+          <Input
+            value={data.funds.reserveTargetReason}
+            onChange={(v) => update("funds.reserveTargetReason", v)}
+            placeholder="nt riskipuhver, ootamatud avariitööd, kindlustuse omavastutus..."
+          />
+        </div>
+
         <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-          Aasta eeldatavad kulud (plaan): <b>{euro(annualCostsPlanned)}</b> → seaduslik miinimum 1/12: <b>{euro(reserveMinimum)}</b>.
+          Aasta eeldatavad kulud (plaan): <b>{eurot(annualCostsPlanned)}</b> → seaduslik miinimum 1/12: <b>{eurot(reserveMinimum)}</b> (KrtS § 48).
         </div>
       </Section>
 
-      <Section title="B. Remondifond" subtitle="Remondifondist kaetakse planeeritud tööd (ja muud remondikulud, kui lisad).">
+      <Section
+        title="B. Remondifond (KrtS § 41 lg 1 p 4)"
+        subtitle="Remondifond on sihtotstarbeline fond. Üldkoosolek saab fondi kasutust ja reegleid otsustega reguleerida."
+      >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
           <div>
             <Label>Algjääk</Label>
-            <NumberInput value={data.funds.repairStart} onChange={(v) => update("funds.repairStart", clampNonNeg(v))} />
+            <NumberInput value={data.funds.repairStart} onChange={(v) => update("funds.repairStart", v)} placeholder="0.00" />
           </div>
           <div>
             <Label>Laekumised</Label>
-            <NumberInput value={data.funds.repairIn} onChange={(v) => update("funds.repairIn", clampNonNeg(v))} />
+            <NumberInput value={data.funds.repairIn} onChange={(v) => update("funds.repairIn", v)} placeholder="0.00" />
           </div>
           <div>
-            <Label>Planeeritud tööd (automaatne)</Label>
-            <div className="rounded-xl bg-slate-50 px-3 py-2">{euro(plannedWorksTotal)}</div>
-            <div className="mt-1 text-xs text-slate-500">Võetakse “Maja tervis” töödest.</div>
+            <Label>Kavandatavad tööd (automaatne)</Label>
+            <div className="rounded-xl bg-slate-50 px-3 py-2">{eurot(plannedWorksTotal)}</div>
+            <div className="mt-1 text-xs text-slate-500">Võetakse sammust “Tehniline seisukord ja kavandatavad tööd”.</div>
           </div>
           <div>
             <Label>Muu kasutamine (valikuline)</Label>
-            <NumberInput value={data.funds.repairOutOther} onChange={(v) => update("funds.repairOutOther", clampNonNeg(v))} />
+            <NumberInput value={data.funds.repairOutOther} onChange={(v) => update("funds.repairOutOther", v)} placeholder="0.00" />
           </div>
           <div className="rounded-2xl border bg-slate-50 p-3">
             <div className="text-xs text-slate-600">Lõppjääk (eeldatav)</div>
-            <div className="text-lg font-semibold">{euro(fundsDerived.repairEnd)}</div>
-            <div className="mt-1 text-xs text-slate-600">Kasutus kokku: {euro(fundsDerived.repairOut)}</div>
+            <div className="text-lg font-semibold">{eurot(fundsDerived.repairEnd)}</div>
+            <div className="mt-1 text-xs text-slate-600">Kasutus kokku: {eurot(fundsDerived.repairOut)}</div>
           </div>
+        </div>
+
+        <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+          Märkus: remondifondi kasutus ei pea piirduma ainult loetelus olevate töödega – üldkoosolek võib otsustada fondi kasutuse ja tingimused (KrtS § 41 lg 1 p 4).
+        </div>
+      </Section>
+
+      <Section
+        title="C. Laenud (informatiivne)"
+        subtitle="Laenuotsused kuuluvad üldkoosoleku pädevusse ning võivad vajada erikorda (KrtS § 35 lg 2 p 6; KrtS § 36)."
+      >
+        <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+          Kui eelarves on laenumaksed, veendu, et üldkoosoleku otsus, laenulepingu tingimused ja mõju igakuisele maksele on selgelt protokollis kirjeldatud.
         </div>
       </Section>
     </div>
@@ -1242,18 +1563,18 @@ function PageEnergy({ data, updateRow, energyDerived }) {
     <div className="space-y-4">
       <Section
         title="A. Soojusenergia (kuude kaupa)"
-        subtitle="Sisesta prognoositav kogus (MWh) ja ühikuhind (€/MWh). Maksumus arvutatakse automaatselt."
-        right={<Pill tone="info">Aasta kokku: {euro(energyDerived.heatTotal)}</Pill>}
+        subtitle="Sisesta prognoositav kogus (MWh) ja ühikuhind (eurot/MWh). Maksumus arvutatakse automaatselt (KrtS § 41 lg 1 p 5)."
+        right={<Pill tone="info">Aasta kokku: {eurot(energyDerived.heatTotal)}</Pill>}
       >
         <div className="overflow-auto">
-          <table className="min-w-[1000px] w-full text-sm">
+          <table className="min-w-[1100px] w-full text-sm">
             <thead className="text-left text-xs text-slate-600">
               <tr>
                 <th className="py-2 pr-3">Kuu</th>
                 <th className="py-2 pr-3">Kogus (MWh)</th>
-                <th className="py-2 pr-3">Hind (€/MWh)</th>
+                <th className="py-2 pr-3">Hind (eurot/MWh)</th>
                 <th className="py-2 pr-3">Maksumus (auto)</th>
-                <th className="py-2 pr-3">Eelmine aasta (€)</th>
+                <th className="py-2 pr-3">Eelmine aasta (eurot)</th>
                 <th className="py-2 pr-3">Muutus</th>
               </tr>
             </thead>
@@ -1262,25 +1583,25 @@ function PageEnergy({ data, updateRow, energyDerived }) {
                 <tr key={r.id} className="border-t">
                   <td className="py-2 pr-3 font-medium">{r.month}</td>
                   <td className="py-2 pr-3">
-                    <NumberInput value={r.qtyMWh} onChange={(v) => updateRow("energy.heatMonths", r.id, { qtyMWh: clampNonNeg(v) })} />
+                    <NumberInput value={r.qtyMWh} onChange={(v) => updateRow("energy.heatMonths", r.id, { qtyMWh: v })} placeholder="0.00" />
                   </td>
                   <td className="py-2 pr-3">
-                    <NumberInput value={r.pricePerMWh} onChange={(v) => updateRow("energy.heatMonths", r.id, { pricePerMWh: clampNonNeg(v) })} />
+                    <NumberInput value={r.pricePerMWh} onChange={(v) => updateRow("energy.heatMonths", r.id, { pricePerMWh: v })} placeholder="0.00" />
                   </td>
-                  <td className="py-2 pr-3 font-medium">{euro(r.cost)}</td>
+                  <td className="py-2 pr-3 font-medium">{eurot(r.cost)}</td>
                   <td className="py-2 pr-3">
-                    <NumberInput value={r.prevCost} onChange={(v) => updateRow("energy.heatMonths", r.id, { prevCost: clampNonNeg(v) })} />
+                    <NumberInput value={r.prevCost} onChange={(v) => updateRow("energy.heatMonths", r.id, { prevCost: v })} placeholder="0.00" />
                   </td>
-                  <td className="py-2 pr-3">{euro(r.change)}</td>
+                  <td className="py-2 pr-3">{eurot(r.change)}</td>
                 </tr>
               ))}
               <tr className="border-t bg-slate-50">
                 <td className="py-2 pr-3 font-semibold">KOKKU</td>
                 <td className="py-2 pr-3"></td>
                 <td className="py-2 pr-3"></td>
-                <td className="py-2 pr-3 font-semibold">{euro(energyDerived.heatTotal)}</td>
-                <td className="py-2 pr-3 font-semibold">{euro(energyDerived.heatPrevTotal)}</td>
-                <td className="py-2 pr-3 font-semibold">{euro(energyDerived.heatChange)}</td>
+                <td className="py-2 pr-3 font-semibold">{eurot(energyDerived.heatTotal)}</td>
+                <td className="py-2 pr-3 font-semibold">{eurot(energyDerived.heatPrevTotal)}</td>
+                <td className="py-2 pr-3 font-semibold">{eurot(energyDerived.heatChange)}</td>
               </tr>
             </tbody>
           </table>
@@ -1288,20 +1609,20 @@ function PageEnergy({ data, updateRow, energyDerived }) {
       </Section>
 
       <Section
-        title="B. Muud energialiigid ja teenused (aastane)"
-        subtitle="Sisesta kogus ja ühikuhind. Maksumus arvutatakse automaatselt."
-        right={<Pill tone="info">Aasta kokku: {euro(energyDerived.otherTotal)}</Pill>}
+        title="B. Elekter / vesi / teenused (aastane)"
+        subtitle="Sisesta kogus ja ühikuhind. Maksumus arvutatakse automaatselt (KrtS § 41 lg 1 p 5)."
+        right={<Pill tone="info">Aasta kokku: {eurot(energyDerived.otherTotal)}</Pill>}
       >
         <div className="overflow-auto">
-          <table className="min-w-[1000px] w-full text-sm">
+          <table className="min-w-[1100px] w-full text-sm">
             <thead className="text-left text-xs text-slate-600">
               <tr>
                 <th className="py-2 pr-3">Teenuse nimetus</th>
                 <th className="py-2 pr-3">Ühik</th>
                 <th className="py-2 pr-3">Kogus</th>
-                <th className="py-2 pr-3">Hind</th>
+                <th className="py-2 pr-3">Hind (eurot/ühik)</th>
                 <th className="py-2 pr-3">Maksumus (auto)</th>
-                <th className="py-2 pr-3">Eelmine aasta (€)</th>
+                <th className="py-2 pr-3">Eelmine aasta (eurot)</th>
                 <th className="py-2 pr-3">Muutus</th>
               </tr>
             </thead>
@@ -1311,16 +1632,16 @@ function PageEnergy({ data, updateRow, energyDerived }) {
                   <td className="py-2 pr-3 font-medium">{r.label}</td>
                   <td className="py-2 pr-3">{r.unit}</td>
                   <td className="py-2 pr-3">
-                    <NumberInput value={r.qty} onChange={(v) => updateRow("energy.other", r.id, { qty: clampNonNeg(v) })} />
+                    <NumberInput value={r.qty} onChange={(v) => updateRow("energy.other", r.id, { qty: v })} placeholder="0.00" />
                   </td>
                   <td className="py-2 pr-3">
-                    <NumberInput value={r.price} onChange={(v) => updateRow("energy.other", r.id, { price: clampNonNeg(v) })} />
+                    <NumberInput value={r.price} onChange={(v) => updateRow("energy.other", r.id, { price: v })} placeholder="0.00" />
                   </td>
-                  <td className="py-2 pr-3 font-medium">{euro(r.cost)}</td>
+                  <td className="py-2 pr-3 font-medium">{eurot(r.cost)}</td>
                   <td className="py-2 pr-3">
-                    <NumberInput value={r.prevCost} onChange={(v) => updateRow("energy.other", r.id, { prevCost: clampNonNeg(v) })} />
+                    <NumberInput value={r.prevCost} onChange={(v) => updateRow("energy.other", r.id, { prevCost: v })} placeholder="0.00" />
                   </td>
-                  <td className="py-2 pr-3">{euro(r.change)}</td>
+                  <td className="py-2 pr-3">{eurot(r.change)}</td>
                 </tr>
               ))}
               <tr className="border-t bg-slate-50">
@@ -1328,9 +1649,9 @@ function PageEnergy({ data, updateRow, energyDerived }) {
                 <td className="py-2 pr-3"></td>
                 <td className="py-2 pr-3"></td>
                 <td className="py-2 pr-3"></td>
-                <td className="py-2 pr-3 font-semibold">{euro(energyDerived.otherTotal)}</td>
-                <td className="py-2 pr-3 font-semibold">{euro(energyDerived.otherPrevTotal)}</td>
-                <td className="py-2 pr-3 font-semibold">{euro(energyDerived.otherChange)}</td>
+                <td className="py-2 pr-3 font-semibold">{eurot(energyDerived.otherTotal)}</td>
+                <td className="py-2 pr-3 font-semibold">{eurot(energyDerived.otherPrevTotal)}</td>
+                <td className="py-2 pr-3 font-semibold">{eurot(energyDerived.otherChange)}</td>
               </tr>
             </tbody>
           </table>
@@ -1347,7 +1668,7 @@ function PageConfirm({
   runningTotals,
   investTotals,
   budgetResult,
-  shareDiagnostics,
+  unitDiagnostics,
   fundsDerived,
   reserveMinimum,
   energyDerived,
@@ -1355,43 +1676,79 @@ function PageConfirm({
 }) {
   const retro = data.confirmation.retroactive === "jah";
 
+  const meetingTypeOptions = [
+    { value: "fyysiline", label: "Füüsiline koosolek" },
+    { value: "elektrooniline", label: "Elektrooniline koosolek" },
+    { value: "kirjalik", label: "Kirjalik hääletus" },
+  ];
+
   return (
     <div className="space-y-4">
       <Section
-        title="Majanduskava kinnitusleht"
-        subtitle="Täida pärast üldkoosoleku otsust (või jäta mustandina)."
+        title="Üldkoosoleku otsuse andmed"
+        subtitle="Majanduskava esitatakse tutvumiseks koos koosoleku kutsega. Kinnitamine toimub otsusega pärast koosolekut (KrtS § 41 lg 3)."
         right={<Btn onClick={printPdf}>Prindi / salvesta PDF</Btn>}
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
+            <Label>Koosoleku liik</Label>
+            <Select value={data.confirmation.meetingType} onChange={(v) => update("confirmation.meetingType", v)} options={meetingTypeOptions} />
+          </div>
+          <div>
             <Label>Koosoleku kuupäev</Label>
             <Input value={data.confirmation.meetingDate} onChange={(v) => update("confirmation.meetingDate", v)} placeholder="pp.kk.aaaa" />
           </div>
-          <div className="md:col-span-2">
-            <Label>Koosoleku koht (aadress / videolink)</Label>
+          <div>
+            <Label>Protokolli number</Label>
+            <Input value={data.confirmation.protocolNo} onChange={(v) => update("confirmation.protocolNo", v)} placeholder="..." />
+          </div>
+
+          <div className="md:col-span-3">
+            <Label>Koosoleku koht / link (valikuline)</Label>
             <Input value={data.confirmation.meetingPlace} onChange={(v) => update("confirmation.meetingPlace", v)} placeholder="..." />
           </div>
 
           <div>
+            <Label>Korteriomanike koguarv</Label>
+            <NumberInput value={data.confirmation.votesTotalOwners} onChange={(v) => update("confirmation.votesTotalOwners", v)} placeholder="arv" />
+          </div>
+          <div>
+            <Label>Osalejate / hääletanute arv</Label>
+            <NumberInput value={data.confirmation.votesPresent} onChange={(v) => update("confirmation.votesPresent", v)} placeholder="arv" />
+          </div>
+          <div />
+
+          <div>
             <Label>Hääled poolt</Label>
-            <Input value={data.confirmation.votesFor} onChange={(v) => update("confirmation.votesFor", v)} placeholder="arv" />
+            <NumberInput value={data.confirmation.votesFor} onChange={(v) => update("confirmation.votesFor", v)} placeholder="arv" />
           </div>
           <div>
             <Label>Hääled vastu</Label>
-            <Input value={data.confirmation.votesAgainst} onChange={(v) => update("confirmation.votesAgainst", v)} placeholder="arv" />
+            <NumberInput value={data.confirmation.votesAgainst} onChange={(v) => update("confirmation.votesAgainst", v)} placeholder="arv" />
           </div>
           <div>
             <Label>Erapooletu</Label>
-            <Input value={data.confirmation.votesAbstain} onChange={(v) => update("confirmation.votesAbstain", v)} placeholder="arv" />
+            <NumberInput value={data.confirmation.votesAbstain} onChange={(v) => update("confirmation.votesAbstain", v)} placeholder="arv" />
+          </div>
+
+          <div className="md:col-span-3">
+            <Label>Otsuse sõnastus (vabatekst)</Label>
+            <textarea
+              value={data.confirmation.decisionText}
+              onChange={(e) => update("confirmation.decisionText", e.target.value)}
+              className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-blue-200 focus:ring-2"
+              rows={4}
+              placeholder="Kirjuta otsuse tekst. Nt: 'Kinnitada majanduskava perioodiks ...' + maksete suurus / jaotus / fondid..."
+            />
           </div>
 
           <div>
-            <Label>Otsus protokollitud nr</Label>
-            <Input value={data.confirmation.protocolNo} onChange={(v) => update("confirmation.protocolNo", v)} placeholder="..." />
+            <Label>Kehtivuse algus</Label>
+            <Input value={data.confirmation.effectiveFrom} onChange={(v) => update("confirmation.effectiveFrom", v)} placeholder="pp.kk.aaaa" />
           </div>
           <div>
-            <Label>Kehtima hakkamise kuupäev</Label>
-            <Input value={data.confirmation.effectiveFrom} onChange={(v) => update("confirmation.effectiveFrom", v)} placeholder="pp.kk.aaaa" />
+            <Label>Kehtivuse lõpp</Label>
+            <Input value={data.confirmation.effectiveTo} onChange={(v) => update("confirmation.effectiveTo", v)} placeholder="pp.kk.aaaa" />
           </div>
           <div>
             <Label>Kas tagasiulatuvalt?</Label>
@@ -1406,32 +1763,36 @@ function PageConfirm({
           </div>
           {retro ? (
             <div className="md:col-span-3">
-              <Label>Tagasiulatuva kehtestamise alus (kui jah)</Label>
-              <Input value={data.confirmation.retroactiveReason} onChange={(v) => update("confirmation.retroactiveReason", v)} placeholder="Põhjendus..." />
+              <Label>Tagasiulatuva kehtestamise põhjendus (kui jah)</Label>
+              <Input
+                value={data.confirmation.retroactiveReason}
+                onChange={(v) => update("confirmation.retroactiveReason", v)}
+                placeholder="Põhjendus..."
+              />
             </div>
           ) : null}
         </div>
 
         <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-          <div className="font-semibold">Õiguslik viide (kuvatakse kinnituslehel)</div>
+          <div className="font-semibold">Õiguslik viide</div>
           <ul className="mt-1 list-disc pl-5">
-            <li>Majanduskava kehtestab üldkoosolek häälteenamusega tavapärase valitsemise raames (KrtS §§ 35 lg 1, 41 lg 3).</li>
-            <li>Kindla suurusega perioodiliste maksete puhul võib ühistu nõuda ka tulevikus sissenõutavaks muutuvate maksete täitmist (TsMS § 369).</li>
-            <li>Tagasiulatuvalt kehtestamisel muutuvad nõuded sissenõutavaks kõige varem otsuse tegemise kuupäevast (VÕS § 82 lg 7).</li>
+            <li>Majanduskava kinnitatakse üldkoosoleku otsusega (KrtS § 41 lg 3).</li>
+            <li>Perioodiliste maksete nõude erisus (TsMS § 369).</li>
+            <li>Tagasiulatuv kehtestamine: sissenõutavaks muutumine vähemalt otsuse tegemise kuupäevast (VÕS § 82 lg 7).</li>
           </ul>
         </div>
       </Section>
 
-      <Section title="Kiirülevaade (enne printi)" subtitle="Kontrolli, kas kõik põhisummad ja jaotused näevad loogilised välja.">
+      <Section title="Kiirülevaade (enne printi)" subtitle="Kontrolli, kas põhisummad ja jaotusbaas on loogilised.">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <Mini label="Tulud (plaan)" value={euro(incomeTotals.plan)} />
-          <Mini label="Jooksvad kulud (plaan)" value={euro(runningTotals.plan)} />
-          <Mini label="Investeeringud (plaan)" value={euro(investTotals.plan)} />
-          <Mini label="Tulemus (plaan)" value={euro(budgetResult.plan)} tone={budgetResult.plan > 0 ? "ok" : budgetResult.plan < 0 ? "bad" : "warn"} />
-          <Mini label="Reserv lõpus" value={euro(fundsDerived.reserveEnd)} tone={fundsDerived.reserveEnd + 1e-9 < reserveMinimum ? "warn" : "ok"} />
-          <Mini label="Reserv miinimum (1/12)" value={euro(reserveMinimum)} />
-          <Mini label="Osakaalude summa" value={`${shareDiagnostics.sumShares}/${shareDiagnostics.denom}`} tone={shareDiagnostics.ok ? "ok" : "warn"} />
-          <Mini label="Soojus kokku (aasta)" value={euro(energyDerived.heatTotal)} />
+          <Mini label="Tulud (plaan)" value={eurot(incomeTotals.plan)} />
+          <Mini label="Jooksvad kulud (plaan)" value={eurot(runningTotals.plan)} />
+          <Mini label="Investeeringud (plaan)" value={eurot(investTotals.plan)} />
+          <Mini label="Tulemus (plaan)" value={eurot(budgetResult.plan)} tone={budgetResult.plan > 0 ? "ok" : budgetResult.plan < 0 ? "bad" : "warn"} />
+          <Mini label="Reserv lõpus" value={eurot(fundsDerived.reserveEnd)} tone={fundsDerived.reserveEnd + 1e-9 < reserveMinimum ? "warn" : "ok"} />
+          <Mini label="Reserv miinimum (1/12)" value={eurot(reserveMinimum)} />
+          <Mini label="Jaotusbaas (pind)" value={unitDiagnostics.ok ? `${formatNumberSpaceDot(unitDiagnostics.totalAreaIncluded, 2)} m²` : "—"} tone={unitDiagnostics.ok ? "ok" : "warn"} />
+          <Mini label="Soojus kokku (aasta)" value={eurot(energyDerived.heatTotal)} />
         </div>
       </Section>
     </div>
@@ -1455,6 +1816,7 @@ function Mini({ label, value, tone = "neutral" }) {
 }
 
 // ------------------------- Print summary -------------------------
+
 function PrintSummary({
   data,
   plannedWorksTotal,
@@ -1462,7 +1824,7 @@ function PrintSummary({
   runningTotals,
   investTotals,
   budgetResult,
-  shareDiagnostics,
+  unitDiagnostics,
   fundsDerived,
   reserveMinimum,
   energyDerived,
@@ -1476,30 +1838,33 @@ function PrintSummary({
           {data.meta.name} • reg {data.meta.regCode} • {data.meta.address}
         </div>
         <div className="mt-2 text-sm">
-          Majandusaasta: <b>{data.meta.year}</b> • Periood: <b>{data.meta.periodStart || "—"} – {data.meta.periodEnd || "—"}</b> • Üldkoosolek: <b>{data.meta.meetingDate || "—"}</b>
+          Majandusaasta: <b>{data.meta.year || "—"}</b> • Periood:{" "}
+          <b>{data.meta.periodStart || "—"} – {data.meta.periodEnd || "—"}</b> • Üldkoosolek:{" "}
+          <b>{data.meta.meetingDate || "—"}</b>
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div className="rounded-xl border p-3">
-            <div className="font-semibold">Maja andmed</div>
-            <div className="mt-1">Kortereid: {data.building.aptCount || "—"}</div>
-            <div>Kaasomandi osade nimetaja: {data.building.shareDenom || "—"}</div>
-            <div>Kogupind: {data.building.totalArea || "—"} m²</div>
-            <div>Ehitusaasta: {data.building.buildYear || "—"}</div>
-            <div>Korruseid: {data.building.floors || "—"}</div>
+            <div className="font-semibold">Ehitise üldinfo (valikuline)</div>
+            <div className="mt-1">EHR kood: {data.building.ehrCode || "—"}</div>
+            <div>Esmane kasutus: {data.building.firstUseYear || "—"}</div>
+            <div>Katastritunnus: {data.building.cadastral || "—"}</div>
+            <div>Kasutamise otstarbe pind: {data.building.purposeArea ? `${formatNumberSpaceDot(num(data.building.purposeArea), 2)} m²` : "—"}</div>
+            <div>Korruselisus: {data.building.floors || "—"}</div>
           </div>
           <div className="rounded-xl border p-3">
             <div className="font-semibold">Eelarve kokkuvõte</div>
-            <div className="mt-1">Tulud (plaan): {euro(incomeTotals.plan)}</div>
-            <div>Jooksvad kulud (plaan): {euro(runningTotals.plan)}</div>
-            <div>Investeeringud (plaan): {euro(investTotals.plan)}</div>
-            <div className="mt-1 font-semibold">Tulemus: {euro(budgetResult.plan)}</div>
+            <div className="mt-1">Tulud (plaan): {eurot(incomeTotals.plan)}</div>
+            <div>Jooksvad kulud (plaan): {eurot(runningTotals.plan)}</div>
+            <div>Investeeringud (plaan): {eurot(investTotals.plan)}</div>
+            <div className="mt-1 font-semibold">Tulemus: {eurot(budgetResult.plan)}</div>
           </div>
         </div>
       </div>
 
       <div className="page">
-        <div className="text-lg font-semibold">Kaasomandi eseme seisukord ja planeeritud tööd</div>
+        <div className="text-lg font-semibold">Kaasomandi eseme seisukord ja kavandatavad tööd</div>
+
         <div className="mt-2 rounded-xl border p-3 text-sm">
           <div className="font-semibold">Seisukorra ülevaade</div>
           <ul className="mt-2 list-disc pl-5">
@@ -1514,33 +1879,45 @@ function PrintSummary({
 
         <div className="mt-3 rounded-xl border p-3 text-sm">
           <div className="flex items-center justify-between gap-2">
-            <div className="font-semibold">Planeeritud tööd</div>
-            <div className="font-semibold">Kokku: {euro(plannedWorksTotal)}</div>
+            <div className="font-semibold">Kavandatavad tööd</div>
+            <div className="font-semibold">Kokku: {eurot(plannedWorksTotal)}</div>
           </div>
-          <ol className="mt-2 list-decimal pl-5">
-            {data.plannedWorks.map((w) => (
-              <li key={w.id}>
-                <b>{w.desc || "—"}</b> ({w.type}) • {w.period || "—"} • {euro(w.cost)} • rahastus: {w.funding}
-              </li>
-            ))}
-          </ol>
-          {data.notes.worksNotes ? <div className="mt-2 text-slate-700"><b>Märkused:</b> {data.notes.worksNotes}</div> : null}
+
+          {data.plannedWorks.length ? (
+            <ol className="mt-2 list-decimal pl-5">
+              {data.plannedWorks.map((w) => (
+                <li key={w.id}>
+                  <b>{w.desc || "—"}</b> ({w.type}) • {w.period || "—"} • {eurot(w.cost)} • rahastus: {w.funding}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <div className="mt-2 text-slate-600">Töid ei ole lisatud.</div>
+          )}
+
+          {data.notes.worksNotes ? (
+            <div className="mt-2 text-slate-700">
+              <b>Märkused:</b> {data.notes.worksNotes}
+            </div>
+          ) : null}
         </div>
       </div>
 
       <div className="page">
-        <div className="text-lg font-semibold">Korteriomanike kohustused (KrtS § 40, § 41 lg 1 p 3)</div>
+        <div className="text-lg font-semibold">Hooneosad ja maksed</div>
+
         <div className="mt-2 text-sm">
-          Osakaalude summa: <b>{shareDiagnostics.sumShares}/{shareDiagnostics.denom}</b> {shareDiagnostics.ok ? "(OK)" : "(VAJAB PARANDUST)"}
+          Jaotusbaas (pind):{" "}
+          <b>{unitDiagnostics.ok ? `${formatNumberSpaceDot(unitDiagnostics.totalAreaIncluded, 2)} m²` : "—"}</b>
         </div>
 
         <div className="mt-3 overflow-auto rounded-xl border p-3">
-          <table className="min-w-[900px] w-full text-sm">
+          <table className="min-w-[1000px] w-full text-sm">
             <thead className="text-left text-xs text-slate-600">
               <tr>
-                <th className="py-2 pr-3">Korter</th>
-                <th className="py-2 pr-3">Omanik</th>
-                <th className="py-2 pr-3">Osa</th>
+                <th className="py-2 pr-3">Osa nr</th>
+                <th className="py-2 pr-3">Tüüp</th>
+                <th className="py-2 pr-3">Pind</th>
                 <th className="py-2 pr-3">Osakaal</th>
                 <th className="py-2 pr-3">Aastas</th>
                 <th className="py-2 pr-3">Kuus</th>
@@ -1549,94 +1926,131 @@ function PrintSummary({
             <tbody>
               {payments.map((p) => (
                 <tr key={p.id} className="border-t">
-                  <td className="py-2 pr-3">{p.unit}</td>
-                  <td className="py-2 pr-3">{p.owner || "—"}</td>
-                  <td className="py-2 pr-3">{p.shareNum}/{shareDiagnostics.denom}</td>
+                  <td className="py-2 pr-3">{p.partNo}</td>
+                  <td className="py-2 pr-3">{p.type}</td>
+                  <td className="py-2 pr-3">{formatNumberSpaceDot(num(p.area), 2)} m²</td>
                   <td className="py-2 pr-3">{pct(p.sharePct, 3)}</td>
-                  <td className="py-2 pr-3">{euro(p.yearTotal)}</td>
-                  <td className="py-2 pr-3">{euro(p.monthTotal)}</td>
+                  <td className="py-2 pr-3">{eurot(p.yearTotal)}</td>
+                  <td className="py-2 pr-3">{eurot(p.monthTotal)}</td>
                 </tr>
               ))}
+              {payments.length ? (
+                <tr className="border-t bg-slate-50">
+                  <td className="py-2 pr-3 font-semibold" colSpan={4}>KOKKU</td>
+                  <td className="py-2 pr-3 font-semibold">{eurot(sum(payments, (x) => x.yearTotal))}</td>
+                  <td className="py-2 pr-3 font-semibold">{eurot(sum(payments, (x) => x.monthTotal))}</td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
-      </div>
 
-      <div className="page">
-        <div className="text-lg font-semibold">Reservkapital ja remondifond (KrtS § 48; § 41 lg 1 p 4)</div>
-        <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
-          <div className="rounded-xl border p-3">
-            <div className="font-semibold">Reservkapital</div>
-            <div>Alg: {euro(data.funds.reserveStart)} • Laek: {euro(data.funds.reserveIn)} • Kasut: {euro(data.funds.reserveOut)}</div>
-            <div className="mt-1 font-semibold">Lõpp: {euro(fundsDerived.reserveEnd)}</div>
-            <div>Miinimum (1/12): {euro(reserveMinimum)}</div>
-          </div>
-          <div className="rounded-xl border p-3">
-            <div className="font-semibold">Remondifond</div>
-            <div>Alg: {euro(data.funds.repairStart)} • Laek: {euro(data.funds.repairIn)}</div>
-            <div>Kasutus: planeeritud tööd {euro(plannedWorksTotal)} + muu {euro(data.funds.repairOutOther)}</div>
-            <div className="mt-1 font-semibold">Lõpp: {euro(fundsDerived.repairEnd)}</div>
+        <div className="mt-3 rounded-xl border p-3 text-sm">
+          <div className="font-semibold">Õiguslik märkus</div>
+          <div className="mt-1">
+            KrtS § 40 lg 1: perioodilised ettemaksed vastavalt kaasomandi osale. Teistsugune jaotus võib tuleneda põhikirjast või kokkuleppest (KrtS § 40 lg 2).
           </div>
         </div>
       </div>
 
       <div className="page">
-        <div className="text-lg font-semibold">Energia prognoos (KrtS § 41 lg 1 p 5)</div>
+        <div className="text-lg font-semibold">Reservkapital ja remondifond</div>
+        <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-xl border p-3">
+            <div className="font-semibold">Reservkapital (KrtS § 48)</div>
+            <div>Alg: {eurot(data.funds.reserveStart)} • Laek: {eurot(data.funds.reserveIn)} • Kasut: {eurot(data.funds.reserveOut)}</div>
+            <div className="mt-1 font-semibold">Lõpp: {eurot(fundsDerived.reserveEnd)}</div>
+            <div>Miinimum (1/12): {eurot(reserveMinimum)}</div>
+            {data.funds.reserveTarget ? <div>Sihttase: {eurot(data.funds.reserveTarget)}</div> : null}
+          </div>
+          <div className="rounded-xl border p-3">
+            <div className="font-semibold">Remondifond (KrtS § 41 lg 1 p 4)</div>
+            <div>Alg: {eurot(data.funds.repairStart)} • Laek: {eurot(data.funds.repairIn)}</div>
+            <div>Kasutus: tööd {eurot(plannedWorksTotal)} + muu {eurot(data.funds.repairOutOther)}</div>
+            <div className="mt-1 font-semibold">Lõpp: {eurot(fundsDerived.repairEnd)}</div>
+            <div className="mt-1 text-slate-700">Remondifondi kasutust reguleerib üldkoosolek (KrtS § 41 lg 1 p 4).</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="page">
+        <div className="text-lg font-semibold">Energia prognoos</div>
         <div className="mt-2 rounded-xl border p-3 text-sm">
-          <div className="font-semibold">Soojus kokku: {euro(energyDerived.heatTotal)}</div>
+          <div className="font-semibold">Soojus kokku: {eurot(energyDerived.heatTotal)}</div>
           <div className="mt-2 grid grid-cols-2 gap-2">
             {energyDerived.heatRows.map((r) => (
               <div key={r.id} className="rounded-xl border p-2">
                 <div className="text-xs text-slate-600">{r.month}</div>
-                <div>{num(r.qtyMWh)} MWh × {euro(num(r.pricePerMWh))}/MWh = <b>{euro(r.cost)}</b></div>
+                <div>
+                  {formatNumberSpaceDot(num(r.qtyMWh), 2)} MWh × {formatNumberSpaceDot(num(r.pricePerMWh), 2)} eurot/MWh = <b>{eurot(r.cost)}</b>
+                </div>
               </div>
             ))}
           </div>
         </div>
 
         <div className="mt-3 rounded-xl border p-3 text-sm">
-          <div className="font-semibold">Muud teenused kokku: {euro(energyDerived.otherTotal)}</div>
+          <div className="font-semibold">Elekter/vesi/teenused kokku: {eurot(energyDerived.otherTotal)}</div>
           <ul className="mt-2 list-disc pl-5">
             {energyDerived.otherRows.map((r) => (
               <li key={r.id}>
-                {r.label}: {num(r.qty)} {r.unit} × {euro(num(r.price))} = <b>{euro(r.cost)}</b>
+                {r.label}: {formatNumberSpaceDot(num(r.qty), 2)} {r.unit} × {formatNumberSpaceDot(num(r.price), 2)} eurot = <b>{eurot(r.cost)}</b>
               </li>
             ))}
           </ul>
+          <div className="mt-2 text-slate-600">
+            Märkus: prognoos on osa majanduskava sisust (KrtS § 41 lg 1 p 5).
+          </div>
         </div>
       </div>
 
       <div className="page">
         <div className="text-lg font-semibold">Majanduskava kinnitus</div>
         <div className="mt-2 rounded-xl border p-3 text-sm">
+          <div>Koosoleku liik: {data.confirmation.meetingType || "—"}</div>
           <div>Koosoleku kuupäev: {data.confirmation.meetingDate || "—"}</div>
-          <div>Koht: {data.confirmation.meetingPlace || "—"}</div>
-          <div>Hääled: poolt {data.confirmation.votesFor || "—"} / vastu {data.confirmation.votesAgainst || "—"} / erapooletu {data.confirmation.votesAbstain || "—"}</div>
+          <div>Koht / link: {data.confirmation.meetingPlace || "—"}</div>
           <div>Protokoll nr: {data.confirmation.protocolNo || "—"}</div>
-          <div>Kehtima hakkab: {data.confirmation.effectiveFrom || "—"}</div>
-          <div>Tagasiulatuv: {data.confirmation.retroactive || "—"} {data.confirmation.retroactive === "jah" ? `— alus: ${data.confirmation.retroactiveReason || "—"}` : ""}</div>
+
+          <div className="mt-2">
+            Hääled: omanike koguarv {data.confirmation.votesTotalOwners || "—"} / osales {data.confirmation.votesPresent || "—"} / poolt {data.confirmation.votesFor || "—"} / vastu {data.confirmation.votesAgainst || "—"} / erapooletu {data.confirmation.votesAbstain || "—"}
+          </div>
+
+          <div className="mt-2">Kehtivus: {data.confirmation.effectiveFrom || "—"} – {data.confirmation.effectiveTo || "—"}</div>
+          <div>Tagasiulatuv: {data.confirmation.retroactive || "—"} {data.confirmation.retroactive === "jah" ? `— põhjendus: ${data.confirmation.retroactiveReason || "—"}` : ""}</div>
+
+          <div className="mt-3 rounded-xl bg-slate-50 p-3">
+            <div className="font-semibold">Otsuse sõnastus</div>
+            <div className="mt-1 whitespace-pre-wrap">{data.confirmation.decisionText || "—"}</div>
+          </div>
 
           <div className="mt-3 rounded-xl bg-slate-50 p-3">
             <div className="font-semibold">Õiguslik viide</div>
             <div className="mt-1">
-              Majanduskava kehtestab üldkoosolek häälteenamusega (KrtS §§ 35, 41). Tulevikumaksete nõue: TsMS § 369.
-              Tagasiulatuv kehtestamine: VÕS § 82 lg 7.
+              KrtS § 41 lg 3 • TsMS § 369 • VÕS § 82 lg 7
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-3 gap-3">
-            <div className="rounded-xl border p-3">
-              <div className="text-xs text-slate-600">Juhatuse liige</div>
-              <div className="mt-6 border-t pt-2">allkiri</div>
+          <div className="mt-4">
+            <div className="font-semibold">Allkirjastamine</div>
+            <div className="mt-2 grid grid-cols-3 gap-3">
+              <div className="rounded-xl border p-3">
+                <div className="text-xs text-slate-600">Kuupäev</div>
+                <div className="mt-6 border-t pt-2">__________________________</div>
+              </div>
+              <div className="rounded-xl border p-3">
+                <div className="text-xs text-slate-600">Korteriühistu esindaja</div>
+                <div className="mt-6 border-t pt-2">__________________________</div>
+              </div>
+              <div className="rounded-xl border p-3">
+                <div className="text-xs text-slate-600">Allkiri</div>
+                <div className="mt-6 border-t pt-2">__________________________</div>
+              </div>
             </div>
-            <div className="rounded-xl border p-3">
-              <div className="text-xs text-slate-600">Koosoleku esimees</div>
-              <div className="mt-6 border-t pt-2">allkiri</div>
-            </div>
-            <div className="rounded-xl border p-3">
-              <div className="text-xs text-slate-600">Protokollija</div>
-              <div className="mt-6 border-t pt-2">allkiri</div>
-            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
+            Dokument on koostatud õigusaktide kehtiva redaktsiooni alusel dokumendi koostamise kuupäeva seisuga.
           </div>
         </div>
       </div>
