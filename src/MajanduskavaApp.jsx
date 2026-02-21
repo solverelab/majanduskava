@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { evaluateMajanduskava } from "./coreClient";
 
 /**
  * MajanduskavaApp.jsx (refaktoritud MVP – kõik kokkulepitud parandused sees)
@@ -429,7 +430,9 @@ export default function MajanduskavaApp() {
 
   const [step, setStep] = useState(0);
   const [savedAt, setSavedAt] = useState(null);
-  const saveTimer = useRef(null);
+  const [coreOutcome, setCoreOutcome] = useState(null);
+const saveTimer = useRef(null);
+
 
   // autosave (debounce)
   useEffect(() => {
@@ -2044,7 +2047,7 @@ function PrintSummary({
               </div>
               <div className="rounded-xl border p-3">
                 <div className="text-xs text-slate-600">Allkiri</div>
-                <div className="mt-6 border-t pt-2">__________________________</div>
+              <div className="mt-6 border-t pt-2">__________________________</div>
               </div>
             </div>
           </div>
