@@ -2387,10 +2387,6 @@ const checkWithSolvere = async () => {
       </div>
 
 <div className="rounded-2xl border p-4">
-  <div className="text-sm font-semibold">Solvere õiguslik kontroll</div>
-  <div className="mt-1 text-sm text-slate-600">
-    Kontrollib majanduskava vastavust KrtS § 48 ja § 36 nõuetele.
-  </div>
   <div className="mt-3">
     <Btn onClick={checkWithSolvere} disabled={solvereLoading}>
       {solvereLoading ? "Kontrollin..." : "Kontrolli õiguspärasust"}
