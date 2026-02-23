@@ -1,0 +1,16 @@
+- rule_id: "KrtS_48_reservkapital"
+  law_reference: "Korteriomandi- ja korteriühistuseadus § 48"
+  valid_from: "2018-01-01"
+  valid_until: null
+  type: "mathematical_validation"
+  inputs:
+    - name: "total_expected_annual_costs"
+      description: "Aasta eeldatavad kogukulud (€)"
+    - name: "planned_reserve_capital"
+      description: "Kavandatav reservkapitali makse (€)"
+  logic:
+    condition: "planned_reserve_capital >= (total_expected_annual_costs / 12)"
+    explanation: "Reservkapital peab olema vähemalt 1/12 aasta eeldatavatest kuludest"
+  on_failure:
+    message: "Reservkapitali makse on väiksem seaduses nõutud miinimumist."
+    field: "planned_reserve_capital"

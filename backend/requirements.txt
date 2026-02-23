@@ -5,3 +5,4 @@ simpleeval
 sqlalchemy
 psycopg2-binary
 python-multipart
+pydantic

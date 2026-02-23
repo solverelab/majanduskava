@@ -1,0 +1,18 @@
+- rule_id: "KrtS_36_lg_1_laenulimiit"
+  law_reference: "Korteriomandi- ja korteriühistuseadus § 36 lg 1"
+  valid_from: "2018-01-01"
+  valid_until: null
+  type: "conditional_requirement"
+  inputs:
+    - name: "previous_year_total_costs"
+      description: "Eelmise aasta majandamiskulud (€)"
+    - name: "existing_loans"
+      description: "Olemasolevad laenud kokku (€)"
+    - name: "new_loan_amount"
+      description: "Uus planeeritav laen (€)"
+  logic:
+    condition: "(existing_loans + new_loan_amount) <= previous_year_total_costs"
+    explanation: "Laenude kogusumma ei tohi ületada eelmise aasta majandamiskulusid"
+  on_failure:
+    message: "Laenusumma ületab eelmise aasta kulusid. Vajalik on erihäälteenamus ja registrimärge."
+    field: "new_loan_amount"
