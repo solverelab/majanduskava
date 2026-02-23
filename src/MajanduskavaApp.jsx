@@ -2262,12 +2262,15 @@ const [solvereLoading, setSolvereLoading] = useState(false);
 
 const checkWithSolvere = async () => {
   setSolvereLoading(true);
+  const runningTotal = (data.runningCosts?.services || []).reduce(
+    (s, r) => s + (parseFloat(r.annualCost) || 0), 0
+  );
   const facts = {
-    total_expected_annual_costs: num(data.runningCosts?.services?.reduce((s, r) => s + num(r.annualCost), 0)),
-    planned_reserve_capital: num(data.incomes?.reservePerMonth) * 12,
-    previous_year_total_costs: num(data.runningCosts?.services?.reduce((s, r) => s + num(r.annualCost), 0)),
-    existing_loans: num(data.loan?.enabled ? 0 : 0),
-    new_loan_amount: num(data.loan?.amount),
+    total_expected_annual_costs: runningTotal,
+    planned_reserve_capital: (parseFloat(data.incomes?.reservePerMonth) || 0) * 12,
+    previous_year_total_costs: runningTotal,
+    existing_loans: 0,
+    new_loan_amount: parseFloat(data.loan?.amount) || 0,
   };
   const result = await evaluateMajanduskava(facts);
   setSolvereResult(result);
