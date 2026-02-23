@@ -1,0 +1,25 @@
+- rule_id: "KrtS_48_reservkapital"
+  law_reference: "KrtS § 48"
+  valid_from: "2018-01-01"
+  type: "mathematical_validation"
+  inputs:
+    - "total_expected_annual_costs"
+    - "planned_reserve_capital"
+  logic:
+    condition: "planned_reserve_capital >= (total_expected_annual_costs / 12)"
+  on_failure:
+    message: "Reservkapitali suurus peab olema vähemalt 1/12 aasta eeldatavatest kuludest."
+
+- rule_id: "KrtS_36_lg_1_laenulimiit"
+  law_reference: "KrtS § 36 lg 1"
+  valid_from: "2018-01-01"
+  type: "conditional_requirement"
+  inputs:
+    - "previous_year_total_costs"
+    - "existing_loans"
+    - "new_loan_amount"
+  logic:
+    # Kui uute ja vanade laenude summa ületab eelmise aasta kulusid, peab result olema False (lihtsustatud PoC jaoks, et näidata viga, kui künnis ületatakse)
+    condition: "(existing_loans + new_loan_amount) <= previous_year_total_costs"
+  on_failure:
+    message: "Laenusumma ületab eelmise aasta kulusid. Vajalik on erihäälteenamus ja registrimärge."
