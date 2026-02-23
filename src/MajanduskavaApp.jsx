@@ -2261,10 +2261,19 @@ function PageReview({ data, update, budgetResult, incomeAnnual, runningAnnual, i
 const [solvereLoading, setSolvereLoading] = useState(false);
 
 const checkWithSolvere = async () => {
-  setSolvereLoading(true);
   const runningTotal = (data.runningCosts?.services || []).reduce(
     (s, r) => s + (parseFloat(r.annualCost) || 0), 0
   );
+  
+  if (runningTotal <= 0) {
+    setSolvereResult({ 
+      error: true, 
+      message: "Palun sisesta esmalt jooksvad kulud (Samm 3)." 
+    });
+    return;
+  }
+  
+  setSolvereLoading(true);
   const facts = {
     total_expected_annual_costs: runningTotal,
     planned_reserve_capital: (parseFloat(data.incomes?.reservePerMonth) || 0) * 12,
@@ -2389,19 +2398,26 @@ const checkWithSolvere = async () => {
   </div>
 
   {solvereResult && (
-    <div className={`mt-3 rounded-xl p-3 text-sm ${solvereResult.valid ? "bg-emerald-50 text-emerald-900" : "bg-rose-50 text-rose-900"}`}>
-      <div className="font-semibold">
-        {solvereResult.valid ? "✅ Majanduskava on õiguspärane" : "❌ Leiti õiguslikke vastuolusid"}
-      </div>
-      {solvereResult.violations?.map((v, i) => (
-        <div key={i} className="mt-2 border-t pt-2">
-          <div className="font-semibold">{v.reference}</div>
-          <div>{v.message}</div>
-        </div>
-      ))}
-      <div className="mt-2 text-xs text-slate-500">Trace ID: {solvereResult.trace_id}</div>
+  <div className={`mt-3 rounded-xl p-3 text-sm ${
+    solvereResult.error ? "bg-amber-50 text-amber-900" :
+    solvereResult.valid ? "bg-emerald-50 text-emerald-900" : 
+    "bg-rose-50 text-rose-900"}`}>
+    <div className="font-semibold">
+      {solvereResult.error ? `⚠️ ${solvereResult.message}` :
+       solvereResult.valid ? "✅ Majanduskava on õiguspärane" : 
+       "❌ Leiti õiguslikke vastuolusid"}
     </div>
-  )}
+    {solvereResult.violations?.map((v, i) => (
+      <div key={i} className="mt-2 border-t pt-2">
+        <div className="font-semibold">{v.reference}</div>
+        <div>{v.message}</div>
+      </div>
+    ))}
+    {solvereResult.trace_id && (
+      <div className="mt-2 text-xs text-slate-500">Trace ID: {solvereResult.trace_id}</div>
+    )}
+  </div>
+)}
 </div>
       <div className="rounded-2xl border bg-slate-900 p-4 text-white">
         <div className="text-sm font-semibold">Lõplik samm</div>
