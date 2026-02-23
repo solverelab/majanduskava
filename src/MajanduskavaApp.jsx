@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-
+import { evaluateMajanduskava } from "./coreClient";
 /**
  * MajanduskavaApp.jsx
  * - Sammud 1–8
@@ -2257,6 +2257,22 @@ function PagePayments({ payments }) {
 }
 
 function PageReview({ data, update, budgetResult, incomeAnnual, runningAnnual, investmentsAnnual, checks, canPrint, onGo }) {
+ const [solvereResult, setSolvereResult] = useState(null);
+const [solvereLoading, setSolvereLoading] = useState(false);
+
+const checkWithSolvere = async () => {
+  setSolvereLoading(true);
+  const facts = {
+    total_expected_annual_costs: num(data.runningCosts?.services?.reduce((s, r) => s + num(r.annualCost), 0)),
+    planned_reserve_capital: num(data.incomes?.reservePerMonth) * 12,
+    previous_year_total_costs: num(data.runningCosts?.services?.reduce((s, r) => s + num(r.annualCost), 0)),
+    existing_loans: num(data.loan?.enabled ? 0 : 0),
+    new_loan_amount: num(data.loan?.amount),
+  };
+  const result = await evaluateMajanduskava(facts);
+  setSolvereResult(result);
+  setSolvereLoading(false);
+};
   const totals = [
     { label: "Tulud kokku (aastas)", value: incomeAnnual.total },
     { label: "Kulud kokku (aastas)", value: runningAnnual.total + investmentsAnnual.total + (data.loan.enabled ? num(data.loan.amount) * 0 : 0) },
@@ -2358,6 +2374,32 @@ function PageReview({ data, update, budgetResult, incomeAnnual, runningAnnual, i
         </div>
       </div>
 
+<div className="rounded-2xl border p-4">
+  <div className="text-sm font-semibold">Solvere õiguslik kontroll</div>
+  <div className="mt-1 text-sm text-slate-600">
+    Kontrollib majanduskava vastavust KrtS § 48 ja § 36 nõuetele.
+  </div>
+  <div className="mt-3">
+    <Btn onClick={checkWithSolvere} disabled={solvereLoading}>
+      {solvereLoading ? "Kontrollin..." : "Kontrolli õiguspärasust"}
+    </Btn>
+  </div>
+
+  {solvereResult && (
+    <div className={`mt-3 rounded-xl p-3 text-sm ${solvereResult.valid ? "bg-emerald-50 text-emerald-900" : "bg-rose-50 text-rose-900"}`}>
+      <div className="font-semibold">
+        {solvereResult.valid ? "✅ Majanduskava on õiguspärane" : "❌ Leiti õiguslikke vastuolusid"}
+      </div>
+      {solvereResult.violations?.map((v, i) => (
+        <div key={i} className="mt-2 border-t pt-2">
+          <div className="font-semibold">{v.reference}</div>
+          <div>{v.message}</div>
+        </div>
+      ))}
+      <div className="mt-2 text-xs text-slate-500">Trace ID: {solvereResult.trace_id}</div>
+    </div>
+  )}
+</div>
       <div className="rounded-2xl border bg-slate-900 p-4 text-white">
         <div className="text-sm font-semibold">Lõplik samm</div>
         <div className="mt-1 text-sm text-slate-200">

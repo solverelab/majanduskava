@@ -1,13 +1,15 @@
-const CORE_API = "http://api.solvere.ee:8000";
+const CORE_API = "https://solvere.ee";
 
-export async function evaluateMajanduskava(facts) {
+export async function evaluateMajanduskava(facts, evaluationDate = null) {
   try {
-    const response = await fetch(`${CORE_API}/evaluate`, {
+    const today = evaluationDate || new Date().toISOString().split("T")[0];
+    
+    const response = await fetch(`${CORE_API}/api/evaluate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        domain: "korteriühistu",
-        jurisdiction: "EE",
+        evaluation_date: today,
+        module: "korteriuhistu",
         facts: facts,
       }),
     });
