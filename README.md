@@ -14,3 +14,21 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+## Majanduskava Launch Protocol v1
+
+1. `npm run build`
+2. `npm run preview`
+3. Kontrolli lokaalselt:
+   - Print view (Tab 6 → Prindi kokkuvõte)
+   - policyVersion / reportDigest / stateSignature nähtavad
+   - loopGuard status OK
+   - JSON export → import round-trip (Tab 6 → Salvesta / Laadi)
+4. `npm run deploy`
+5. Ava GitHub Pages URL ja kontrolli:
+   - Assetid laadivad (404 puudub)
+   - Print view töötab productionis
+6. Piloot:
+   - 1 täismahus majanduskava sisestus algusest lõpuni
+   - RunReport kontroll (Tab 6 → TracePanel)
+   - JSON bundle arhiveeritud

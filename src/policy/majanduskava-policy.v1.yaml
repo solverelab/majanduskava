@@ -1,0 +1,152 @@
+version: 1
+module: majanduskava
+presets:
+  BALANCED:
+    id: BALANCED
+    name: Tasakaalustatud
+    hard:
+      requireNonNegativeRepairFund: true
+      requireReserveAtLeastRequired: true
+    limits:
+      loanWarnPerM2: 0.50
+      loanErrorPerM2: 1.00
+      ownersWarnPerM2: 1.50
+      ownersErrorPerM2: 2.50
+    scoring:
+      weights:
+        loan: 0.35
+        owners: 0.65
+      bands:
+        lowMin: 80
+        mediumMin: 55
+    remedies:
+      - id: RF_FIX
+        when: { code: POL_RF_NEG }
+        actions:
+          - kind: ADJUST_REPAIR_FUND_RATE
+            label: "Tõsta remondifondi määra (automaatne)"
+            params:
+              target: RF_NON_NEGATIVE_CLOSING
+              rounding: 0.001
+          - kind: ONE_OFF_PAYMENT
+            label: "Loo ühekordne makse (kogu summa)"
+            params:
+              target: RF_SHORTFALL_TOTAL
+              rounding: 1
+      - id: LOAN_WARN_FIX
+        when: { code: POL_LOAN_WARN }
+        actions:
+          - kind: EXTEND_LOAN_TERM
+            label: "Pikenda laenu tähtaega (automaatne)"
+            params:
+              target: LOAN_BURDEN_TO_WARN
+              stepMonths: 12
+              maxMonths: 360
+      - id: OWNERS_WARN_FIX
+        when: { code: POL_OWNERS_WARN }
+        actions:
+          - kind: SHIFT_INVESTMENT
+            label: "Jaga investeering 2 aasta peale"
+            params:
+              target: SPLIT_INVESTMENT_YEARS
+              years: 2
+
+  CONSERVATIVE:
+    id: CONSERVATIVE
+    name: Konservatiivne
+    hard:
+      requireNonNegativeRepairFund: true
+      requireReserveAtLeastRequired: true
+    limits:
+      loanWarnPerM2: 0.35
+      loanErrorPerM2: 0.75
+      ownersWarnPerM2: 1.25
+      ownersErrorPerM2: 2.00
+    scoring:
+      weights:
+        loan: 0.35
+        owners: 0.65
+      bands:
+        lowMin: 85
+        mediumMin: 60
+    remedies:
+      - id: RF_FIX
+        when: { code: POL_RF_NEG }
+        actions:
+          - kind: ADJUST_REPAIR_FUND_RATE
+            label: "Tõsta remondifondi määra (automaatne)"
+            params:
+              target: RF_NON_NEGATIVE_CLOSING
+              rounding: 0.001
+          - kind: ONE_OFF_PAYMENT
+            label: "Loo ühekordne makse (kogu summa)"
+            params:
+              target: RF_SHORTFALL_TOTAL
+              rounding: 1
+      - id: LOAN_WARN_FIX
+        when: { code: POL_LOAN_WARN }
+        actions:
+          - kind: EXTEND_LOAN_TERM
+            label: "Pikenda laenu tähtaega (automaatne)"
+            params:
+              target: LOAN_BURDEN_TO_WARN
+              stepMonths: 12
+              maxMonths: 360
+      - id: OWNERS_WARN_FIX
+        when: { code: POL_OWNERS_WARN }
+        actions:
+          - kind: SHIFT_INVESTMENT
+            label: "Jaga investeering 2 aasta peale"
+            params:
+              target: SPLIT_INVESTMENT_YEARS
+              years: 2
+
+  LOAN_FRIENDLY:
+    id: LOAN_FRIENDLY
+    name: Laenusõbralik
+    hard:
+      requireNonNegativeRepairFund: true
+      requireReserveAtLeastRequired: true
+    limits:
+      loanWarnPerM2: 0.70
+      loanErrorPerM2: 1.40
+      ownersWarnPerM2: 2.00
+      ownersErrorPerM2: 3.20
+    scoring:
+      weights:
+        loan: 0.30
+        owners: 0.70
+      bands:
+        lowMin: 75
+        mediumMin: 50
+    remedies:
+      - id: RF_FIX
+        when: { code: POL_RF_NEG }
+        actions:
+          - kind: ADJUST_REPAIR_FUND_RATE
+            label: "Tõsta remondifondi määra (automaatne)"
+            params:
+              target: RF_NON_NEGATIVE_CLOSING
+              rounding: 0.001
+          - kind: ONE_OFF_PAYMENT
+            label: "Loo ühekordne makse (kogu summa)"
+            params:
+              target: RF_SHORTFALL_TOTAL
+              rounding: 1
+      - id: LOAN_WARN_FIX
+        when: { code: POL_LOAN_WARN }
+        actions:
+          - kind: EXTEND_LOAN_TERM
+            label: "Pikenda laenu tähtaega (automaatne)"
+            params:
+              target: LOAN_BURDEN_TO_WARN
+              stepMonths: 12
+              maxMonths: 360
+      - id: OWNERS_WARN_FIX
+        when: { code: POL_OWNERS_WARN }
+        actions:
+          - kind: SHIFT_INVESTMENT
+            label: "Jaga investeering 2 aasta peale"
+            params:
+              target: SPLIT_INVESTMENT_YEARS
+              years: 2

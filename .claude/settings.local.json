@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /c/Users/ilona/Documents/GitHub/majanduskava && npx vitest run src/policy/__tests__/autoResolve.test.ts 2>&1)",
+      "Bash(head:*)",
+      "Bash(grep:*)",
+      "Bash(cd /c/Users/ilona/Documents/GitHub/majanduskava && npx vitest run 2>&1)",
+      "Bash(cd /c/Users/ilona/Documents/GitHub/majanduskava && node -e \"\nconst { createMajanduskavaRuntime } = require\\('./solvere-modules/majanduskava/src/runtime'\\);\nconst { createModuleHost } = require\\('./packages/solvere-core/src/moduleHost'\\);\nconst { autoResolveWithHost } = require\\('./packages/solvere-core/src/autoResolve'\\);\nconst fs = require\\('fs'\\);\nconst plan = JSON.parse\\(fs.readFileSync\\('./scripts/plan-fixture.json', 'utf-8'\\)\\);\nconst DEPS = { now: \\(\\) => '2026-02-25T00:00:00.000Z' };\nfor \\(const preset of ['BALANCED', 'CONSERVATIVE', 'LOAN_FRIENDLY']\\) {\n  const rt = createMajanduskavaRuntime\\(\\);\n  const host = createModuleHost\\({ module: rt, preset, deps: DEPS }\\);\n  const res = autoResolveWithHost\\({ host, runtime: rt, initialState: plan, maxSteps: 10 }\\);\n  const r = res.report;\n  console.log\\(preset, { steps: r.stepsTaken, sig: r.final.stateSignature, codes: r.selectedActionCodes, risk: r.final.riskScore }\\);\n}\n\" 2>&1)",
+      "Bash(tail:*)",
+      "Bash(cd:*)",
+      "Bash(cd /c/Users/ilona/Documents/GitHub/majanduskava && npm run build 2>&1)",
+      "Bash(cd /c/Users/ilona/Documents/GitHub/majanduskava && npx vitest run 2>&1 && npm run build 2>&1)"
+    ]
+  }
+}

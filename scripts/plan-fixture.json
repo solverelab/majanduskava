@@ -1,0 +1,56 @@
+{
+  "period": {
+    "start": "2026-01-01",
+    "end": "2026-12-31",
+    "year": 2026
+  },
+  "building": {
+    "apartments": [
+      { "id": "apt1", "label": "Korter 1", "areaM2": 55 },
+      { "id": "apt2", "label": "Korter 2", "areaM2": 45 }
+    ]
+  },
+  "budget": {
+    "costRows": [
+      {
+        "name": "Haldus",
+        "legal": { "category": "MANAGEMENT" },
+        "calc": { "type": "MONTHLY_FIXED", "params": { "monthlyEUR": 200 } }
+      },
+      {
+        "name": "Kommunaalid",
+        "legal": { "category": "UTILITY" },
+        "calc": { "type": "MONTHLY_FIXED", "params": { "monthlyEUR": 300 } }
+      }
+    ],
+    "incomeRows": [
+      {
+        "name": "Omanike maksed",
+        "legal": { "category": "OWNERS_PAYMENTS" },
+        "calc": { "type": "MONTHLY_FIXED", "params": { "monthlyEUR": 450 } }
+      }
+    ]
+  },
+  "funds": {
+    "repairFund": { "monthlyRateEurPerM2": 0.10 },
+    "reserve": { "plannedEUR": 30 }
+  },
+  "openingBalances": {
+    "repairFundEUR": 500,
+    "reserveEUR": 100
+  },
+  "investmentsPipeline": {
+    "items": [
+      {
+        "name": "Katuse remont",
+        "plannedYear": 2026,
+        "totalCostEUR": 2000,
+        "fundingPlan": [
+          { "source": "REPAIR_FUND", "amountEUR": 1800 },
+          { "source": "RESERVE", "amountEUR": 200 }
+        ]
+      }
+    ]
+  },
+  "loans": []
+}
