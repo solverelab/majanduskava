@@ -159,7 +159,17 @@ const HALDUSTEENUSED = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "
 
 const KULU_KATEGOORIAD = [...KOMMUNAALTEENUSED, ...HALDUSTEENUSED];
 
-const TULU_KATEGOORIAD = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Kommunaalmaksed", "Muu"];
+const TULU_KATEGOORIAD = ["Majandamiskulude ettemaks", "Vahendustasu", "Renditulu", "Muu tulu"];
+
+const TULU_KATEGOORIA_MAP = {
+  "Haldus": "Majandamiskulude ettemaks",
+  "Raamatupidamine": "Majandamiskulude ettemaks",
+  "Koristus": "Majandamiskulude ettemaks",
+  "Kindlustus": "Majandamiskulude ettemaks",
+  "Hooldus": "Majandamiskulude ettemaks",
+  "Kommunaalmaksed": "Majandamiskulude ettemaks",
+  "Muu": "Muu tulu",
+};
 
 const KOMMUNAAL_UHIKUD = {
   "Kütus": ["m³", "l", "t"],
@@ -219,13 +229,10 @@ const KULU_NIMETUS_PLACEHOLDERS = {
 };
 
 const TULU_NIMETUS_PLACEHOLDERS = {
-  "Haldus": "nt Haldustasu",
-  "Raamatupidamine": "nt Raamatupidamise tasu",
-  "Koristus": "nt Koristustasu",
-  "Kindlustus": "nt Kindlustuse osa",
-  "Hooldus": "nt Hooldustasu",
-  "Kommunaalmaksed": "nt Kommunaalkulude ettemaks omanikelt",
-  "Muu": "Kirjelda tulu",
+  "Majandamiskulude ettemaks": "nt Korteriomanike igakuine ettemaks",
+  "Vahendustasu": "nt Kommunaalteenuste vahendustasu",
+  "Renditulu": "nt Ruumide või parkimiskohtade rent",
+  "Muu tulu": "nt Reklaamitulu, laekumised, toetused",
 };
 
 const TEGEVUS_PLACEHOLDERS = {
@@ -523,6 +530,13 @@ export default function App() {
             quarter: kvMap[String(it.quarter)] || it.quarter || "I",
           }));
         }
+        // Migrate old income categories
+        if (candidateState.budget?.incomeRows) {
+          candidateState.budget.incomeRows = candidateState.budget.incomeRows.map(r => ({
+            ...r,
+            category: TULU_KATEGOORIA_MAP[r.category] || r.category,
+          }));
+        }
         setPlan(candidateState);
         // Sync KÜ data
         if (data.kyData) setKyData(data.kyData);
@@ -590,7 +604,7 @@ export default function App() {
         },
         calc: { type: "FIXED_PERIOD", params: { amountEUR: 0 } },
       }),
-      ...(side === "COST" ? { kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 } : {}),
+      ...(side === "COST" ? { kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 } : { category: "Majandamiskulude ettemaks" }),
     };
     setPlan(p => ({
       ...p,
@@ -772,7 +786,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
   useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [{ ...mkApartment({ label: "1" }), omanikud: "" }] } })); }, [plan.building.apartments.length]);
   useEffect(() => { if (plan.investmentsPipeline.items.length === 0) setPlan(p => ({ ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [mkInvestmentItem({ plannedYear: p.period.year || new Date().getFullYear(), quarter: "I" })] } })); }, [plan.investmentsPipeline.items.length]);
   useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
-  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [mkCashflowRow({ side: "INCOME" })] } })); }, [plan.budget.incomeRows.length]);
+  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [mkCashflowRow({ side: "INCOME", category: "Majandamiskulude ettemaks" })] } })); }, [plan.budget.incomeRows.length]);
 
   // Kulude summa sünkroonimine engine'ile (→ calc.params.amountEUR)
   useEffect(() => {
