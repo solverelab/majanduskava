@@ -1,6 +1,6 @@
 # PROJECT_STATUS.md
 
-Projekti seis: 2026-02-27
+Projekti seis: 2026-02-27 (uuendatud)
 
 ## 1. Mis on tehtud
 
@@ -240,16 +240,88 @@ N.sidebar="#3d3835" (sidebar'i taust)
 
 ### UI: Automaatne tühirida ja "Lisa" nupud
 
-- `useEffect` auto-add: kui sektsiooni array on tühi, lisatakse automaatselt üks tühi rida (korterid, investeeringud, kulud, tulud, laenud)
+- `useEffect` auto-add: kui sektsiooni array on tühi, lisatakse automaatselt üks tühi rida (korterid, investeeringud, kulud, tulud, laenud, seisukord)
+- Idempotentne: `setPlan(p => ({...p, field: [mkFactory()]}))` (mitte `addX()` kutse)
 - "+ Lisa" nupud asuvad tabeli/loendi all (mitte sektsiooni päises)
+- Korteri auto-label: esimene "1", järgmised `Math.max(...labels) + 1`
 
-### UI: Protsendiväljad (PctInput komponent)
+### UI: Periood — majandusaasta kiirvalik
 
-- **`PctInput`** komponent — lokaalse string-state'iga sisend Eesti komakohaga
+- Dropdown (2024–2030) seab kogu perioodi üheks kalendriaastaks
+- Algusaasta muutmisel sünkroonib automaatselt lõppaasta
+- Hoiatus kui alguskuupäev > lõppkuupäev
+
+### UI: Investeeringute parandused
+
+- Aasta väli on dropdown (perioodi aasta + järgmine)
+- Kvartal: väärtused 1–4 (mitte Q1–Q4)
+- Kokkuvõttereal tegelik summa otse massiivist
+- "Eemalda investeering" nupp iga investeeringu juures
+- "Lisa rahastusrida" nupp iga investeeringu all (mitte päises)
+
+### UI: Kaasomandi eseme seisukord
+
+Struktureeritud tabel `seisukord[]` state'iga:
+- Väljad: `ese` (ESEMED dropdown), `seisukordVal` (SEISUKORD_VALIKUD), `puudused`, `prioriteet` (PRIORITEEDID), `eeldatavKulu` (EuroInput), `tegevus`, `tegevusAasta` (dropdown: perioodi aasta + 3), `tegevusKvartal` (dropdown: 1–4)
+- Esimene rida: Ese | Seisukord | Prioriteet
+- Teine rida: Puudused | Eeldatav kulu € | Planeeritud tegevus | Aasta | Kv
+- Helper funktsioonid: `lisaSeisukordRida`, `uuendaSeisukord`, `eemaldaSeisukordRida`
+- Dünaamilised placeholder'id (PUUDUSED_PLACEHOLDERS, TEGEVUS_PLACEHOLDERS) ese järgi
+- Kokkuvõttereal: esemed arv, eeldatav kogukulu, planeeritud aastad
+- JSON import backward compat: vana string-formaat → tühi massiiv; puuduvad `tegevusAasta`/`tegevusKvartal` väljad → tühi string
+- Prindi tabel: Ese, Seisukord, Prioriteet, Puudused, Eeldatav kulu, Planeeritud tegevus, Aeg (nt "2. kv 2026")
+
+### UI: Kategooriasüsteem (kulud ja tulud)
+
+**Kulude kategooriad** (KULU_KATEGOORIAD):
+- `KOMMUNAALTEENUSED`: Kütus, Soojus, Vesi ja kanalisatsioon, Elekter, Prügivedu
+- `HALDUSTEENUSED`: Haldus, Raamatupidamine, Koristus, Kindlustus, Hooldus, Muu
+- Dropdown optgroup'idega (Kommunaalteenused / Haldusteenused)
+
+**Tulude kategooriad** (TULU_KATEGOORIAD):
+- Haldus, Raamatupidamine, Koristus, Kindlustus, Hooldus, Kommunaalmaksed, Muu
+- Lame dropdown (ilma optgroup'ideta)
+
+**Kommunaalteenuste ühikud** (KOMMUNAAL_UHIKUD / KOMMUNAAL_VAIKE_UHIK):
+- Igal kommunaalteenusel on lubatud ühikute nimekiri ja vaikeühik
+- Kütus: m³/l/t, Soojus: MWh/kWh, Vesi: m³, Elekter: kWh/MWh, Prügivedu: periood/kuu
+- Kategooria vahetamisel seatakse automaatselt vaikeühik (`handleKuluKategooriaChange`)
+
+**Tingimuslik kulurea UI**:
+- Kommunaalteenus → Kogus | Ühik (dropdown) | Ühiku hind € | Summa € (arvutatud: kogus × ühikuHind)
+- Haldusteenus → Arvutus (HALDUS_ARVUTUS_VALIKUD: €/kuu, €/aasta, Kokku perioodis) | Sisend € | Perioodis (arvutatud)
+- `arvutaHaldusSumma(r)`: €/kuu → val × kuud, €/aasta → val / 12 × kuud, perioodis → val otse
+- useEffect sünkroonib mõlema tüübi summad engine'ile `calc.params.amountEUR` kaudu
+- Kulurea lisakäljad: `kogus`, `uhik`, `uhikuHind`, `arvutus` (vaikimisi "kuus"), `summaInput`
+
+**Dünaamilised placeholder'id** — KULU_NIMETUS_PLACEHOLDERS, TULU_NIMETUS_PLACEHOLDERS kategooria järgi
+
+### UI: Fondid & laen (Tab 4)
+
+**Remondifond** — eraldi kaart:
+- Remondifondi määr (€/m²/kuu) sisend + laekumine perioodis
+- Kirjeldav tekst: "Hoone pikaajalise korrashoiu fond..."
+
+**Reservkapital** — eraldi kaart:
+- Kavandatud reserv € sisend + nõutav miinimum kuva
+- Kirjeldav tekst: "KrtS §48 — reservkapital ettenägematute kulude katteks"
+
+**Laenud** — eraldi kaart (muutmata)
+
+### UI: NumberInput ja EuroInput komponendid
+
+**`NumberInput`** — universaalne Eesti komakohaga sisend:
 - `type="text"` + `inputMode="decimal"` (mobiilil numpad komaga)
-- Sisestamisel säilitab koma; `onBlur` teeb `parseFloat` ja salvestab numbri
-- Kuvamisel näitab koma (`.` → `,`)
-- Kasutuses: `annualRatePct`, `reservePct` laenude sektsioonis
+- Lokaalne `display` string-state, `editing` lipp
+- `onBlur` teeb `parseFloat(display.replace(",", "."))` ja salvestab numbri
+- Kasutuses: `areaM2`, `qty`, `annualRatePct`, `reservePct`, `monthlyRateEurPerM2`, kommunaalteenuste `kogus`
+
+**`EuroInput`** — eurode sisend, ümardab täisarvuks:
+- Sama muster nagu NumberInput, aga `Math.round()` onBlur
+- Kuvab ainult täisarvu (ei näita sente)
+- Kasutuses: kõik EUR väljad (`totalCostEUR`, `plannedEUR`, `principalEUR`, `eeldatavKulu`, `uhikuHind`, `summaInput`)
+
+**Euro formaat** — `euro()` ja `euroEE()` kasutavad `Math.round()`, kuvavad ilma sentideta
 
 ### UI: Risk-info gating
 
@@ -318,6 +390,7 @@ Import handler teostab deterministliku dry-run valideerimise enne state'i asenda
 
 - **Ühtegi pooleliolevat ülesannet ei ole.** Kõik nõutud muudatused on implementeeritud.
 - Potentsiaalsed edasiarendused (pole veel küsitud):
+  - Kommunaalteenuste ühikupõhine hinnastus prindi vaatesse
   - `canonicalizePatch` unit testid eraldi failina
   - Multi-step undo/redo tugi
   - CI/CD pipeline (GitHub Actions)
@@ -398,10 +471,14 @@ src/components/
   TracePanel.jsx        — trace/step visualiseerimine (grupeeritud finding → candidates,
                           stateSignature, snapshots, rankVector)
 
-src/MajanduskavaApp.jsx — monolitne UI (~1750 rida), vertikaalne sidebar nav,
-                          soe neutraalne palett, periodParts + kyData state,
-                          PctInput komponent (koma-decimal), tab-kohane tühjendamine,
-                          automaatne tühirea lisamine, Tab 6 kolme-ploki struktuur,
+src/MajanduskavaApp.jsx — monolitne UI (~2100 rida), vertikaalne sidebar nav,
+                          soe neutraalne palett, periodParts + kyData + seisukord state,
+                          NumberInput + EuroInput komponendid (koma-decimal),
+                          kategooriasüsteem (KOMMUNAALTEENUSED/HALDUSTEENUSED/TULU_KATEGOORIAD),
+                          kommunaalteenuste ühikupõhine hinnastus,
+                          kaasomandi eseme seisukord tabel,
+                          tab-kohane tühjendamine, automaatne tühirea lisamine,
+                          Tab 6 kolme-ploki struktuur,
                           dry-run import valideerimisega, autoResolve läbi bridge'i
 
 src/policy/__tests__/

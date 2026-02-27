@@ -105,13 +105,14 @@ function NumberInput({ value, onChange, ...props }) {
   );
 }
 
-// ── Euro input — rounds to integer on blur ──
+// ── Euro input — rounds to integer on blur, formats with thousands separator ──
+const fmtEur = (v) => v ? Math.round(v).toLocaleString("et-EE") : "";
 function EuroInput({ value, onChange, ...props }) {
-  const [display, setDisplay] = useState(value ? String(Math.round(value)) : "");
+  const [display, setDisplay] = useState(fmtEur(value));
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
-    if (!editing) setDisplay(value ? String(Math.round(value)) : "");
+    if (!editing) setDisplay(fmtEur(value));
   }, [value, editing]);
 
   return (
@@ -120,18 +121,23 @@ function EuroInput({ value, onChange, ...props }) {
       inputMode="decimal"
       value={display}
       onChange={(e) => {
-        const raw = e.target.value.replace(",", ".");
+        const raw = e.target.value.replace(/\s/g, "").replace(",", ".");
         if (raw === "" || raw === "-" || /^-?\d*\.?\d*$/.test(raw)) {
           setDisplay(e.target.value);
         }
       }}
-      onFocus={(e) => { setEditing(true); e.target.select(); }}
+      onFocus={(e) => {
+        setEditing(true);
+        const rounded = Math.round(value) || 0;
+        setDisplay(rounded ? String(rounded) : "");
+        setTimeout(() => e.target.select(), 0);
+      }}
       onBlur={() => {
         setEditing(false);
-        const parsed = parseFloat(display.replace(",", "."));
+        const parsed = parseFloat(display.replace(/\s/g, "").replace(",", "."));
         const rounded = !isNaN(parsed) ? Math.round(parsed) : 0;
         onChange(rounded);
-        setDisplay(rounded ? String(rounded) : "");
+        setDisplay(fmtEur(rounded));
       }}
       {...props}
     />
@@ -147,16 +153,34 @@ const btnRemove   = { ..._btnBase, background: "transparent", color: N.dim, font
 const btn         = btnSecondary; // legacy alias
 
 // ── CATEGORIES & ENUMS ──
-const KATEGOORIAD = [
-  "Haldus",
-  "Raamatupidamine",
-  "Koristus",
-  "Kindlustus",
-  "Remont ja hooldus",
-  "Remondifond",
-  "Laenumakse",
-  "Kommunaalkulud",
-  "Muu",
+const KOMMUNAALTEENUSED = ["Kütus", "Soojus", "Vesi ja kanalisatsioon", "Elekter", "Prügivedu"];
+
+const HALDUSTEENUSED = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Muu"];
+
+const KULU_KATEGOORIAD = [...KOMMUNAALTEENUSED, ...HALDUSTEENUSED];
+
+const TULU_KATEGOORIAD = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Kommunaalmaksed", "Muu"];
+
+const KOMMUNAAL_UHIKUD = {
+  "Kütus": ["m³", "l", "t"],
+  "Soojus": ["MWh", "kWh"],
+  "Vesi ja kanalisatsioon": ["m³"],
+  "Elekter": ["kWh", "MWh"],
+  "Prügivedu": ["periood", "kuu"],
+};
+
+const KOMMUNAAL_VAIKE_UHIK = {
+  "Kütus": "m³",
+  "Soojus": "MWh",
+  "Vesi ja kanalisatsioon": "m³",
+  "Elekter": "kWh",
+  "Prügivedu": "periood",
+};
+
+const HALDUS_ARVUTUS_VALIKUD = [
+  { value: "kuus", label: "€/kuu" },
+  { value: "aastas", label: "€/aasta" },
+  { value: "perioodis", label: "Kokku perioodis" },
 ];
 
 const ESEMED = [
@@ -181,14 +205,16 @@ const SEISUKORD_VALIKUD = ["Hea", "Rahuldav", "Mitterahuldav", "Avariiohtlik"];
 const PRIORITEEDID = ["Madal", "Keskmine", "Kõrge", "Kriitiline"];
 
 const KULU_NIMETUS_PLACEHOLDERS = {
+  "Kütus": "nt Gaasiküte, puuküte",
+  "Soojus": "nt Kaugküte",
+  "Vesi ja kanalisatsioon": "nt Veevarustus ja kanalisatsioon",
+  "Elekter": "nt Üldelekter",
+  "Prügivedu": "nt Jäätmevedu",
   "Haldus": "nt Majahalduri tasu",
   "Raamatupidamine": "nt Raamatupidamisteenus",
-  "Koristus": "nt Trepikoja koristus 2x nädalas",
+  "Koristus": "nt Trepikoja koristus",
   "Kindlustus": "nt Hoone koguriskikindlustus",
-  "Remont ja hooldus": "nt Trepikoja remont",
-  "Remondifond": "nt Remondifond 0,50 €/m²/kuu",
-  "Laenumakse": "nt Renoveerimislaenu makse",
-  "Kommunaalkulud": "nt Üldelekter, vesi, prügivedu",
+  "Hooldus": "nt Lukkude vahetus, kraanide remont",
   "Muu": "Kirjelda kulu",
 };
 
@@ -197,10 +223,8 @@ const TULU_NIMETUS_PLACEHOLDERS = {
   "Raamatupidamine": "nt Raamatupidamise tasu",
   "Koristus": "nt Koristustasu",
   "Kindlustus": "nt Kindlustuse osa",
-  "Remont ja hooldus": "nt Remondifondi laekumine",
-  "Remondifond": "nt Remondifond omanikelt",
-  "Laenumakse": "nt Laenumakse omanikelt",
-  "Kommunaalkulud": "nt Kommunaalkulude laekumine",
+  "Hooldus": "nt Hooldustasu",
+  "Kommunaalmaksed": "nt Kommunaalkulude ettemaks omanikelt",
   "Muu": "Kirjelda tulu",
 };
 
@@ -496,7 +520,11 @@ export default function App() {
         if (data.kyData) setKyData(data.kyData);
         if (data.seisukord) {
           if (typeof data.seisukord === "string") setSeisukord([]);
-          else setSeisukord(data.seisukord);
+          else setSeisukord(data.seisukord.map(r => {
+            const kvMap = { "1": "I", "2": "II", "3": "III", "4": "IV" };
+            const kv = r.tegevusKvartal ? (kvMap[r.tegevusKvartal] || r.tegevusKvartal) : "";
+            return { tegevusAasta: "", tegevusKvartal: "", ...r, tegevusKvartal: kv };
+          }));
         }
         // Sync period dropdowns
         const _ps = candidateState.period?.start?.split("-") || [];
@@ -544,15 +572,18 @@ export default function App() {
   };
 
   const addRow = (side) => {
-    const row = mkCashflowRow({
-      side,
-      legal: {
-        bucket: "OPERATIONAL",
-        category: side === "COST" ? "MAINTENANCE" : "OTHER",
-        targetedFund: null,
-      },
-      calc: { type: "FIXED_PERIOD", params: { amountEUR: 0 } },
-    });
+    const row = {
+      ...mkCashflowRow({
+        side,
+        legal: {
+          bucket: "OPERATIONAL",
+          category: side === "COST" ? "MAINTENANCE" : "OTHER",
+          targetedFund: null,
+        },
+        calc: { type: "FIXED_PERIOD", params: { amountEUR: 0 } },
+      }),
+      ...(side === "COST" ? { kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 } : {}),
+    };
     setPlan(p => ({
       ...p,
       budget: {
@@ -574,6 +605,27 @@ export default function App() {
     }));
   };
 
+  const arvutaHaldusSumma = (r) => {
+    const val = parseFloat(r.summaInput) || 0;
+    const kuud = derived.period.monthEq || 12;
+    switch (r.arvutus) {
+      case "kuus": return val * kuud;
+      case "aastas": return val / 12 * kuud;
+      case "perioodis": return val;
+      default: return val * kuud;
+    }
+  };
+
+  const handleKuluKategooriaChange = (id, newKategooria) => {
+    const patch = { category: newKategooria };
+    if (KOMMUNAALTEENUSED.includes(newKategooria)) {
+      patch.uhik = KOMMUNAAL_VAIKE_UHIK[newKategooria] || "";
+      patch.kogus = "";
+      patch.uhikuHind = "";
+    }
+    updateRow("COST", id, patch);
+  };
+
   const removeRow = (side, id) => {
     setPlan(p => ({
       ...p,
@@ -590,12 +642,13 @@ export default function App() {
     setSeisukord(prev => [...prev, {
       id: crypto.randomUUID(),
       ese: "",
-      eseMuu: "",
       seisukordVal: "",
       puudused: "",
       prioriteet: "",
       eeldatavKulu: 0,
       tegevus: "",
+      tegevusAasta: "",
+      tegevusKvartal: "",
     }]);
   };
 
@@ -709,10 +762,31 @@ const removeInvFundingRow = (invId, rowIndex) => {
   // Auto-add one empty row when section is empty (setPlan, not addX — idempotent even if effect fires twice)
   useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [mkApartment({ label: "1" })] } })); }, [plan.building.apartments.length]);
   useEffect(() => { if (plan.investmentsPipeline.items.length === 0) setPlan(p => ({ ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [mkInvestmentItem({ plannedYear: p.period.year || new Date().getFullYear() })] } })); }, [plan.investmentsPipeline.items.length]);
-  useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [mkCashflowRow({ side: "COST" })] } })); }, [plan.budget.costRows.length]);
+  useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
   useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [mkCashflowRow({ side: "INCOME" })] } })); }, [plan.budget.incomeRows.length]);
+
+  // Kulude summa sünkroonimine engine'ile (→ calc.params.amountEUR)
+  useEffect(() => {
+    let changed = false;
+    const updated = plan.budget.costRows.map(r => {
+      let summa;
+      if (KOMMUNAALTEENUSED.includes(r.category)) {
+        summa = (parseFloat(r.kogus) || 0) * (parseFloat(r.uhikuHind) || 0);
+      } else if (r.arvutus !== undefined) {
+        summa = arvutaHaldusSumma(r);
+      } else {
+        return r;
+      }
+      if (r.calc.params.amountEUR !== summa) {
+        changed = true;
+        return { ...r, calc: { type: "FIXED_PERIOD", params: { amountEUR: summa } } };
+      }
+      return r;
+    });
+    if (changed) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: updated } }));
+  }, [plan.budget.costRows, derived.period.monthEq]);
   useEffect(() => { if (plan.loans.length === 0) setPlan(p => ({ ...p, loans: [mkLoan()] })); }, [plan.loans.length]);
-  useEffect(() => { if (seisukord.length === 0) setSeisukord([{ id: crypto.randomUUID(), ese: "", eseMuu: "", seisukordVal: "", puudused: "", prioriteet: "", eeldatavKulu: 0, tegevus: "" }]); }, [seisukord.length]);
+  useEffect(() => { if (seisukord.length === 0) setSeisukord([{ id: crypto.randomUUID(), ese: "", seisukordVal: "", puudused: "", prioriteet: "", eeldatavKulu: 0, tegevus: "", tegevusAasta: "", tegevusKvartal: "" }]); }, [seisukord.length]);
 
   const SECS = ["Periood & korterid", "Investeeringud", "Kulud", "Tulud", "Fondid & laen", "Korterite maksed", "Kontroll & kokkuvõte"];
 
@@ -1046,9 +1120,6 @@ const removeInvFundingRow = (invId, rowIndex) => {
                         <option value="">Vali…</option>
                         {ESEMED.map(e => <option key={e} value={e}>{e}</option>)}
                       </select>
-                      {rida.ese === "Muu" && (
-                        <input type="text" placeholder="Täpsusta…" value={rida.eseMuu} onChange={(e) => uuendaSeisukord(rida.id, "eseMuu", e.target.value)} style={{ ...inputStyle, marginTop: 6 }} />
-                      )}
                     </div>
                     <div style={{ flex: 1, minWidth: 140 }}>
                       <div style={fieldLabel}>Seisukord</div>
@@ -1078,6 +1149,23 @@ const removeInvFundingRow = (invId, rowIndex) => {
                       <div style={fieldLabel}>Planeeritud tegevus</div>
                       <input type="text" placeholder={TEGEVUS_PLACEHOLDERS[rida.ese] || "Kirjelda planeeritud tegevus"} value={rida.tegevus} onChange={(e) => uuendaSeisukord(rida.id, "tegevus", e.target.value)} style={inputStyle} />
                     </div>
+                    <div style={{ width: 90 }}>
+                      <div style={fieldLabel}>Aasta</div>
+                      <select value={rida.tegevusAasta || ""} onChange={(e) => uuendaSeisukord(rida.id, "tegevusAasta", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
+                        <option value="">–</option>
+                        {(() => { const y = plan.period.year || new Date().getFullYear(); return [y, y + 1, y + 2, y + 3].map(v => <option key={v} value={v}>{v}</option>); })()}
+                      </select>
+                    </div>
+                    <div style={{ width: 70 }}>
+                      <div style={fieldLabel}>Kv</div>
+                      <select value={rida.tegevusKvartal || ""} onChange={(e) => uuendaSeisukord(rida.id, "tegevusKvartal", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
+                        <option value="">—</option>
+                        <option value="I">I</option>
+                        <option value="II">II</option>
+                        <option value="III">III</option>
+                        <option value="IV">IV</option>
+                      </select>
+                    </div>
                   </div>
                   <button style={btnRemove} onClick={() => eemaldaSeisukordRida(rida.id)}>Eemalda</button>
                 </div>
@@ -1085,6 +1173,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
 
               <div style={{ marginTop: 8, fontFamily: "monospace" }}>
                 Esemed: {seisukord.length} · eeldatav kogukulu {euro(seisukord.reduce((sum, r) => sum + (r.eeldatavKulu || 0), 0))}
+                {seisukord.some(r => r.tegevusAasta) && <> · tegevused planeeritud {[...new Set(seisukord.filter(r => r.tegevusAasta).map(r => r.tegevusAasta))].sort().join(", ")}</>}
               </div>
               <div style={{ marginTop: 8 }}>
                 <button style={btnAdd} onClick={lisaSeisukordRida}>+ Lisa ese</button>
@@ -1198,9 +1287,20 @@ const removeInvFundingRow = (invId, rowIndex) => {
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                         <div style={{ width: 180 }}>
                           <div style={fieldLabel}>Kategooria</div>
-                          <select value={r.category || ""} onChange={(e) => updateRow(side, r.id, { category: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
+                          <select value={r.category || ""} onChange={(e) => side === "COST" ? handleKuluKategooriaChange(r.id, e.target.value) : updateRow(side, r.id, { category: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
                             <option value="">Vali…</option>
-                            {KATEGOORIAD.map(k => <option key={k} value={k}>{k}</option>)}
+                            {side === "COST" ? (
+                              <>
+                                <optgroup label="Kommunaalteenused">
+                                  {KOMMUNAALTEENUSED.map(k => <option key={k} value={k}>{k}</option>)}
+                                </optgroup>
+                                <optgroup label="Haldusteenused">
+                                  {HALDUSTEENUSED.map(k => <option key={k} value={k}>{k}</option>)}
+                                </optgroup>
+                              </>
+                            ) : (
+                              TULU_KATEGOORIAD.map(k => <option key={k} value={k}>{k}</option>)
+                            )}
                           </select>
                         </div>
                         <div style={{ flex: 2 }}>
@@ -1208,46 +1308,59 @@ const removeInvFundingRow = (invId, rowIndex) => {
                           <input value={r.name} onChange={(e) => updateRow(side, r.id, { name: e.target.value })} placeholder={side === "COST" ? (KULU_NIMETUS_PLACEHOLDERS[r.category] || "Kirjelda kulu") : (TULU_NIMETUS_PLACEHOLDERS[r.category] || "Kirjelda tulu")} style={inputStyle} />
                         </div>
 
-                        <div style={{ width: 190 }}>
-                          <div style={fieldLabel}>Arvutus</div>
-                          <select
-                            value={r.calc.type}
-                            onChange={(e) => {
-                              const t = e.target.value;
-                              const params =
-                                t === "FIXED_PERIOD" ? { amountEUR: 0 } :
-                                t === "MONTHLY_FIXED" ? { monthlyEUR: 0 } :
-                                t === "ANNUAL_FIXED" ? { annualEUR: 0 } :
-                                { qty: 0, unitEUR: 0 };
-                              updateRow(side, r.id, { calc: { type: t, params } });
-                            }}
-                            style={{ ...selectStyle, width: "100%" }}
-                          >
-                            <option value="FIXED_PERIOD">Perioodisumma</option>
-                            <option value="MONTHLY_FIXED">Kuutasu</option>
-                            <option value="ANNUAL_FIXED">Aastane</option>
-                            <option value="QTY_PRICE_ANNUAL">Kogus × hind/a</option>
-                          </select>
-                        </div>
-
-                        <div style={{ width: 180 }}>
-                          <div style={fieldLabel}>Summa / parameeter</div>
-                          {r.calc.type === "FIXED_PERIOD" && (
-                            <EuroInput value={r.calc.params.amountEUR} onChange={(v) => updateRow(side, r.id, { calc: { ...r.calc, params: { amountEUR: v } } })} style={numStyle} />
-                          )}
-                          {r.calc.type === "MONTHLY_FIXED" && (
-                            <EuroInput value={r.calc.params.monthlyEUR} onChange={(v) => updateRow(side, r.id, { calc: { ...r.calc, params: { monthlyEUR: v } } })} style={numStyle} />
-                          )}
-                          {r.calc.type === "ANNUAL_FIXED" && (
-                            <EuroInput value={r.calc.params.annualEUR} onChange={(v) => updateRow(side, r.id, { calc: { ...r.calc, params: { annualEUR: v } } })} style={numStyle} />
-                          )}
-                          {r.calc.type === "QTY_PRICE_ANNUAL" && (
-                            <div style={{ display: "flex", gap: 8 }}>
-                              <NumberInput value={r.calc.params.qty} onChange={(v) => updateRow(side, r.id, { calc: { ...r.calc, params: { ...r.calc.params, qty: v } } })} style={numStyle} />
-                              <EuroInput value={r.calc.params.unitEUR} onChange={(v) => updateRow(side, r.id, { calc: { ...r.calc, params: { ...r.calc.params, unitEUR: v } } })} style={numStyle} />
+                        {side === "COST" && KOMMUNAALTEENUSED.includes(r.category) ? (
+                          <>
+                            <div style={{ width: 100 }}>
+                              <div style={fieldLabel}>Kogus</div>
+                              <NumberInput value={r.kogus} onChange={(v) => updateRow(side, r.id, { kogus: v })} placeholder="0" style={numStyle} />
                             </div>
-                          )}
-                        </div>
+                            <div style={{ width: 120 }}>
+                              <div style={fieldLabel}>Ühik</div>
+                              <select value={r.uhik || ""} onChange={(e) => updateRow(side, r.id, { uhik: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
+                                {(KOMMUNAAL_UHIKUD[r.category] || []).map(u => (
+                                  <option key={u} value={u}>{u}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div style={{ width: 130 }}>
+                              <div style={fieldLabel}>Ühiku hind €</div>
+                              <EuroInput value={r.uhikuHind} onChange={(v) => updateRow(side, r.id, { uhikuHind: v })} placeholder="0" style={numStyle} />
+                            </div>
+                            <div style={{ width: 130 }}>
+                              <div style={fieldLabel}>Summa €</div>
+                              <div style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 700, paddingTop: 6 }}>
+                                {euro((parseFloat(r.kogus) || 0) * (parseFloat(r.uhikuHind) || 0))}
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ width: 140 }}>
+                              <div style={fieldLabel}>Arvutus</div>
+                              <select
+                                value={r.arvutus || "kuus"}
+                                onChange={(e) => updateRow(side, r.id, { arvutus: e.target.value })}
+                                style={{ ...selectStyle, width: "100%" }}
+                              >
+                                {HALDUS_ARVUTUS_VALIKUD.map(v => (
+                                  <option key={v.value} value={v.value}>{v.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div style={{ width: 140 }}>
+                              <div style={fieldLabel}>
+                                {r.arvutus === "aastas" ? "€/aasta" : r.arvutus === "perioodis" ? "Summa €" : "€/kuu"}
+                              </div>
+                              <EuroInput value={r.summaInput} onChange={(v) => updateRow(side, r.id, { summaInput: v })} style={numStyle} />
+                            </div>
+                            <div style={{ width: 130 }}>
+                              <div style={fieldLabel}>Perioodis</div>
+                              <div style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 700, paddingTop: 6 }}>
+                                {euro(arvutaHaldusSumma(r))}
+                              </div>
+                            </div>
+                          </>
+                        )}
 
                         <div style={{ width: 120, alignSelf: "end" }}>
                           <button style={btnRemove} onClick={() => removeRow(side, r.id)}>Eemalda</button>
@@ -1276,7 +1389,8 @@ const removeInvFundingRow = (invId, rowIndex) => {
           <div style={tabStack}>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(4)}</div>
             <div style={card}>
-              <div style={{ ...sectionTitle, marginBottom: 12 }}>Remondifond & reserv</div>
+              <div style={{ ...sectionTitle, marginBottom: 4 }}>Remondifond</div>
+              <div style={{ fontSize: 13, color: N.sub, marginBottom: 12 }}>Hoone pikaajalise korrashoiu fond, kuhu omanikud maksavad igakuiselt m² alusel.</div>
 
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ width: 220 }}>
@@ -1294,9 +1408,16 @@ const removeInvFundingRow = (invId, rowIndex) => {
                     {euro(derived.funds.repairFundIncomePeriodEUR)}
                   </div>
                 </div>
+              </div>
+            </div>
 
+            <div style={card}>
+              <div style={{ ...sectionTitle, marginBottom: 4 }}>Reservkapital</div>
+              <div style={{ fontSize: 13, color: N.sub, marginBottom: 12 }}>KrtS §48 — reservkapital ettenägematute kulude katteks.</div>
+
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ width: 220 }}>
-                  <div style={fieldLabel}>Planeeritud reserv €</div>
+                  <div style={fieldLabel}>Kavandatud reserv €</div>
                   <EuroInput
                     value={plan.funds.reserve.plannedEUR}
                     onChange={(v) => setPlan(p => ({ ...p, funds: { ...p.funds, reserve: { ...p.funds.reserve, plannedEUR: v } } }))}
@@ -1305,7 +1426,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
                 </div>
 
                 <div style={{ width: 260 }}>
-                  <div style={fieldLabel}>Nõutav reserv</div>
+                  <div style={fieldLabel}>Nõutav miinimum</div>
                   <div style={{ fontFamily: "monospace", fontSize: 18, fontWeight: 800 }}>
                     {euro(derived.funds.reserveRequiredEUR)}
                   </div>
@@ -1849,17 +1970,19 @@ const removeInvFundingRow = (invId, rowIndex) => {
                     <th style={{ padding: "4px 8px" }}>Puudused</th>
                     <th style={{ padding: "4px 8px", textAlign: "right" }}>Eeldatav kulu</th>
                     <th style={{ padding: "4px 8px" }}>Planeeritud tegevus</th>
+                    <th style={{ padding: "4px 8px" }}>Aeg</th>
                   </tr>
                 </thead>
                 <tbody>
                   {seisukord.filter(r => r.ese).map((s) => (
                     <tr key={s.id} style={{ borderBottom: "1px solid #ccc" }}>
-                      <td style={{ padding: "4px 8px" }}>{s.ese === "Muu" ? (s.eseMuu || "Muu") : s.ese}</td>
+                      <td style={{ padding: "4px 8px" }}>{s.ese === "Muu" ? "Muu" : s.ese}</td>
                       <td style={{ padding: "4px 8px" }}>{s.seisukordVal || ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.prioriteet || ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.puudused || ""}</td>
                       <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{s.eeldatavKulu ? euroEE(s.eeldatavKulu) : ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.tegevus || ""}</td>
+                      <td style={{ padding: "4px 8px" }}>{s.tegevusAasta ? `${s.tegevusKvartal ? s.tegevusKvartal + " kv " : ""}${s.tegevusAasta}` : ""}</td>
                     </tr>
                   ))}
                 </tbody>
