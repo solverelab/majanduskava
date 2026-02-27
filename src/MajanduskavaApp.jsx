@@ -515,6 +515,14 @@ export default function App() {
           setPreset(data.preset);
           setHostPreset(data.preset);
         }
+        // Migrate investment quarters (numeric → roman)
+        const kvMap = { "1": "I", "2": "II", "3": "III", "4": "IV" };
+        if (candidateState.investmentsPipeline?.items) {
+          candidateState.investmentsPipeline.items = candidateState.investmentsPipeline.items.map(it => ({
+            ...it,
+            quarter: kvMap[String(it.quarter)] || it.quarter || "I",
+          }));
+        }
         setPlan(candidateState);
         // Sync KÜ data
         if (data.kyData) setKyData(data.kyData);
@@ -639,16 +647,17 @@ export default function App() {
 
   // --- SEISUKORD ---
   const lisaSeisukordRida = () => {
+    const y = plan.period.year || new Date().getFullYear();
     setSeisukord(prev => [...prev, {
       id: crypto.randomUUID(),
       ese: "",
-      seisukordVal: "",
+      seisukordVal: "Rahuldav",
       puudused: "",
-      prioriteet: "",
+      prioriteet: "Keskmine",
       eeldatavKulu: 0,
       tegevus: "",
-      tegevusAasta: "",
-      tegevusKvartal: "",
+      tegevusAasta: String(y),
+      tegevusKvartal: "I",
     }]);
   };
 
@@ -665,7 +674,7 @@ export default function App() {
       ...p,
       investmentsPipeline: {
         ...p.investmentsPipeline,
-        items: [...p.investmentsPipeline.items, mkInvestmentItem({ plannedYear: p.period.year || new Date().getFullYear(), quarter: 1, totalCostEUR: 0 })],
+        items: [...p.investmentsPipeline.items, mkInvestmentItem({ plannedYear: p.period.year || new Date().getFullYear(), quarter: "I", totalCostEUR: 0 })],
       },
     }));
   };
@@ -761,7 +770,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
 
   // Auto-add one empty row when section is empty (setPlan, not addX — idempotent even if effect fires twice)
   useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [{ ...mkApartment({ label: "1" }), omanikud: "" }] } })); }, [plan.building.apartments.length]);
-  useEffect(() => { if (plan.investmentsPipeline.items.length === 0) setPlan(p => ({ ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [mkInvestmentItem({ plannedYear: p.period.year || new Date().getFullYear() })] } })); }, [plan.investmentsPipeline.items.length]);
+  useEffect(() => { if (plan.investmentsPipeline.items.length === 0) setPlan(p => ({ ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [mkInvestmentItem({ plannedYear: p.period.year || new Date().getFullYear(), quarter: "I" })] } })); }, [plan.investmentsPipeline.items.length]);
   useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
   useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [mkCashflowRow({ side: "INCOME" })] } })); }, [plan.budget.incomeRows.length]);
 
@@ -786,7 +795,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
     if (changed) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: updated } }));
   }, [plan.budget.costRows, derived.period.monthEq]);
   useEffect(() => { if (plan.loans.length === 0) setPlan(p => ({ ...p, loans: [mkLoan()] })); }, [plan.loans.length]);
-  useEffect(() => { if (seisukord.length === 0) setSeisukord([{ id: crypto.randomUUID(), ese: "", seisukordVal: "", puudused: "", prioriteet: "", eeldatavKulu: 0, tegevus: "", tegevusAasta: "", tegevusKvartal: "" }]); }, [seisukord.length]);
+  useEffect(() => { if (seisukord.length === 0) { const y = plan.period.year || new Date().getFullYear(); setSeisukord([{ id: crypto.randomUUID(), ese: "", seisukordVal: "Rahuldav", puudused: "", prioriteet: "Keskmine", eeldatavKulu: 0, tegevus: "", tegevusAasta: String(y), tegevusKvartal: "I" }]); } }, [seisukord.length]);
 
   const SECS = ["Periood & korterid", "Investeeringud", "Kulud", "Tulud", "Fondid & laen", "Korterite maksed", "Kontroll & kokkuvõte"];
 
@@ -1159,7 +1168,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
                       </select>
                     </div>
                     <div style={{ width: 70 }}>
-                      <div style={fieldLabel}>Kv</div>
+                      <div style={fieldLabel}>Kvartal</div>
                       <select value={rida.tegevusKvartal || ""} onChange={(e) => uuendaSeisukord(rida.id, "tegevusKvartal", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
                         <option value="">—</option>
                         <option value="I">I</option>
@@ -1203,8 +1212,8 @@ const removeInvFundingRow = (invId, rowIndex) => {
                       </div>
                       <div style={{ width: 120 }}>
                         <div style={fieldLabel}>Kvartal</div>
-                        <select value={it.quarter} onChange={(e) => updateInvestment(it.id, { quarter: Number(e.target.value) })} style={{ ...selectStyle, width: "100%" }}>
-                          <option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option>
+                        <select value={it.quarter} onChange={(e) => updateInvestment(it.id, { quarter: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
+                          <option value="I">I</option><option value="II">II</option><option value="III">III</option><option value="IV">IV</option>
                         </select>
                       </div>
                       <div style={{ width: 160 }}>
@@ -1986,7 +1995,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
                       <td style={{ padding: "4px 8px" }}>{s.puudused || ""}</td>
                       <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{s.eeldatavKulu ? euroEE(s.eeldatavKulu) : ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.tegevus || ""}</td>
-                      <td style={{ padding: "4px 8px" }}>{s.tegevusAasta ? `${s.tegevusKvartal ? s.tegevusKvartal + " kv " : ""}${s.tegevusAasta}` : ""}</td>
+                      <td style={{ padding: "4px 8px" }}>{s.tegevusAasta ? `${s.tegevusKvartal ? s.tegevusKvartal + " kvartal " : ""}${s.tegevusAasta}` : ""}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -2001,7 +2010,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
               ? <div>Investeeringuid pole lisatud.</div>
               : plan.investmentsPipeline.items.map(it => (
                 <div key={it.id} style={{ marginBottom: 8 }}>
-                  <div><span style={{ fontWeight: 700 }}>{it.name || "—"}</span> · {it.quarter}. kv {it.plannedYear} · {euroEE(it.totalCostEUR)}</div>
+                  <div><span style={{ fontWeight: 700 }}>{it.name || "—"}</span> · {it.quarter} kvartal {it.plannedYear} · {euroEE(it.totalCostEUR)}</div>
                   {(it.fundingPlan || []).length > 0 && (
                     <div style={{ marginLeft: 16, fontSize: 12 }}>
                       {it.fundingPlan.map((row, i) => (
