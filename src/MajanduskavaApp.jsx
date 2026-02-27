@@ -859,7 +859,7 @@ export default function App() {
   }, [seisukord]);
 
   useEffect(() => { if (plan.loans.length === 0) setPlan(p => ({ ...p, loans: [mkLoan()] })); }, [plan.loans.length]);
-  useEffect(() => { if (seisukord.length === 0) { const y = plan.period.year || new Date().getFullYear(); setSeisukord([{ id: crypto.randomUUID(), ese: "", muuNimetus: "", seisukordVal: "", puudused: "", prioriteet: "", eeldatavKulu: 0, tegevus: "", tegevusAasta: String(y), tegevusKvartal: "I", investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [] }]); } }, [seisukord.length]);
+  useEffect(() => { if (seisukord.length === 0) { setSeisukord([{ id: crypto.randomUUID(), ese: "", muuNimetus: "", seisukordVal: "", puudused: "", prioriteet: "", eeldatavKulu: 0, tegevus: "", tegevusAasta: "", tegevusKvartal: "I", investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [] }]); } }, [seisukord.length]);
 
   const SECS = ["Periood & korterid", "Kaasomandi esemed", "Kulud", "Tulud", "Fondid & laen", "Korterite maksed", "Kontroll & kokkuvõte"];
 
