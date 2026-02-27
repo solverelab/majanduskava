@@ -180,6 +180,30 @@ const SEISUKORD_VALIKUD = ["Hea", "Rahuldav", "Mitterahuldav", "Avariiohtlik"];
 
 const PRIORITEEDID = ["Madal", "Keskmine", "Kõrge", "Kriitiline"];
 
+const KULU_NIMETUS_PLACEHOLDERS = {
+  "Haldus": "nt Majahalduri tasu",
+  "Raamatupidamine": "nt Raamatupidamisteenus",
+  "Koristus": "nt Trepikoja koristus 2x nädalas",
+  "Kindlustus": "nt Hoone koguriskikindlustus",
+  "Remont ja hooldus": "nt Trepikoja remont",
+  "Remondifond": "nt Remondifond 0,50 €/m²/kuu",
+  "Laenumakse": "nt Renoveerimislaenu makse",
+  "Kommunaalkulud": "nt Üldelekter, vesi, prügivedu",
+  "Muu": "Kirjelda kulu",
+};
+
+const TULU_NIMETUS_PLACEHOLDERS = {
+  "Haldus": "nt Haldustasu",
+  "Raamatupidamine": "nt Raamatupidamise tasu",
+  "Koristus": "nt Koristustasu",
+  "Kindlustus": "nt Kindlustuse osa",
+  "Remont ja hooldus": "nt Remondifondi laekumine",
+  "Remondifond": "nt Remondifond omanikelt",
+  "Laenumakse": "nt Laenumakse omanikelt",
+  "Kommunaalkulud": "nt Kommunaalkulude laekumine",
+  "Muu": "Kirjelda tulu",
+};
+
 const TEGEVUS_PLACEHOLDERS = {
   "Katus": "nt Katusekatte vahetus",
   "Fassaad": "nt Fassaadi soojustamine",
@@ -1181,7 +1205,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
                         </div>
                         <div style={{ flex: 2 }}>
                           <div style={fieldLabel}>Nimetus</div>
-                          <input value={r.name} onChange={(e) => updateRow(side, r.id, { name: e.target.value })} placeholder={side === "COST" ? "nt Trepikodade koristus 2x nädalas" : "nt Igakuine hooldustasu"} style={inputStyle} />
+                          <input value={r.name} onChange={(e) => updateRow(side, r.id, { name: e.target.value })} placeholder={side === "COST" ? (KULU_NIMETUS_PLACEHOLDERS[r.category] || "Kirjelda kulu") : (TULU_NIMETUS_PLACEHOLDERS[r.category] || "Kirjelda tulu")} style={inputStyle} />
                         </div>
 
                         <div style={{ width: 190 }}>
