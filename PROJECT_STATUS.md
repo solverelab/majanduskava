@@ -1,6 +1,6 @@
 # PROJECT_STATUS.md
 
-Projekti seis: 2026-02-26
+Projekti seis: 2026-02-27
 
 ## 1. Mis on tehtud
 
@@ -199,6 +199,63 @@ AutoResolve explainability elab step'ides, mitte trace'is.
 - `AutoResolveResultV1` (koos report?: RunReportV1)
 - `RunReportV1` (koos policyVersion?, reportDigest?)
 
+### UI: Visuaalne disain ja layout
+
+**Soe neutraalne palett** — "paber laual" esteetika:
+```
+N.bg="#f0eeeb" (lehe taust, soe kivi)
+N.surface="#ffffff" (kaart / vorm)
+N.muted="#f7f6f4" (sekundaarne pind)
+N.border="#e0ddd8" (kaardi äär, eraldajad)
+N.rule="#e5e2de" (tabeli/rea eraldajad)
+N.text="#2c2825" (põhitekst, soe must)
+N.sub="#5c554d" (sekundaarne tekst)
+N.dim="#9b9389" (tertsiaarne / tuhm tekst)
+N.accent="#3b3632" (primaarne nupp, soe tume)
+N.sidebar="#3d3835" (sidebar'i taust)
+```
+
+**Vertikaalne sidebar navigatsioon**:
+- 7 tabi: Periood & korterid, Investeeringud, Kulud, Tulud, Fondid & laen, Korterite maksed, Kontroll & kokkuvõte
+- Iga tabi kõrval staatuse-indikaator (dot): `empty` (tühi/hall), `partial` (poolik/kollane), `done` (täidetud/roheline)
+- Aktiivne tab: valge-tooniga esiletõst + kuldne vasakäär (`#c4b08a`)
+
+**Tab-kohane "Tühjenda" nupp**:
+- Iga tabi päises lingistiilne "Tühjenda" nupp, mis kustutab ainult selle jaotise andmed
+- `clearSection(tabIdx)` handler koos confirm dialoogiga
+
+### UI: Periood & KÜ andmed (Tab 0)
+
+**Perioodi sisestus — 3 dropdowni per kuupäev (PP/KK/AAAA)**:
+- `periodParts` state: `{ sd, sm, sy, ed, em, ey }` — eraldi UI state mis säilitab iga dropdown'i väärtuse
+- Sync `plan.period.start/end` (ISO string) ainult kui kõik 3 osa täidetud
+- Auto-end: alguskuupäeva valimisel seatakse lõpp automaatselt aasta lõppu
+- Kuupäeva tekst kuvatakse otse `periodParts`-ist (mitte `plan.period`-ist)
+
+**KÜ andmed**:
+- `kyData` state: `{ nimi, registrikood, aadress }` — eraldi top-level state
+- Kaasatakse JSON eksporti/importi: `bundle.kyData`
+- Kuvatakse prindi päises (nimi + registrikood · aadress)
+- Tühjendatakse Tab 0 kustutamisel
+
+### UI: Automaatne tühirida ja "Lisa" nupud
+
+- `useEffect` auto-add: kui sektsiooni array on tühi, lisatakse automaatselt üks tühi rida (korterid, investeeringud, kulud, tulud, laenud)
+- "+ Lisa" nupud asuvad tabeli/loendi all (mitte sektsiooni päises)
+
+### UI: Protsendiväljad (PctInput komponent)
+
+- **`PctInput`** komponent — lokaalse string-state'iga sisend Eesti komakohaga
+- `type="text"` + `inputMode="decimal"` (mobiilil numpad komaga)
+- Sisestamisel säilitab koma; `onBlur` teeb `parseFloat` ja salvestab numbri
+- Kuvamisel näitab koma (`.` → `,`)
+- Kasutuses: `annualRatePct`, `reservePct` laenude sektsioonis
+
+### UI: Risk-info gating
+
+- `showTechnicalInfo` toggle — "Kaalutud skoor" ja "Risk -1/+2" badge'id peidetud vaikimisi
+- Section komponent saab `showTechnicalInfo` prop'i
+
 ### UI (TracePanel.jsx)
 
 - **Rule trace**: finding event'id grupeeritud `findingCode ASC`, iga finding'u all `actionCandidate` event'id sorted `candidateId ASC`
@@ -221,8 +278,8 @@ Tab 6 ("Kontroll & kokkuvõte") on jagatud kolmeks visuaalseks plokiks:
 - "Prindi kokkuvõte" nupp
 
 **B) Ekspordi / impordi** (roheline äär):
-- "Salvesta (JSON)" nupp — ExportBundle: `{ schemaVersion: "majanduskavaExport/v1", moduleId, preset, policyVersion, stateSignature, state }`
-- "Laadi (JSON)" nupp — import koos dry-run valideerimisega
+- "Salvesta fail" nupp — ExportBundle: `{ schemaVersion: "majanduskavaExport/v1", moduleId, preset, policyVersion, stateSignature, state, kyData }`
+- "Ava fail" nupp — import koos dry-run valideerimisega (taastab ka `kyData`)
 - Skeemiversiooni veateade (kui import ebaõnnestub)
 
 **C) Süsteemi info** (hall äär, muted toon):
@@ -237,7 +294,7 @@ Import handler teostab deterministliku dry-run valideerimise enne state'i asenda
 2. **Guard** — `majanduskavaExport/v1` (composite või split `type + version`) + `moduleId` + `state` olemasolu
 3. **Dry-run** — `runPlan(candidateState)` (läbib kõik dev-guard'id)
 4. **Trace kontroll** — `evaluation.trace` olemas ja `schemaVersion === "trace/v1"`
-5. **Commit** — alles siis: `setPlan`, `setEvaluation`, `setSolvereMetrics`, preset
+5. **Commit** — alles siis: `setPlan`, `setEvaluation`, `setSolvereMetrics`, preset, `setKyData`
 6. **Error** — kui dry-run ebaõnnestub, state ei muutu; veateade Tab 6 sees
 
 ### UI: autoResolve bridge wrapper
@@ -341,8 +398,10 @@ src/components/
   TracePanel.jsx        — trace/step visualiseerimine (grupeeritud finding → candidates,
                           stateSignature, snapshots, rankVector)
 
-src/MajanduskavaApp.jsx — monolitne UI (~1100 rida), Tab 6 kolme-ploki struktuur
-                          (vastavuse kokkuvõte / ekspordi-impordi / süsteemi info),
+src/MajanduskavaApp.jsx — monolitne UI (~1750 rida), vertikaalne sidebar nav,
+                          soe neutraalne palett, periodParts + kyData state,
+                          PctInput komponent (koma-decimal), tab-kohane tühjendamine,
+                          automaatne tühirea lisamine, Tab 6 kolme-ploki struktuur,
                           dry-run import valideerimisega, autoResolve läbi bridge'i
 
 src/policy/__tests__/

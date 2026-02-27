@@ -6,14 +6,13 @@ import { runPlan, applyActionAndRun, applyOnly, setPreset as setHostPreset, runA
 import { buildStateSignature } from "../packages/solvere-core/src/moduleHost.ts";
 import { TracePanel } from "./components/TracePanel";
 
-// ── Euro formatting (Estonian: 1 234,56 €) ──
+// ── Euro formatting (Estonian: 1 235 €, täisarvuna) ──
 function euroEE(n) {
   if (n == null || isNaN(n)) return "—";
-  const abs = Math.abs(n);
-  const fixed = abs.toFixed(2);
-  const [whole, dec] = fixed.split(".");
-  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  return (n < 0 ? "−" : "") + grouped + "," + dec + " \u20ac";
+  const rounded = Math.round(n);
+  const abs = Math.abs(rounded);
+  const grouped = String(abs).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return (rounded < 0 ? "−" : "") + grouped + " \u20ac";
 }
 
 // ── Date formatting (DD.MM.YYYY, deterministic, no locale) ──
@@ -30,36 +29,101 @@ function formatYMEE(ym) {
   return parts[1] + "." + parts[0];
 }
 
-// ── Unified neutral palette ──
+// ════════════════════════════════════════════════════════════════════════
+// Design tokens — single source of truth for the entire UI
+// ════════════════════════════════════════════════════════════════════════
+
+// ── NEUTRAL PALETTE ──
 const N = {
-  bg:      "#f1f5f9",  // page background (slate-100)
+  bg:      "#f0eeeb",  // page background (warm stone)
   surface: "#ffffff",  // card / form surface
-  muted:   "#f8fafc",  // secondary surface (slate-50)
-  border:  "#e2e8f0",  // card borders, dividers (slate-200)
-  rule:    "#e2e8f0",  // table/row separators
-  text:    "#1e293b",  // primary text (slate-800)
-  sub:     "#475569",  // secondary text / labels (slate-600)
-  dim:     "#94a3b8",  // tertiary / muted text (slate-400)
+  muted:   "#f7f6f4",  // secondary surface (warm off-white)
+  border:  "#e0ddd8",  // card borders, dividers
+  rule:    "#e5e2de",  // table/row separators
+  text:    "#2c2825",  // primary text (warm near-black)
+  sub:     "#5c554d",  // secondary text / labels (warm grey)
+  dim:     "#9b9389",  // tertiary / muted text (warm light grey)
+  accent:  "#3b3632",  // primary button fill (warm dark)
+  sidebar: "#3d3835",  // sidebar background (warm dark, 1 step lighter)
 };
 
-const inputStyle = { padding: "8px 10px", border: `1px solid ${N.border}`, borderRadius: 6, width: "100%" };
-const numStyle = { ...inputStyle, fontFamily: "monospace", textAlign: "right" };
-const numFocus = (e) => e.target.select();
-const btn = { padding: "8px 12px", borderRadius: 8, border: `1px solid ${N.border}`, background: N.surface, cursor: "pointer" };
-const card = { border: `1px solid ${N.border}`, borderRadius: 12, padding: 16, background: N.surface };
-const tabStack = { display: "flex", flexDirection: "column", gap: 16 };
-const fieldLabel = { fontSize: 12, color: N.sub, marginBottom: 4 };
-
-// ── Unified UI state palette ──
+// ── STATE BADGES (OK / HOIATUS / RISK) ──
 const STATE = {
   OK:    { bg: "#f0fdf4", border: "#bbf7d0", color: "#166534" },
   WARN:  { bg: "#fefce8", border: "#fde68a", color: "#854d0e" },
   ERROR: { bg: "#fef2f2", border: "#fecaca", color: "#991b1b" },
 };
 const stateBadge = (s) => ({
-  fontSize: 12, fontWeight: 700, padding: "2px 10px", borderRadius: 4,
+  display: "inline-block", fontSize: 13, fontWeight: 700,
+  padding: "2px 10px", borderRadius: 4,
   background: s.bg, color: s.color,
 });
+
+// ── TYPOGRAPHY ──
+const sectionTitle = { fontSize: 18, fontWeight: 800, color: N.text, margin: 0 };
+const fieldLabel   = { fontSize: 13, fontWeight: 500, color: N.sub, marginBottom: 4 };
+const helperText   = { fontSize: 13, color: N.dim };
+const summaryNum   = { fontFamily: "monospace", fontSize: 26, fontWeight: 900 };
+const summaryLabel = { fontSize: 13, color: N.sub, marginTop: 4 };
+const summarySub   = { fontSize: 13, color: N.dim, marginTop: 2 };
+
+// ── INPUTS ──
+const inputBase  = { padding: "8px 10px", border: `1px solid ${N.border}`, borderRadius: 6, fontSize: 15, background: N.surface, color: N.text, outline: "none" };
+const inputStyle = { ...inputBase, width: "100%" };
+const numStyle   = { ...inputStyle, fontFamily: "monospace", textAlign: "right" };
+const selectStyle = { ...inputBase, padding: "6px 10px" };
+const numFocus   = (e) => e.target.select();
+
+// ── Universal number input with Estonian comma-decimal support ──
+function NumberInput({ value, onChange, ...props }) {
+  const [display, setDisplay] = useState(String(value ?? "").replace(".", ","));
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDisplay(String(value ?? "").replace(".", ","));
+  }, [value, editing]);
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={display}
+      onChange={(e) => {
+        const raw = e.target.value.replace(",", ".");
+        if (raw === "" || raw === "-" || /^-?\d*\.?\d*$/.test(raw)) {
+          setDisplay(e.target.value);
+        }
+      }}
+      onFocus={(e) => { setEditing(true); e.target.select(); }}
+      onBlur={() => {
+        setEditing(false);
+        const parsed = parseFloat(display.replace(",", "."));
+        onChange(!isNaN(parsed) ? parsed : 0);
+      }}
+      {...props}
+    />
+  );
+}
+
+// ── BUTTONS ──
+const _btnBase    = { padding: "8px 14px", borderRadius: 8, cursor: "pointer", fontSize: 15, border: "none", lineHeight: 1.4 };
+const btnPrimary  = { ..._btnBase, background: N.accent, color: "#fff", fontWeight: 700 };
+const btnSecondary = { ..._btnBase, background: N.surface, color: N.text, fontWeight: 600, border: `1px solid ${N.border}` };
+const btnAdd      = { ..._btnBase, background: N.muted, color: N.sub, fontWeight: 600, border: `1px solid ${N.border}` };
+const btnRemove   = { ..._btnBase, background: "transparent", color: N.dim, fontWeight: 500, padding: "6px 10px", fontSize: 14 };
+const btn         = btnSecondary; // legacy alias
+
+// ── LAYOUT ──
+const card     = { border: `1px solid ${N.border}`, borderRadius: 12, padding: 16, background: N.surface };
+const tabStack = { display: "flex", flexDirection: "column", gap: 16 };
+const tableWrap = { overflowX: "auto" };
+
+// ── SUMMARY CARD ──
+const summaryCard = { border: `1px solid ${N.border}`, borderRadius: 12, padding: 16, background: N.surface };
+
+// ── TABLE ──
+const thRow = { textAlign: "left", fontSize: 13, fontWeight: 600, color: N.sub };
+const tdSep = { borderTop: `1px solid ${N.rule}` };
 
 function Issue({ it }) {
   const s = it.severity === "ERROR" ? STATE.ERROR : it.severity === "WARN" ? STATE.WARN : STATE.OK;
@@ -71,23 +135,23 @@ function Issue({ it }) {
   );
 }
 
-function Section({ title, items, onApplyAction }) {
+function Section({ title, items, onApplyAction, showTechnicalInfo }) {
   return (
     <div style={{ marginBottom: 24 }}>
-      <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.sub }}>
+      <div style={{ ...sectionTitle, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
         {title}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {items.map(finding => (
           <div
             key={finding.id}
-            style={{ borderRadius: 12, border: `1px solid ${N.border}`, background: N.surface, padding: 16 }}
+            style={card}
           >
             <div style={{ fontSize: 14, fontWeight: 700, color: N.text }}>
               {finding.title}
             </div>
             {finding.message && (
-              <div style={{ marginTop: 4, fontSize: 12, color: N.sub }}>
+              <div style={{ ...helperText, marginTop: 4 }}>
                 {finding.message}
               </div>
             )}
@@ -110,7 +174,7 @@ function Section({ title, items, onApplyAction }) {
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <span>{action.label}</span>
-                      {typeof action.impact?.riskScoreDelta === "number" && (
+                      {showTechnicalInfo && typeof action.impact?.riskScoreDelta === "number" && (
                         <span style={{ fontSize: 12, color: N.sub }}>
                           {action.impact.riskScoreDelta < 0
                             ? `Risk ${action.impact.riskScoreDelta}`
@@ -133,6 +197,7 @@ export default function App() {
   const [sec, setSec] = useState(0);
   const [plan, setPlan] = useState(() => defaultPlan({ year: 2026 }));
   const [preset, setPreset] = useState("BALANCED");
+  const [kyData, setKyData] = useState({ nimi: "", registrikood: "", aadress: "" });
 
   const derived = useMemo(() => computePlan(plan), [plan]);
 
@@ -147,6 +212,7 @@ export default function App() {
   const [pilotFeedbackOpen, setPilotFeedbackOpen] = useState(false);
   const [showTechnicalInfo, setShowTechnicalInfo] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [periodParts, setPeriodParts] = useState({ sd: "", sm: "", sy: "", ed: "", em: "", ey: "" });
 
   const onPrint = () => {
     setIsPrinting(true);
@@ -244,6 +310,7 @@ export default function App() {
       policyVersion: evaluation?.policyVersion ?? "",
       stateSignature: buildStateSignature(plan),
       state: plan,
+      kyData,
     };
     const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -298,6 +365,15 @@ export default function App() {
           setHostPreset(data.preset);
         }
         setPlan(candidateState);
+        // Sync KÜ data
+        if (data.kyData) setKyData(data.kyData);
+        // Sync period dropdowns
+        const _ps = candidateState.period?.start?.split("-") || [];
+        const _pe = candidateState.period?.end?.split("-") || [];
+        setPeriodParts({
+          sd: Number(_ps[2]) || "", sm: Number(_ps[1]) || "", sy: Number(_ps[0]) || "",
+          ed: Number(_pe[2]) || "", em: Number(_pe[1]) || "", ey: Number(_pe[0]) || "",
+        });
         setSolvereMetrics(dryRunResult.metrics);
         setEvaluation(ev);
         setImportError(null);
@@ -456,7 +532,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
 };
 
   const addLoan = () => {
-    setPlan(p => ({ ...p, loans: [...p.loans, mkLoan({ principalEUR: 50000, startYM: `${p.period.year}-01` })] }));
+    setPlan(p => ({ ...p, loans: [...p.loans, mkLoan()] }));
   };
 
   const updateLoan = (id, patch) => {
@@ -467,32 +543,92 @@ const removeInvFundingRow = (invId, rowIndex) => {
     setPlan(p => ({ ...p, loans: p.loans.filter(ln => ln.id !== id) }));
   };
 
+  // Auto-add one empty row when section is empty (setPlan, not addX — idempotent even if effect fires twice)
+  useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [mkApartment()] } })); }, [plan.building.apartments.length]);
+  useEffect(() => { if (plan.investmentsPipeline.items.length === 0) setPlan(p => ({ ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [mkInvestmentItem()] } })); }, [plan.investmentsPipeline.items.length]);
+  useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [mkCashflowRow({ side: "COST" })] } })); }, [plan.budget.costRows.length]);
+  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [mkCashflowRow({ side: "INCOME" })] } })); }, [plan.budget.incomeRows.length]);
+  useEffect(() => { if (plan.loans.length === 0) setPlan(p => ({ ...p, loans: [mkLoan()] })); }, [plan.loans.length]);
+
   const SECS = ["Periood & korterid", "Investeeringud", "Kulud", "Tulud", "Fondid & laen", "Korterite maksed", "Kontroll & kokkuvõte"];
 
+  const clearSection = (tabIdx) => {
+    if (!window.confirm("Kas soovid selle jaotise andmed kustutada? Seda ei saa tagasi võtta.")) return;
+    if (tabIdx === 0) { setPeriodParts({ sd: "", sm: "", sy: "", ed: "", em: "", ey: "" }); setKyData({ nimi: "", registrikood: "", aadress: "" }); }
+    setPlan(p => {
+      if (tabIdx === 0) return { ...p, period: { ...p.period, start: "", end: "" }, building: { ...p.building, apartments: [] } };
+      if (tabIdx === 1) return { ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [] } };
+      if (tabIdx === 2) return { ...p, budget: { ...p.budget, costRows: [] } };
+      if (tabIdx === 3) return { ...p, budget: { ...p.budget, incomeRows: [] } };
+      if (tabIdx === 4) return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, loans: [] };
+      return p;
+    });
+  };
+  const clearBtn = (tabIdx) => (
+    <button onClick={() => clearSection(tabIdx)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: N.dim, textDecoration: "underline", padding: 0 }}>
+      Tühjenda
+    </button>
+  );
+
+  // ── Tab completion status: "empty" | "partial" | "done" ──
+  const hasPeriod = plan.period.start && plan.period.end;
+  const hasApts = plan.building.apartments.length > 0;
+  const tabStatus = [
+    // 0: Periood & korterid
+    (hasPeriod && hasApts) ? "done" : (plan.period.start || plan.period.end || hasApts) ? "partial" : "empty",
+    // 1: Investeeringud
+    plan.investmentsPipeline.items.length > 0 ? "done" : "empty",
+    // 2: Kulud
+    plan.budget.costRows.length > 0 ? "done" : "empty",
+    // 3: Tulud
+    plan.budget.incomeRows.length > 0 ? "done" : "empty",
+    // 4: Fondid & laen
+    (plan.loans.length > 0 || plan.funds.repairFund.monthlyRateEurPerM2 > 0) ? "done" : "empty",
+    // 5: Korterite maksed
+    (hasApts && hasPeriod) ? "done" : hasApts ? "partial" : "empty",
+    // 6: Kontroll & kokkuvõte
+    (hasApts && hasPeriod) ? "done" : hasApts ? "partial" : "empty",
+  ];
+
+  const statusDot = (status) => {
+    if (status === "done") return { display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#7dab6e", flexShrink: 0 };
+    if (status === "partial") return { display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#c9a96e", flexShrink: 0 };
+    return { display: "inline-block", width: 8, height: 8, borderRadius: "50%", border: "1.5px solid #6b6560", background: "transparent", flexShrink: 0, boxSizing: "border-box" };
+  };
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", minHeight: "100vh", background: N.bg }}>
-      <aside style={{ background: "#111827", color: "#e5e7eb", padding: 16 }}>
-        <div style={{ fontWeight: 800, marginBottom: 12 }}>Majanduskava</div>
+    <div style={{ display: "flex", minHeight: "100vh", background: N.bg, fontSize: 15, color: N.text }}>
+      {/* ── Sidebar navigation ── */}
+      <aside style={{
+        width: 220, minWidth: 220, background: N.sidebar,
+        display: "flex", flexDirection: "column",
+        padding: "16px 0", overflowY: "auto",
+        borderRight: `1px solid ${N.border}`,
+      }}>
         {SECS.map((name, i) => (
-          <div
+          <button
             key={name}
             onClick={() => setSec(i)}
             style={{
-              padding: "10px 12px",
-              borderRadius: 10,
+              background: sec === i ? "rgba(255,255,255,0.05)" : "transparent",
+              border: "none", borderLeft: sec === i ? "2px solid #c4b08a" : "2px solid transparent",
+              padding: "12px 16px",
+              fontSize: 14,
+              textAlign: "left",
               cursor: "pointer",
-              marginBottom: 6,
-              background: sec === i ? "#f59e0b" : "transparent",
-              color: sec === i ? "#111827" : "#e5e7eb",
-              fontWeight: sec === i ? 800 : 500,
+              color: sec === i ? "#e8e4df" : "#a39e97",
+              fontWeight: sec === i ? 600 : 400,
+              display: "flex", alignItems: "center", gap: 8,
             }}
           >
+            <span style={statusDot(tabStatus[i])} />
             {name}
-          </div>
+          </button>
         ))}
+
       </aside>
 
-      <main style={{ padding: 18, maxWidth: 1100, position: "relative" }}>
+      <main style={{ flex: 1, padding: 24, overflowY: "auto", maxWidth: 1100, boxSizing: "border-box", position: "relative" }}>
         {import.meta.env.DEV && (
           <div style={{
             position: "absolute", top: 8, right: 12,
@@ -508,40 +644,175 @@ const removeInvFundingRow = (invId, rowIndex) => {
         )}
         {sec === 0 && (
           <div style={tabStack}>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(0)}</div>
+
+            {/* KÜ andmed */}
             <div style={card}>
-              <h2 style={{ margin: "0 0 12px" }}>Periood</h2>
-              <div style={{ display: "flex", gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={fieldLabel}>Algus</div>
+              <div style={{ ...sectionTitle, marginBottom: 12 }}>Korteriühistu andmed</div>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 200px" }}>
+                  <div style={fieldLabel}>KÜ nimi</div>
                   <input
-                    type="date"
-                    value={plan.period.start}
-                    onChange={(e) => setPlan(p => ({ ...p, period: { ...p.period, start: e.target.value } }))}
+                    type="text"
+                    placeholder="nt KÜ Tamme 5"
+                    value={kyData.nimi}
+                    onChange={(e) => setKyData(prev => ({ ...prev, nimi: e.target.value }))}
                     style={inputStyle}
                   />
-                  <div style={{ marginTop: 4, fontSize: 12, fontFamily: "monospace", color: N.dim }}>{formatDateEE(plan.period.start)}</div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={fieldLabel}>Lõpp</div>
+                <div style={{ flex: "1 1 160px" }}>
+                  <div style={fieldLabel}>Registrikood</div>
                   <input
-                    type="date"
-                    value={plan.period.end}
-                    onChange={(e) => setPlan(p => ({ ...p, period: { ...p.period, end: e.target.value } }))}
+                    type="text"
+                    placeholder="nt 80123456"
+                    value={kyData.registrikood}
+                    onChange={(e) => setKyData(prev => ({ ...prev, registrikood: e.target.value }))}
                     style={inputStyle}
                   />
-                  <div style={{ marginTop: 4, fontSize: 12, fontFamily: "monospace", color: N.dim }}>{formatDateEE(plan.period.end)}</div>
+                </div>
+                <div style={{ flex: "1 1 240px" }}>
+                  <div style={fieldLabel}>Aadress</div>
+                  <input
+                    type="text"
+                    placeholder="nt Tamme 5, 51008 Tartu"
+                    value={kyData.aadress}
+                    onChange={(e) => setKyData(prev => ({ ...prev, aadress: e.target.value }))}
+                    style={inputStyle}
+                  />
                 </div>
               </div>
             </div>
 
+            {(() => {
+              const YEARS = [2024, 2025, 2026, 2027, 2028, 2029, 2030];
+              const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+              const daysInMonth = (m, y) => (m && y) ? new Date(y, m, 0).getDate() : 31;
+              const toISO = (d, m, y) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+              const pp = periodParts;
+
+              const updateStart = (key, val) => {
+                const next = { ...pp, [key]: Number(val) };
+                // Algusaasta muutmisel → lõppaasta kaasa
+                if (key === "sy" && Number(val)) {
+                  next.ey = Number(val);
+                  // Clamp end day if needed
+                  if (next.em && next.ey && next.ed > daysInMonth(next.em, next.ey)) {
+                    next.ed = daysInMonth(next.em, next.ey);
+                  }
+                }
+                // Clamp start day to valid range
+                if (next.sm && next.sy && next.sd > daysInMonth(next.sm, next.sy)) {
+                  next.sd = daysInMonth(next.sm, next.sy);
+                }
+                setPeriodParts(next);
+                if (next.sd && next.sm && next.sy) {
+                  const iso = toISO(next.sd, next.sm, next.sy);
+                  setPlan(p => {
+                    const upd = { ...p, period: { ...p.period, start: iso, year: next.sy } };
+                    if (!p.period.end && !next.ed) {
+                      upd.period.end = `${next.sy}-12-31`;
+                      next.ed = 31; next.em = 12; next.ey = next.sy;
+                      setPeriodParts({ ...next });
+                    }
+                    // Sync end ISO if end parts are complete
+                    if (next.ed && next.em && next.ey) {
+                      upd.period.end = toISO(next.ed, next.em, next.ey);
+                    }
+                    return upd;
+                  });
+                }
+              };
+
+              const updateEnd = (key, val) => {
+                const next = { ...pp, [key]: Number(val) };
+                if (next.em && next.ey && next.ed > daysInMonth(next.em, next.ey)) {
+                  next.ed = daysInMonth(next.em, next.ey);
+                }
+                setPeriodParts(next);
+                if (next.ed && next.em && next.ey) {
+                  setPlan(p => ({ ...p, period: { ...p.period, end: toISO(next.ed, next.em, next.ey) } }));
+                }
+              };
+
+              const sDays = daysInMonth(pp.sm, pp.sy);
+              const eDays = daysInMonth(pp.em, pp.ey);
+              const ddStyle = { ...selectStyle, minWidth: 70, appearance: "auto" };
+
+              return (
+                <div style={card}>
+                  <div style={{ ...sectionTitle, marginBottom: 12 }}>Periood</div>
+                  <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+                    <div>
+                      <div style={fieldLabel}>Algus</div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <select value={pp.sd || ""} onChange={(ev) => updateStart("sd", ev.target.value)} style={ddStyle}>
+                          <option value="">PP</option>
+                          {Array.from({ length: sDays }, (_, i) => i + 1).map(d => (
+                            <option key={d} value={d}>{String(d).padStart(2, "0")}</option>
+                          ))}
+                        </select>
+                        <select value={pp.sm || ""} onChange={(ev) => updateStart("sm", ev.target.value)} style={ddStyle}>
+                          <option value="">KK</option>
+                          {MONTHS.map(m => (
+                            <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
+                          ))}
+                        </select>
+                        <select value={pp.sy || ""} onChange={(ev) => updateStart("sy", ev.target.value)} style={{ ...ddStyle, minWidth: 85 }}>
+                          <option value="">AAAA</option>
+                          {YEARS.map(y => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <div style={fieldLabel}>Lõpp</div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <select value={pp.ed || ""} onChange={(ev) => updateEnd("ed", ev.target.value)} style={ddStyle}>
+                          <option value="">PP</option>
+                          {Array.from({ length: eDays }, (_, i) => i + 1).map(d => (
+                            <option key={d} value={d}>{String(d).padStart(2, "0")}</option>
+                          ))}
+                        </select>
+                        <select value={pp.em || ""} onChange={(ev) => updateEnd("em", ev.target.value)} style={ddStyle}>
+                          <option value="">KK</option>
+                          {MONTHS.map(m => (
+                            <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
+                          ))}
+                        </select>
+                        <select value={pp.ey || ""} onChange={(ev) => updateEnd("ey", ev.target.value)} style={{ ...ddStyle, minWidth: 85 }}>
+                          <option value="">AAAA</option>
+                          {YEARS.map(y => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  {pp.sd && pp.sm && pp.sy && pp.ed && pp.em && pp.ey && (
+                    <div style={{ marginTop: 12, fontSize: 15, fontFamily: "monospace", color: N.text }}>
+                      {String(pp.sd).padStart(2, "0")}.{String(pp.sm).padStart(2, "0")}.{pp.sy} – {String(pp.ed).padStart(2, "0")}.{String(pp.em).padStart(2, "0")}.{pp.ey}
+                    </div>
+                  )}
+                  {pp.sd && pp.sm && pp.sy && pp.ed && pp.em && pp.ey &&
+                    new Date(pp.sy, pp.sm - 1, pp.sd) > new Date(pp.ey, pp.em - 1, pp.ed) && (
+                    <div style={{ marginTop: 6, fontSize: 13, color: "#dc2626" }}>
+                      ⚠ Alguskuupäev on hilisem kui lõppkuupäev
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             <div style={card}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <h2 style={{ margin: 0 }}>Korterid</h2>
-                <button style={btn} onClick={addApartment}>+ Lisa korter</button>
+              <div style={{ marginBottom: 12 }}>
+                <div style={sectionTitle}>Korterid</div>
               </div>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div style={tableWrap}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 500 }}>
                 <thead>
-                  <tr style={{ textAlign: "left", fontSize: 12, color: N.sub }}>
+                  <tr style={thRow}>
                     <th style={{ padding: "6px 8px" }}>Tähis</th>
                     <th style={{ padding: "6px 8px", textAlign: "right" }}>Pind m²</th>
                     <th style={{ padding: "6px 8px", textAlign: "right" }}>Osa</th>
@@ -553,21 +824,25 @@ const removeInvFundingRow = (invId, rowIndex) => {
                   {apts.map((a, idx) => {
                     const share = derived.building.totAreaM2 > 0 ? (a.areaM2 / derived.building.totAreaM2) : 0;
                     return (
-                      <tr key={a.id} style={{ borderTop: `1px solid ${N.rule}` }}>
+                      <tr key={a.id} style={tdSep}>
                         <td style={{ padding: "6px 8px" }}><input value={a.label} onChange={(e) => updateApartment(a.id, { label: e.target.value })} style={inputStyle} /></td>
-                        <td style={{ padding: "6px 8px" }}><input value={a.areaM2} onChange={(e) => updateApartment(a.id, { areaM2: Number(e.target.value) || 0 })} onFocus={numFocus} style={numStyle} /></td>
+                        <td style={{ padding: "6px 8px" }}><NumberInput value={a.areaM2} onChange={(v) => updateApartment(a.id, { areaM2: v })} style={numStyle} /></td>
                         <td style={{ padding: "6px 8px", textAlign: "right", fontFamily: "monospace" }}>{(share * 100).toFixed(2)}%</td>
                         <td style={{ padding: "6px 8px" }}><input value={a.notes} onChange={(e) => updateApartment(a.id, { notes: e.target.value })} style={inputStyle} /></td>
                         <td style={{ padding: "6px 8px", textAlign: "right" }}>
-                          <button style={btn} onClick={() => removeApartment(a.id)}>×</button>
+                          <button style={btnRemove} onClick={() => removeApartment(a.id)}>×</button>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
+              </div>
               <div style={{ marginTop: 12, fontFamily: "monospace" }}>
                 Kokku: {derived.building.apartmentsCount} korterit · {derived.building.totAreaM2.toFixed(2)} m²
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <button style={btnAdd} onClick={addApartment}>+ Lisa korter</button>
               </div>
             </div>
           </div>
@@ -575,13 +850,11 @@ const removeInvFundingRow = (invId, rowIndex) => {
 
         {sec === 1 && (
           <div style={tabStack}>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(1)}</div>
             <div style={card}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <h2 style={{ margin: 0 }}>Investeeringud (pipeline)</h2>
-                <button style={btn} onClick={addInvestment}>+ Lisa investeering</button>
+              <div style={{ marginBottom: 12 }}>
+                <div style={sectionTitle}>Investeeringud</div>
               </div>
-
-              {plan.investmentsPipeline.items.length === 0 && <div style={{ opacity: 0.7 }}>Investeeringuid pole lisatud.</div>}
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {plan.investmentsPipeline.items.map(it => (
@@ -593,30 +866,30 @@ const removeInvFundingRow = (invId, rowIndex) => {
                       </div>
                       <div style={{ width: 120 }}>
                         <div style={fieldLabel}>Aasta</div>
-                        <input value={it.plannedYear} onChange={(e) => updateInvestment(it.id, { plannedYear: Number(e.target.value) || plan.period.year })} onFocus={numFocus} style={numStyle} />
+                        <NumberInput value={it.plannedYear} onChange={(v) => updateInvestment(it.id, { plannedYear: v || plan.period.year })} style={numStyle} />
                       </div>
                       <div style={{ width: 120 }}>
                         <div style={fieldLabel}>Kvartal</div>
-                        <select value={it.quarter} onChange={(e) => updateInvestment(it.id, { quarter: e.target.value })} style={inputStyle}>
+                        <select value={it.quarter} onChange={(e) => updateInvestment(it.id, { quarter: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
                           <option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option>
                         </select>
                       </div>
                       <div style={{ width: 160 }}>
                         <div style={fieldLabel}>Maksumus €</div>
-                        <input value={it.totalCostEUR} onChange={(e) => updateInvestment(it.id, { totalCostEUR: Number(e.target.value) || 0 })} onFocus={numFocus} style={numStyle} />
+                        <NumberInput value={it.totalCostEUR} onChange={(v) => updateInvestment(it.id, { totalCostEUR: v })} style={numStyle} />
                       </div>
                     </div>
 
                     <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${N.rule}` }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ fontSize: 12, fontWeight: 700 }}>Rahastusplaan</div>
-                        <button style={btn} onClick={() => addInvFundingRow(it.id)}>
+                        <button style={btnAdd} onClick={() => addInvFundingRow(it.id)}>
                           + Lisa rahastusrida
                         </button>
                       </div>
 
                       {(it.fundingPlan || []).length === 0 && (
-                        <div style={{ marginTop: 8, fontSize: 12, color: N.sub }}>
+                        <div style={{ ...helperText, marginTop: 8 }}>
                           Rahastusridu pole lisatud.
                         </div>
                       )}
@@ -628,7 +901,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
                             onChange={(e) =>
                               updateInvFundingRow(it.id, index, { source: e.target.value })
                             }
-                            style={inputStyle}
+                            style={selectStyle}
                           >
                             <option value="REPAIR_FUND">Remondifond</option>
                             <option value="RESERVE">Reservkapital</option>
@@ -637,18 +910,13 @@ const removeInvFundingRow = (invId, rowIndex) => {
                             <option value="ONE_OFF">Erakorraline makse</option>
                           </select>
 
-                          <input
-                            type="number"
+                          <NumberInput
                             value={row.amountEUR}
-                            onChange={(e) =>
-                              updateInvFundingRow(it.id, index, {
-                                amountEUR: Number(e.target.value) || 0,
-                              })
-                            }
-                            onFocus={numFocus} style={numStyle}
+                            onChange={(v) => updateInvFundingRow(it.id, index, { amountEUR: v })}
+                            style={numStyle}
                           />
 
-                          <button onClick={() => removeInvFundingRow(it.id, index)} style={btn}>
+                          <button onClick={() => removeInvFundingRow(it.id, index)} style={btnRemove}>
                             Eemalda
                           </button>
                         </div>
@@ -661,6 +929,9 @@ const removeInvFundingRow = (invId, rowIndex) => {
               <div style={{ marginTop: 12, fontFamily: "monospace" }}>
                 Selle aasta investeeringud: {derived.investments.thisYearCount} · maksumus {euro(derived.investments.costThisYearEUR)}
               </div>
+              <div style={{ marginTop: 8 }}>
+                <button style={btnAdd} onClick={addInvestment}>+ Lisa investeering</button>
+              </div>
             </div>
           </div>
         )}
@@ -670,13 +941,11 @@ const removeInvFundingRow = (invId, rowIndex) => {
           const rows = side === "COST" ? plan.budget.costRows : plan.budget.incomeRows;
           return (
             <div style={tabStack}>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(sec)}</div>
               <div style={card}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <h2 style={{ margin: 0 }}>{side === "COST" ? "Kulud" : "Tulud"}</h2>
-                  <button style={btn} onClick={() => addRow(side)}>+ Lisa rida</button>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={sectionTitle}>{side === "COST" ? "Kulud" : "Tulud"}</div>
                 </div>
-
-                {rows.length === 0 && <div style={{ opacity: 0.7 }}>Ridu pole lisatud.</div>}
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {rows.map(r => (
@@ -700,7 +969,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
                                 { qty: 0, unitEUR: 0 };
                               updateRow(side, r.id, { calc: { type: t, params } });
                             }}
-                            style={inputStyle}
+                            style={{ ...selectStyle, width: "100%" }}
                           >
                             <option value="FIXED_PERIOD">Perioodisumma</option>
                             <option value="MONTHLY_FIXED">Kuutasu</option>
@@ -712,39 +981,42 @@ const removeInvFundingRow = (invId, rowIndex) => {
                         <div style={{ width: 180 }}>
                           <div style={fieldLabel}>Summa / parameeter</div>
                           {r.calc.type === "FIXED_PERIOD" && (
-                            <input value={r.calc.params.amountEUR} onChange={(e) => updateRow(side, r.id, { calc: { ...r.calc, params: { amountEUR: Number(e.target.value) || 0 } } })} onFocus={numFocus} style={numStyle} />
+                            <NumberInput value={r.calc.params.amountEUR} onChange={(v) => updateRow(side, r.id, { calc: { ...r.calc, params: { amountEUR: v } } })} style={numStyle} />
                           )}
                           {r.calc.type === "MONTHLY_FIXED" && (
-                            <input value={r.calc.params.monthlyEUR} onChange={(e) => updateRow(side, r.id, { calc: { ...r.calc, params: { monthlyEUR: Number(e.target.value) || 0 } } })} onFocus={numFocus} style={numStyle} />
+                            <NumberInput value={r.calc.params.monthlyEUR} onChange={(v) => updateRow(side, r.id, { calc: { ...r.calc, params: { monthlyEUR: v } } })} style={numStyle} />
                           )}
                           {r.calc.type === "ANNUAL_FIXED" && (
-                            <input value={r.calc.params.annualEUR} onChange={(e) => updateRow(side, r.id, { calc: { ...r.calc, params: { annualEUR: Number(e.target.value) || 0 } } })} onFocus={numFocus} style={numStyle} />
+                            <NumberInput value={r.calc.params.annualEUR} onChange={(v) => updateRow(side, r.id, { calc: { ...r.calc, params: { annualEUR: v } } })} style={numStyle} />
                           )}
                           {r.calc.type === "QTY_PRICE_ANNUAL" && (
                             <div style={{ display: "flex", gap: 8 }}>
-                              <input value={r.calc.params.qty} onChange={(e) => updateRow(side, r.id, { calc: { ...r.calc, params: { ...r.calc.params, qty: Number(e.target.value) || 0 } } })} onFocus={numFocus} style={numStyle} />
-                              <input value={r.calc.params.unitEUR} onChange={(e) => updateRow(side, r.id, { calc: { ...r.calc, params: { ...r.calc.params, unitEUR: Number(e.target.value) || 0 } } })} onFocus={numFocus} style={numStyle} />
+                              <NumberInput value={r.calc.params.qty} onChange={(v) => updateRow(side, r.id, { calc: { ...r.calc, params: { ...r.calc.params, qty: v } } })} style={numStyle} />
+                              <NumberInput value={r.calc.params.unitEUR} onChange={(v) => updateRow(side, r.id, { calc: { ...r.calc, params: { ...r.calc.params, unitEUR: v } } })} style={numStyle} />
                             </div>
                           )}
                         </div>
 
                         <div style={{ width: 120, alignSelf: "end" }}>
-                          <button style={btn} onClick={() => removeRow(side, r.id)}>Eemalda</button>
+                          <button style={btnRemove} onClick={() => removeRow(side, r.id)}>Eemalda</button>
                         </div>
                       </div>
 
-                      <div style={{ marginTop: 6, fontSize: 12, color: N.sub }}>
+                      <div style={{ ...helperText, marginTop: 6 }}>
                         Legal: {r.legal.bucket}/{r.legal.category}{r.legal.targetedFund ? ` (${r.legal.targetedFund})` : ""}
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div style={{ marginTop: 12, fontFamily: "monospace" }}>
+                <div style={{ ...helperText, marginTop: 12, fontFamily: "monospace" }}>
                   {side === "COST"
                     ? <>Kulud perioodis: {euro(derived.totals.costPeriodEUR)} · kuus {euro(derived.totals.costMonthlyEUR)}/kuu</>
                     : <>Tulud perioodis: {euro(derived.totals.incomePeriodEUR)} · kuus {euro(derived.totals.incomeMonthlyEUR)}/kuu</>
                   }
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <button style={btnAdd} onClick={() => addRow(side)}>+ Lisa rida</button>
                 </div>
               </div>
             </div>
@@ -753,16 +1025,17 @@ const removeInvFundingRow = (invId, rowIndex) => {
 
         {sec === 4 && (
           <div style={tabStack}>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(4)}</div>
             <div style={card}>
-              <h2 style={{ margin: "0 0 12px" }}>Remondifond & reserv</h2>
+              <div style={{ ...sectionTitle, marginBottom: 12 }}>Remondifond & reserv</div>
 
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ width: 220 }}>
                   <div style={fieldLabel}>Remondifondi määr (€/m²/kuu)</div>
-                  <input
+                  <NumberInput
                     value={plan.funds.repairFund.monthlyRateEurPerM2}
-                    onChange={(e) => setPlan(p => ({ ...p, funds: { ...p.funds, repairFund: { monthlyRateEurPerM2: Number(e.target.value) || 0 } } }))}
-                    onFocus={numFocus} style={numStyle}
+                    onChange={(v) => setPlan(p => ({ ...p, funds: { ...p.funds, repairFund: { monthlyRateEurPerM2: v } } }))}
+                    style={numStyle}
                   />
                 </div>
 
@@ -775,10 +1048,10 @@ const removeInvFundingRow = (invId, rowIndex) => {
 
                 <div style={{ width: 220 }}>
                   <div style={fieldLabel}>Planeeritud reserv €</div>
-                  <input
+                  <NumberInput
                     value={plan.funds.reserve.plannedEUR}
-                    onChange={(e) => setPlan(p => ({ ...p, funds: { ...p.funds, reserve: { ...p.funds.reserve, plannedEUR: Number(e.target.value) || 0 } } }))}
-                    onFocus={numFocus} style={numStyle}
+                    onChange={(v) => setPlan(p => ({ ...p, funds: { ...p.funds, reserve: { ...p.funds.reserve, plannedEUR: v } } }))}
+                    style={numStyle}
                   />
                 </div>
 
@@ -792,12 +1065,9 @@ const removeInvFundingRow = (invId, rowIndex) => {
             </div>
 
             <div style={card}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <h2 style={{ margin: 0 }}>Laenud</h2>
-                <button style={btn} onClick={addLoan}>+ Lisa laen</button>
+              <div style={{ marginBottom: 12 }}>
+                <div style={sectionTitle}>Laenud</div>
               </div>
-
-              {plan.loans.length === 0 && <div style={{ opacity: 0.7 }}>Laene pole lisatud.</div>}
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {plan.loans.map(ln => {
@@ -807,31 +1077,31 @@ const removeInvFundingRow = (invId, rowIndex) => {
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                         <div style={{ flex: 2 }}>
                           <div style={fieldLabel}>Nimi</div>
-                          <input value={ln.name} onChange={(e) => updateLoan(ln.id, { name: e.target.value })} style={inputStyle} />
+                          <input value={ln.name} onChange={(e) => updateLoan(ln.id, { name: e.target.value })} placeholder="nt Renoveerimislaen" style={inputStyle} />
                         </div>
                         <div style={{ width: 160 }}>
                           <div style={fieldLabel}>Summa €</div>
-                          <input value={ln.principalEUR} onChange={(e) => updateLoan(ln.id, { principalEUR: Number(e.target.value) || 0 })} onFocus={numFocus} style={numStyle} />
+                          <NumberInput value={ln.principalEUR} onChange={(v) => updateLoan(ln.id, { principalEUR: v })} style={numStyle} />
                         </div>
                         <div style={{ width: 140 }}>
                           <div style={fieldLabel}>Intress %/a</div>
-                          <input value={ln.annualRatePct} onChange={(e) => updateLoan(ln.id, { annualRatePct: Number(e.target.value) || 0 })} onFocus={numFocus} style={numStyle} />
+                          <NumberInput value={ln.annualRatePct} onChange={(v) => updateLoan(ln.id, { annualRatePct: v })} style={numStyle} />
                         </div>
                         <div style={{ width: 140 }}>
                           <div style={fieldLabel}>Tähtaeg kuud</div>
-                          <input value={ln.termMonths} onChange={(e) => updateLoan(ln.id, { termMonths: Number(e.target.value) || 0 })} onFocus={numFocus} style={numStyle} />
+                          <NumberInput value={ln.termMonths} onChange={(v) => updateLoan(ln.id, { termMonths: v })} style={numStyle} />
                         </div>
                         <div style={{ width: 140 }}>
                           <div style={fieldLabel}>Algus (KK.AAAA)</div>
                           <input value={ln.startYM} onChange={(e) => updateLoan(ln.id, { startYM: e.target.value })} style={inputStyle} />
-                          <div style={{ marginTop: 4, fontSize: 12, fontFamily: "monospace", color: N.dim }}>{formatYMEE(ln.startYM)}</div>
+                          <div style={{ ...helperText, marginTop: 4, fontFamily: "monospace" }}>{formatYMEE(ln.startYM)}</div>
                         </div>
                         <div style={{ width: 140 }}>
-                          <div style={fieldLabel}>Reserv %</div>
-                          <input value={ln.reservePct} onChange={(e) => updateLoan(ln.id, { reservePct: Number(e.target.value) || 0 })} onFocus={numFocus} style={numStyle} />
+                          <div style={fieldLabel}>Laenumakse reserv %</div>
+                          <NumberInput value={ln.reservePct} onChange={(v) => updateLoan(ln.id, { reservePct: v })} style={numStyle} />
                         </div>
                         <div style={{ width: 120, alignSelf: "end" }}>
-                          <button style={btn} onClick={() => removeLoan(ln.id)}>Eemalda</button>
+                          <button style={btnRemove} onClick={() => removeLoan(ln.id)}>Eemalda</button>
                         </div>
                       </div>
 
@@ -848,6 +1118,9 @@ const removeInvFundingRow = (invId, rowIndex) => {
               <div style={{ marginTop: 12, fontFamily: "monospace" }}>
                 Laenuteenindus kokku perioodis: {euro(derived.loans.servicePeriodEUR)} · laenureserv perioodis: {euro(derived.loans.reservePeriodEUR)}
               </div>
+              <div style={{ marginTop: 8 }}>
+                <button style={btnAdd} onClick={addLoan}>+ Lisa laen</button>
+              </div>
             </div>
           </div>
         )}
@@ -855,14 +1128,15 @@ const removeInvFundingRow = (invId, rowIndex) => {
         {sec === 5 && (
           <div style={tabStack}>
             <div style={card}>
-              <h2 style={{ margin: "0 0 12px" }}>Korterite kuumaksed (m² järgi)</h2>
-              <div style={{ fontFamily: "monospace", marginBottom: 12 }}>
+              <div style={{ ...sectionTitle, marginBottom: 12 }}>Korterite kuumaksed (m² järgi)</div>
+              <div style={{ ...helperText, fontFamily: "monospace", marginBottom: 12 }}>
                 Omanike kuuvajadus: {euro(derived.totals.ownersNeedMonthlyEUR)}/kuu
               </div>
 
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div style={tableWrap}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
                 <thead>
-                  <tr style={{ textAlign: "left", fontSize: 12, color: N.sub }}>
+                  <tr style={thRow}>
                     <th>Korter</th>
                     <th style={{ textAlign: "right" }}>m²</th>
                     <th style={{ textAlign: "right" }}>Osa</th>
@@ -873,7 +1147,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
                 </thead>
                 <tbody>
                   {derived.apartmentPayments.map(pmt => (
-                    <tr key={pmt.aptId} style={{ borderTop: `1px solid ${N.rule}` }}>
+                    <tr key={pmt.aptId} style={tdSep}>
                       <td><b>{pmt.label}</b></td>
                       <td style={{ textAlign: "right", fontFamily: "monospace" }}>{pmt.areaM2.toFixed(2)}</td>
                       <td style={{ textAlign: "right", fontFamily: "monospace" }}>{(pmt.share * 100).toFixed(2)}%</td>
@@ -884,6 +1158,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}
@@ -891,97 +1166,50 @@ const removeInvFundingRow = (invId, rowIndex) => {
         {sec === 6 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-            {/* ── Pilot checklist ── */}
-            {showTechnicalInfo && (
-            <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.surface }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.sub }}>
-                  Pilot launch checklist
-                </div>
-              </div>
-              {[
-                "Print vaade kontrollitud (Prindi kokkuvõte)",
-                "JSON export tehtud ja import round-trip kontrollitud",
-                "policyVersion / reportDigest / stateSignature kuvatud printis",
-                "loopGuard ei blokeeri (status OK)",
-                "Deploy URL avatud ja assets laadivad",
-                "Piloot: 1 ühistu sisestus testitud algusest lõpuni",
-              ].map((label) => (
-                <label key={label} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8, fontSize: 14, cursor: "pointer" }}>
-                  <input type="checkbox" style={{ marginTop: 3 }} />
-                  <span>{label}</span>
-                </label>
-              ))}
-              <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12, marginTop: 8 }}>
-                <span
-                  onClick={() => setPilotFeedbackOpen(v => !v)}
-                  style={{ fontSize: 13, color: "#2563eb", cursor: "pointer", textDecoration: "underline" }}
-                >
-                  {pilotFeedbackOpen ? "Peida juhis" : "Piloodi tagasiside — mida täpselt kirja panna"}
-                </span>
-                {pilotFeedbackOpen && (
-                  <div style={{ marginTop: 8, fontSize: 13, color: N.sub, lineHeight: 1.6 }}>
-                    <b>Kirjuta üles:</b>
-                    <ul style={{ marginTop: 4, paddingLeft: 20 }}>
-                      <li>Mis andmed sisestasid (korterite arv, pind, kulud, tulud, laenud)</li>
-                      <li>Kas "Rakenda soovitused" töötas ootuspäraselt — mitu sammu tehti, mis muutus</li>
-                      <li>Kas JSON export/import säilitas kõik andmed</li>
-                      <li>Kas prinditud kokkuvõte oli arusaadav</li>
-                      <li>Mis oli segane, puudu või valesti</li>
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-            )}
-
             {/* ── Kokkuvõte ── */}
             {(() => {
               const netState = derived.totals.netOperationalPeriodEUR >= 0 ? STATE.OK : STATE.ERROR;
-              const summaryCard = { border: `1px solid ${N.border}`, borderRadius: 12, padding: 16, background: N.surface };
               return (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
                   <div style={summaryCard}>
-                    <div style={{ fontFamily: "monospace", fontSize: 24, fontWeight: 900 }}>{euro(derived.totals.costPeriodEUR)}</div>
-                    <div style={{ fontSize: 12, color: N.sub, marginTop: 4 }}>Kulud perioodis</div>
-                    <div style={{ fontSize: 12, color: N.dim, marginTop: 2 }}>{euro(derived.totals.costMonthlyEUR)}/kuu</div>
+                    <div style={summaryNum}>{euro(derived.totals.costPeriodEUR)}</div>
+                    <div style={summaryLabel}>Kulud perioodis</div>
+                    <div style={summarySub}>{euro(derived.totals.costMonthlyEUR)}/kuu</div>
                   </div>
                   <div style={summaryCard}>
-                    <div style={{ fontFamily: "monospace", fontSize: 24, fontWeight: 900 }}>{euro(derived.totals.incomePeriodEUR)}</div>
-                    <div style={{ fontSize: 12, color: N.sub, marginTop: 4 }}>Tulud perioodis</div>
-                    <div style={{ fontSize: 12, color: N.dim, marginTop: 2 }}>{euro(derived.totals.incomeMonthlyEUR)}/kuu</div>
+                    <div style={summaryNum}>{euro(derived.totals.incomePeriodEUR)}</div>
+                    <div style={summaryLabel}>Tulud perioodis</div>
+                    <div style={summarySub}>{euro(derived.totals.incomeMonthlyEUR)}/kuu</div>
                   </div>
                   <div style={{ ...summaryCard, borderColor: netState.border, background: netState.bg }}>
-                    <div style={{ fontFamily: "monospace", fontSize: 24, fontWeight: 900, color: netState.color }}>
+                    <div style={{ ...summaryNum, color: netState.color }}>
                       {euro(derived.totals.netOperationalPeriodEUR)}
                     </div>
-                    <div style={{ fontSize: 12, color: netState.color, marginTop: 4 }}>Neto tegevus</div>
-                    <div style={{ fontSize: 12, color: N.dim, marginTop: 2 }}>{euro(derived.totals.netOperationalMonthlyEUR)}/kuu</div>
+                    <div style={{ ...summaryLabel, color: netState.color }}>Neto tegevus</div>
+                    <div style={summarySub}>{euro(derived.totals.netOperationalMonthlyEUR)}/kuu</div>
                   </div>
                   <div style={summaryCard}>
-                    <div style={{ fontFamily: "monospace", fontSize: 24, fontWeight: 900 }}>{euro(derived.totals.ownersNeedMonthlyEUR)}/kuu</div>
-                    <div style={{ fontSize: 12, color: N.sub, marginTop: 4 }}>Omanike kuumakse</div>
-                    <div style={{ fontSize: 12, color: N.dim, marginTop: 2 }}>= tegevus + laen + laenureserv</div>
+                    <div style={summaryNum}>{euro(derived.totals.ownersNeedMonthlyEUR)}/kuu</div>
+                    <div style={summaryLabel}>Omanike kuumakse</div>
+                    <div style={summarySub}>= tegevus + laen + laenureserv</div>
                   </div>
                 </div>
               );
             })()}
 
             {/* ── Poliitika & soovitused ── */}
-            <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.surface }}>
+            <div style={{ ...card, padding: 20 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.sub }}>
-                  Poliitika & soovitused
-                </div>
-                <span style={{ fontSize: 12, fontFamily: "monospace", color: N.sub }}>{preset}</span>
+                <div style={sectionTitle}>Poliitika & soovitused</div>
+                <span style={{ ...helperText, fontFamily: "monospace" }}>{preset}</span>
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                <div style={{ fontSize: 14, fontWeight: 700 }}>Preset</div>
+                <div style={fieldLabel}>Preset</div>
                 <select
                   value={preset}
                   onChange={(e) => setPreset(e.target.value)}
-                  style={{ borderRadius: 6, border: `1px solid ${N.border}`, background: N.surface, padding: "4px 8px", fontSize: 14 }}
+                  style={selectStyle}
                 >
                   <option value="BALANCED">BALANCED</option>
                   <option value="CONSERVATIVE">CONSERVATIVE</option>
@@ -993,14 +1221,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
                 <button
                   onClick={onSolveAll}
                   disabled={isSolving || !allActions.length}
-                  style={{
-                    ...btn,
-                    background: "#111827",
-                    color: "#fff",
-                    padding: "8px 12px",
-                    fontSize: 14,
-                    opacity: (isSolving || !allActions.length) ? 0.5 : 1,
-                  }}
+                  style={{ ...btnPrimary, opacity: (isSolving || !allActions.length) ? 0.5 : 1 }}
                 >
                   {isSolving ? "Rakendan…" : "Rakenda soovitused"}
                 </button>
@@ -1010,24 +1231,17 @@ const removeInvFundingRow = (invId, rowIndex) => {
               </div>
             </div>
 
-            {/* ── Riskitase ── */}
+            {/* ── Riskitase (band + reason only) ── */}
             {evaluation?.risk && (
-              <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.surface }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.sub }}>
-                    Riskitase
-                  </div>
+              <div style={{ ...card, padding: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={sectionTitle}>Riskitase</div>
                   <span style={stateBadge(evaluation.risk.level === "low" ? STATE.OK : evaluation.risk.level === "medium" ? STATE.WARN : STATE.ERROR)}>
                     {evaluation.risk.level.toUpperCase()}
                   </span>
                 </div>
-                {showTechnicalInfo && (
-                  <div style={{ fontSize: 30, fontWeight: 700 }}>
-                    {evaluation.risk.score}
-                  </div>
-                )}
                 {evaluation.risk.reason && (
-                  <div style={{ marginTop: 8, fontSize: 12, color: N.sub }}>
+                  <div style={{ ...helperText, marginTop: 8 }}>
                     {evaluation.risk.reason}
                   </div>
                 )}
@@ -1038,9 +1252,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
             {uiError && (
               <div style={{ border: `1px solid ${STATE.ERROR.border}`, borderRadius: 12, padding: 20, background: STATE.ERROR.bg }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: STATE.ERROR.color }}>
-                    Viga
-                  </div>
+                  <div style={{ ...sectionTitle, color: STATE.ERROR.color }}>Viga</div>
                   <span style={stateBadge(STATE.ERROR)}>ERROR</span>
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: STATE.ERROR.color }}>Ei saanud muudatust rakendada</div>
@@ -1062,80 +1274,22 @@ const removeInvFundingRow = (invId, rowIndex) => {
               return (
                 <>
                   {errors.length > 0 && (
-                    <Section title="Vead" items={errors} onApplyAction={onApplyAction} />
+                    <Section title="Vead" items={errors} onApplyAction={onApplyAction} showTechnicalInfo={showTechnicalInfo} />
                   )}
                   {warnings.length > 0 && (
-                    <Section title="Hoiatused" items={warnings} onApplyAction={onApplyAction} />
+                    <Section title="Hoiatused" items={warnings} onApplyAction={onApplyAction} showTechnicalInfo={showTechnicalInfo} />
                   )}
                   {infos.length > 0 && (
-                    <Section title="Info" items={infos} onApplyAction={onApplyAction} />
+                    <Section title="Info" items={infos} onApplyAction={onApplyAction} showTechnicalInfo={showTechnicalInfo} />
                   )}
                 </>
               );
             })()}
 
-            {/* ── TracePanel ── */}
-            {showTechnicalInfo && (
-              <TracePanel evaluation={evaluation} steps={solveAllResult?.steps} stop={solveAllResult?.stop} />
-            )}
-
-            {/* ── A) Vastavuse kokkuvõte (technical only) ── */}
-            {showTechnicalInfo && (
-              <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.surface }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.sub }}>
-                    Vastavuse kokkuvõte
-                  </div>
-                  {(() => {
-                    const candidates = evaluation?.actionCandidates ?? [];
-                    const eligible = candidates.filter(c => c.isEligible).length;
-                    const guardOk = eligible > 0 || candidates.length === 0;
-                    const reportOk = !solveAllResult?.report || solveAllResult.report.stop.reason === "NO_ACTIONS" || solveAllResult.report.final.riskScore === 0;
-                    const allOk = guardOk && reportOk;
-                    return (
-                      <span style={stateBadge(allOk ? STATE.OK : STATE.WARN)}>
-                        {allOk ? "OK" : "Kontrollida"}
-                      </span>
-                    );
-                  })()}
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                  <span style={{ fontSize: 13, color: N.sub, minWidth: 90 }}>loopGuard</span>
-                  {(() => {
-                    const candidates = evaluation?.actionCandidates ?? [];
-                    const eligible = candidates.filter(c => c.isEligible).length;
-                    const ok = eligible > 0 || candidates.length === 0;
-                    return (
-                      <span style={stateBadge(ok ? STATE.OK : STATE.ERROR)}>
-                        {ok ? "OK" : "BLOCKED"}
-                      </span>
-                    );
-                  })()}
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 13, color: N.sub, minWidth: 90 }}>RunReport</span>
-                  {(() => {
-                    if (!solveAllResult?.report) {
-                      return <span style={{ fontSize: 12, color: N.dim }}>Andmed puuduvad (Solve tegemata)</span>;
-                    }
-                    const r = solveAllResult.report;
-                    const ok = r.stop.reason === "NO_ACTIONS" || r.final.riskScore === 0;
-                    return (
-                      <span style={stateBadge(ok ? STATE.OK : STATE.WARN)}>
-                        {ok ? "OK" : "Tähelepanu vajab"}
-                      </span>
-                    );
-                  })()}
-                </div>
-              </div>
-            )}
-
             {/* ── Prindi + Ekspordi nupud (always visible) ── */}
             <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
               <button
-                style={{ ...btn, padding: "10px 16px", fontWeight: 800, opacity: derived.controls.hasErrors ? 0.5 : 1 }}
+                style={{ ...btnSecondary, padding: "10px 16px", opacity: derived.controls.hasErrors ? 0.5 : 1 }}
                 disabled={derived.controls.hasErrors}
                 onClick={onPrint}
                 title={derived.controls.hasErrors ? "Paranda vead enne printimist" : "Prindi"}
@@ -1144,20 +1298,15 @@ const removeInvFundingRow = (invId, rowIndex) => {
               </button>
             </div>
 
-            {/* ── B) Ekspordi / impordi ── */}
-            <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.surface }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.sub }}>
-                  Ekspordi / impordi
-                </div>
-                {showTechnicalInfo && <span style={{ fontSize: 11, fontFamily: "monospace", color: N.dim }}>majanduskavaExport/v1</span>}
-              </div>
+            {/* ── Ekspordi / impordi (buttons only, no version string) ── */}
+            <div style={{ ...card, padding: 20 }}>
+              <div style={{ ...sectionTitle, marginBottom: 16 }}>Ekspordi / impordi</div>
               <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                <button onClick={onExportJSON} style={{ ...btn, background: "#111827", color: "#fff" }}>
-                  Salvesta (JSON)
+                <button onClick={onExportJSON} style={btnSecondary}>
+                  Salvesta fail
                 </button>
-                <label style={{ ...btn, display: "inline-block", cursor: "pointer" }}>
-                  Laadi (JSON)
+                <label style={{ ...btnSecondary, display: "inline-block", cursor: "pointer" }}>
+                  Ava fail
                   <input
                     type="file"
                     accept=".json"
@@ -1173,102 +1322,214 @@ const removeInvFundingRow = (invId, rowIndex) => {
               )}
             </div>
 
-            {/* ── C) Süsteemi info ── */}
+            {/* ── Technical details (single conditional container) ── */}
             {showTechnicalInfo && (
-            <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.muted }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.dim }}>
-                  Süsteemi info
+              <div style={{ display: "flex", flexDirection: "column", gap: 16, borderTop: `2px dashed ${N.border}`, paddingTop: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: N.dim }}>
+                  Technical details
                 </div>
+
+                {/* Risk score */}
+                {evaluation?.risk && (
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ fontSize: 12, color: N.sub }}>Riskiskoor:</span>
+                    <span style={{ fontSize: 24, fontWeight: 700 }}>{evaluation.risk.score}</span>
+                  </div>
+                )}
+
+                {/* TracePanel */}
+                <TracePanel evaluation={evaluation} steps={solveAllResult?.steps} stop={solveAllResult?.stop} />
+
+                {/* Vastavuse kokkuvõte */}
+                <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.surface }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.sub }}>
+                      Vastavuse kokkuvõte
+                    </div>
+                    {(() => {
+                      const candidates = evaluation?.actionCandidates ?? [];
+                      const eligible = candidates.filter(c => c.isEligible).length;
+                      const guardOk = eligible > 0 || candidates.length === 0;
+                      const reportOk = !solveAllResult?.report || solveAllResult.report.stop.reason === "NO_ACTIONS" || solveAllResult.report.final.riskScore === 0;
+                      const allOk = guardOk && reportOk;
+                      return (
+                        <span style={stateBadge(allOk ? STATE.OK : STATE.WARN)}>
+                          {allOk ? "OK" : "Kontrollida"}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                    <span style={{ fontSize: 13, color: N.sub, minWidth: 90 }}>loopGuard</span>
+                    {(() => {
+                      const candidates = evaluation?.actionCandidates ?? [];
+                      const eligible = candidates.filter(c => c.isEligible).length;
+                      const ok = eligible > 0 || candidates.length === 0;
+                      return (
+                        <span style={stateBadge(ok ? STATE.OK : STATE.ERROR)}>
+                          {ok ? "OK" : "BLOCKED"}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 13, color: N.sub, minWidth: 90 }}>RunReport</span>
+                    {(() => {
+                      if (!solveAllResult?.report) {
+                        return <span style={{ fontSize: 12, color: N.dim }}>Andmed puuduvad (Solve tegemata)</span>;
+                      }
+                      const r = solveAllResult.report;
+                      const ok = r.stop.reason === "NO_ACTIONS" || r.final.riskScore === 0;
+                      return (
+                        <span style={stateBadge(ok ? STATE.OK : STATE.WARN)}>
+                          {ok ? "OK" : "Tähelepanu vajab"}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Ekspordi versioon */}
+                <div style={{ fontSize: 11, fontFamily: "monospace", color: N.dim }}>
+                  majanduskavaExport/v1
+                </div>
+
+                {/* Süsteemi info */}
+                <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.muted }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.dim, marginBottom: 16 }}>
+                    Süsteemi info
+                  </div>
+                  {[
+                    { label: "Core Contract", value: SOLVERE_CORE_CONTRACT_VERSION },
+                    { label: "policyVersion", value: evaluation?.policyVersion },
+                    { label: "reportDigest", value: solveAllResult?.report?.reportDigest },
+                    { label: "stateSignature", value: buildStateSignature(plan) },
+                    { label: "Build", value: typeof __BUILD_COMMIT__ !== "undefined" ? __BUILD_COMMIT__ : "unknown" },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${N.border}` }}>
+                      <span style={{ fontSize: 12, color: N.sub }}>{label}</span>
+                      <span style={{ fontSize: 12, fontFamily: "monospace", color: value ? N.sub : N.dim }}>
+                        {value || "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pilot checklist */}
+                <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.surface }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.sub, marginBottom: 16 }}>
+                    Pilot launch checklist
+                  </div>
+                  {[
+                    "Print vaade kontrollitud (Prindi kokkuvõte)",
+                    "JSON export tehtud ja import round-trip kontrollitud",
+                    "policyVersion / reportDigest / stateSignature kuvatud printis",
+                    "loopGuard ei blokeeri (status OK)",
+                    "Deploy URL avatud ja assets laadivad",
+                    "Piloot: 1 ühistu sisestus testitud algusest lõpuni",
+                  ].map((label) => (
+                    <label key={label} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8, fontSize: 14, cursor: "pointer" }}>
+                      <input type="checkbox" style={{ marginTop: 3 }} />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                  <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12, marginTop: 8 }}>
+                    <span
+                      onClick={() => setPilotFeedbackOpen(v => !v)}
+                      style={{ fontSize: 13, color: "#2563eb", cursor: "pointer", textDecoration: "underline" }}
+                    >
+                      {pilotFeedbackOpen ? "Peida juhis" : "Piloodi tagasiside — mida täpselt kirja panna"}
+                    </span>
+                    {pilotFeedbackOpen && (
+                      <div style={{ marginTop: 8, fontSize: 13, color: N.sub, lineHeight: 1.6 }}>
+                        <b>Kirjuta üles:</b>
+                        <ul style={{ marginTop: 4, paddingLeft: 20 }}>
+                          <li>Mis andmed sisestasid (korterite arv, pind, kulud, tulud, laenud)</li>
+                          <li>Kas "Rakenda soovitused" töötas ootuspäraselt — mitu sammu tehti, mis muutus</li>
+                          <li>Kas JSON export/import säilitas kõik andmed</li>
+                          <li>Kas prinditud kokkuvõte oli arusaadav</li>
+                          <li>Mis oli segane, puudu või valesti</li>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Dev: tagasiside mall */}
+                {(() => {
+                  const template = [
+                    "Testjuhtumi nimi:",
+                    "Eesmärk (mida proovisin teha):",
+                    "",
+                    "Mis läks hästi (3 punkti):",
+                    "  1.",
+                    "  2.",
+                    "  3.",
+                    "",
+                    "Mis läks segaseks (3 punkti):",
+                    "  1.",
+                    "  2.",
+                    "  3.",
+                    "",
+                    "Kus ma jäin toppama (täpne samm/tab):",
+                    "Ootasin et juhtuks:",
+                    "Tegelik tulemus:",
+                    "",
+                    "Soovitus (mis muudaks paremaks):",
+                    "",
+                    "Attach: JSON bundle (jah/ei):",
+                  ].join("\n");
+
+                  return (
+                    <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.muted }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.dim }}>
+                          Kasutustest — tagasiside mall
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 4, background: N.bg, color: N.dim }}>DEV</span>
+                      </div>
+                      <pre style={{
+                        background: N.surface,
+                        border: `1px solid ${N.border}`,
+                        borderRadius: 8,
+                        padding: 14,
+                        fontSize: 13,
+                        fontFamily: "monospace",
+                        whiteSpace: "pre-wrap",
+                        lineHeight: 1.7,
+                        color: N.text,
+                        margin: 0,
+                      }}>
+                        {template}
+                      </pre>
+                      <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 12 }}>
+                        <button
+                          style={btn}
+                          onClick={() => {
+                            if (navigator.clipboard?.writeText) {
+                              navigator.clipboard.writeText(template);
+                            }
+                          }}
+                        >
+                          Kopeeri tagasiside mall
+                        </button>
+                        <span style={{ fontSize: 12, color: N.dim }}>
+                          Kui kopeerimine ei tööta, märgista tekst ja kopeeri käsitsi.
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
-              {[
-                { label: "Core Contract", value: SOLVERE_CORE_CONTRACT_VERSION },
-                { label: "policyVersion", value: evaluation?.policyVersion },
-                { label: "reportDigest", value: solveAllResult?.report?.reportDigest },
-                { label: "stateSignature", value: buildStateSignature(plan) },
-                { label: "Build", value: typeof __BUILD_COMMIT__ !== "undefined" ? __BUILD_COMMIT__ : "unknown" },
-              ].map(({ label, value }) => (
-                <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${N.border}` }}>
-                  <span style={{ fontSize: 12, color: N.sub }}>{label}</span>
-                  <span style={{ fontSize: 12, fontFamily: "monospace", color: value ? N.sub : N.dim }}>
-                    {value || "—"}
-                  </span>
-                </div>
-              ))}
-            </div>
             )}
 
-            {/* ── Dev: tagasiside mall ── */}
-            {showTechnicalInfo && (() => {
-              const template = [
-                "Testjuhtumi nimi:",
-                "Eesmärk (mida proovisin teha):",
-                "",
-                "Mis läks hästi (3 punkti):",
-                "  1.",
-                "  2.",
-                "  3.",
-                "",
-                "Mis läks segaseks (3 punkti):",
-                "  1.",
-                "  2.",
-                "  3.",
-                "",
-                "Kus ma jäin toppama (täpne samm/tab):",
-                "Ootasin et juhtuks:",
-                "Tegelik tulemus:",
-                "",
-                "Soovitus (mis muudaks paremaks):",
-                "",
-                "Attach: JSON bundle (jah/ei):",
-              ].join("\n");
-
-              return (
-                <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.muted }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.dim }}>
-                      Kasutustest — tagasiside mall
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 4, background: N.bg, color: N.dim }}>DEV</span>
-                  </div>
-                  <pre style={{
-                    background: N.surface,
-                    border: `1px solid ${N.border}`,
-                    borderRadius: 8,
-                    padding: 14,
-                    fontSize: 13,
-                    fontFamily: "monospace",
-                    whiteSpace: "pre-wrap",
-                    lineHeight: 1.7,
-                    color: N.text,
-                    margin: 0,
-                  }}>
-                    {template}
-                  </pre>
-                  <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 12 }}>
-                    <button
-                      style={btn}
-                      onClick={() => {
-                        if (navigator.clipboard?.writeText) {
-                          navigator.clipboard.writeText(template);
-                        }
-                      }}
-                    >
-                      Kopeeri tagasiside mall
-                    </button>
-                    <span style={{ fontSize: 12, color: N.dim }}>
-                      Kui kopeerimine ei tööta, märgista tekst ja kopeeri käsitsi.
-                    </span>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* ── Toggle: Näita tehnilist infot (bottom) ── */}
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            {/* ── Toggle (bottom, subdued) ── */}
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 8 }}>
               <button
                 onClick={() => setShowTechnicalInfo(v => !v)}
-                style={{ ...btn, fontSize: 13, color: N.sub }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: N.dim, textDecoration: "underline", padding: "4px 8px" }}
               >
                 {showTechnicalInfo ? "Peida tehniline info" : "Näita tehnilist infot"}
               </button>
@@ -1280,6 +1541,16 @@ const removeInvFundingRow = (invId, rowIndex) => {
         {/* ── Print-only: all sections rendered for print ── */}
       {isPrinting && (
         <div className="print-content">
+          {kyData.nimi && (
+            <div style={{ textAlign: "center", marginBottom: 16 }}>
+              <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{kyData.nimi}</h1>
+              {(kyData.registrikood || kyData.aadress) && (
+                <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
+                  {[kyData.registrikood, kyData.aadress].filter(Boolean).join(" · ")}
+                </div>
+              )}
+            </div>
+          )}
           <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 24 }}>Majanduskava</h1>
 
           {/* Periood */}
@@ -1384,7 +1655,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
           <div className="print-section">
             <h2 className="print-section-title">Fondid & laen</h2>
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 12 }}>
-              <div><span style={{ fontWeight: 700 }}>Remondifondi määr:</span> {plan.funds.repairFund.monthlyRateEurPerM2} €/m²/kuu</div>
+              <div><span style={{ fontWeight: 700 }}>Remondifondi määr:</span> {String(plan.funds.repairFund.monthlyRateEurPerM2).replace(".", ",")} €/m²/kuu</div>
               <div><span style={{ fontWeight: 700 }}>Laekumine perioodis:</span> {euroEE(derived.funds.repairFundIncomePeriodEUR)}</div>
               <div><span style={{ fontWeight: 700 }}>Planeeritud reserv:</span> {euroEE(plan.funds.reserve.plannedEUR)}</div>
               <div><span style={{ fontWeight: 700 }}>Nõutav reserv:</span> {euroEE(derived.funds.reserveRequiredEUR)}</div>
@@ -1408,7 +1679,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
                       <tr key={ln.id} style={{ borderBottom: "1px solid #ccc" }}>
                         <td style={{ padding: "4px 8px" }}>{ln.name}</td>
                         <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{euroEE(ln.principalEUR)}</td>
-                        <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{ln.annualRatePct}%</td>
+                        <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{String(ln.annualRatePct).replace(".", ",")}%</td>
                         <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{ln.termMonths} kuud</td>
                         <td style={{ padding: "4px 8px" }}>{formatYMEE(ln.startYM)}</td>
                         <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{d ? euroEE(d.servicingMonthlyEUR) : "—"}</td>

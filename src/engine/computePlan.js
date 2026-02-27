@@ -23,9 +23,10 @@ function monthEquiv(a, b) {
 function yearFraction(a, b) { return monthEquiv(a, b) / 12; }
 
 export function euro(n) {
-  const v = round2(n).toFixed(2);
-  // 12 345.67 € (PDF-is sobib)
-  return v.replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " \u20ac";
+  const rounded = Math.round(Number(n) || 0);
+  const abs = Math.abs(rounded);
+  const grouped = String(abs).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return (rounded < 0 ? "−" : "") + grouped + " \u20ac";
 }
 
 function calcRowPeriodEUR(row, yearFrac, monthEq) {

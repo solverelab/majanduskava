@@ -27,6 +27,7 @@ body {
     /* buttons/inputs hidden unless inside print-content */
   }
 
+  body.print-mode nav,
   body.print-mode aside,
   body.print-mode [data-dev-badge],
   body.print-mode main > div[style*="absolute"] {
@@ -43,7 +44,7 @@ body {
     display: block !important;
   }
 
-  /* Reset grid layout to single column */
+  /* Reset flex/grid layout to single column */
   body.print-mode > #root > div {
     display: block !important;
     background: white !important;
