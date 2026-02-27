@@ -1237,43 +1237,38 @@ const removeInvFundingRow = (invId, rowIndex) => {
                     </div>
 
                     <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${N.rule}` }}>
-                      <div style={{ fontSize: 12, fontWeight: 700 }}>Rahastusplaan</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Rahastusplaan</div>
 
                       {(it.fundingPlan || []).length === 0 && (
-                        <div style={{ ...helperText, marginTop: 8 }}>
+                        <div style={{ ...helperText }}>
                           Rahastusridu pole lisatud.
                         </div>
                       )}
 
+                      {(it.fundingPlan || []).length > 0 && (
+                        <div style={{ display: "flex", gap: 8, paddingLeft: 4, marginBottom: 4 }}>
+                          <span style={{ width: 160, fontSize: 11, color: N.dim }}>Allikas</span>
+                          <span style={{ width: 130, fontSize: 11, color: N.dim }}>Summa €</span>
+                        </div>
+                      )}
+
                       {(it.fundingPlan || []).map((row, index) => (
-                        <div key={index} style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
-                          <select
-                            value={row.source}
-                            onChange={(e) =>
-                              updateInvFundingRow(it.id, index, { source: e.target.value })
-                            }
-                            style={selectStyle}
-                          >
+                        <div key={index} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4, paddingLeft: 4 }}>
+                          <select value={row.source} onChange={(e) => updateInvFundingRow(it.id, index, { source: e.target.value })} style={{ ...selectStyle, width: 160 }}>
                             <option value="REPAIR_FUND">Remondifond</option>
                             <option value="RESERVE">Reservkapital</option>
                             <option value="LOAN">Laen</option>
                             <option value="GRANT">Toetus</option>
                             <option value="ONE_OFF">Erakorraline makse</option>
                           </select>
-
-                          <EuroInput
-                            value={row.amountEUR}
-                            onChange={(v) => updateInvFundingRow(it.id, index, { amountEUR: v })}
-                            style={numStyle}
-                          />
-
-                          <button onClick={() => removeInvFundingRow(it.id, index)} style={btnRemove}>
-                            Eemalda
-                          </button>
+                          <div style={{ width: 130 }}>
+                            <EuroInput value={row.amountEUR} onChange={(v) => updateInvFundingRow(it.id, index, { amountEUR: v })} style={numStyle} />
+                          </div>
+                          <button onClick={() => removeInvFundingRow(it.id, index)} style={{ ...btnRemove, padding: "4px 8px", fontSize: 13 }}>Eemalda</button>
                         </div>
                       ))}
 
-                      <div style={{ marginTop: 8 }}>
+                      <div style={{ marginTop: 6 }}>
                         <button style={btnAdd} onClick={() => addInvFundingRow(it.id)}>+ Lisa rahastusrida</button>
                       </div>
                     </div>
