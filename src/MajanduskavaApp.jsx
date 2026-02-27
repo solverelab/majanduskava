@@ -417,10 +417,17 @@ export default function App() {
       return sum + Math.round(summaKuus);
     }, 0);
 
-    // Laenumaksed kokku (€/kuu)
-    const laenumaksedKokku = laenud.reduce((sum, l) => {
+    // Planeeritud laenumaksed kokku (€/kuu)
+    const planeeritudLaenudKokku = laenud.reduce((sum, l) => {
       return sum + arvutaKuumakse(l.summa, l.intpiiri, l.tahtaeg);
     }, 0);
+
+    // Olemasolevate laenude kuumaksed kokku
+    const olemasolevaLaenudKokku = olemasolevaLaenud.reduce((sum, l) => {
+      return sum + (parseFloat(l.kuumakse) || 0);
+    }, 0);
+
+    const laenumaksedKokku = planeeritudLaenudKokku + olemasolevaLaenudKokku;
 
     const valjaminekudKokku = kuludKokku + laenumaksedKokku;
     const vahe = tuludKokku - valjaminekudKokku;
@@ -430,11 +437,13 @@ export default function App() {
       haldusKokku,
       kuludKokku,
       tuludKokku,
+      planeeritudLaenudKokku,
+      olemasolevaLaenudKokku,
       laenumaksedKokku,
       valjaminekudKokku,
       vahe,
     };
-  }, [plan.budget.costRows, plan.budget.incomeRows, plan.loans, derived.period.monthEq]);
+  }, [plan.budget.costRows, plan.budget.incomeRows, plan.loans, olemasolevaLaenud, derived.period.monthEq]);
 
   // ── Solvere policy evaluation ──
   const [evaluation, setEvaluation] = useState(null);
@@ -447,6 +456,8 @@ export default function App() {
   const [pilotFeedbackOpen, setPilotFeedbackOpen] = useState(false);
   const [showTechnicalInfo, setShowTechnicalInfo] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [naitaVanuLaene, setNaitaVanuLaene] = useState(false);
+  const [olemasolevaLaenud, setOlemasolevaLaenud] = useState([]);
   const [periodParts, setPeriodParts] = useState({ sd: "", sm: "", sy: "", ed: "", em: "", ey: "" });
 
   const onPrint = () => {
@@ -548,6 +559,7 @@ export default function App() {
       kyData,
       seisukord,
       muudInvesteeringud,
+      olemasolevaLaenud,
       repairFundSaldo,
     };
     const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
@@ -706,6 +718,17 @@ export default function App() {
         // Merge: new-format muudInvesteeringud + migrated old items
         const newFormatMuud = Array.isArray(data.muudInvesteeringud) ? data.muudInvesteeringud : [];
         setMuudInvesteeringud([...newFormatMuud, ...importedMuudInv]);
+        setOlemasolevaLaenud((Array.isArray(data.olemasolevaLaenud) ? data.olemasolevaLaenud : []).map(ol => {
+          const migKp = (v) => {
+            if (v && typeof v === "object" && "d" in v) return v;
+            if (typeof v === "string" && v.includes(".")) {
+              const p = v.split(".");
+              return { d: Number(p[0]) || "", m: Number(p[1]) || "", y: Number(p[2]) || "" };
+            }
+            return { d: "", m: "", y: "" };
+          };
+          return { ...ol, algusKuupaev: migKp(ol.algusKuupaev), loppKuupaev: migKp(ol.loppKuupaev) };
+        }));
         // Sync period dropdowns
         const _ps = candidateState.period?.start?.split("-") || [];
         const _pe = candidateState.period?.end?.split("-") || [];
@@ -1051,7 +1074,38 @@ export default function App() {
       if (ln?.sepiiriostudInvId) {
         if (!window.confirm("See laen on seotud investeeringuga. Eemaldada?")) return p;
       }
-      return { ...p, loans: p.loans.filter(l => l.id !== id) };
+      const updated = p.loans.filter(l => l.id !== id);
+      if (updated.length === 0) setNaitaVanuLaene(false);
+      return { ...p, loans: updated };
+    });
+  };
+
+  // --- OLEMASOLEVAD LAENUD (eelnevate perioodide laenud) ---
+  const mkOlemasolevaLaen = () => ({
+    id: crypto.randomUUID(),
+    liik: "Remondilaen",
+    algSumma: "",
+    jaak: "",
+    intress: "",
+    algusKuupaev: { d: "", m: "", y: "" },
+    loppKuupaev: { d: "", m: "", y: "" },
+    kuumakse: "",
+  });
+
+  const addOlemasolevaLaen = () => {
+    setOlemasolevaLaenud(prev => [...prev, mkOlemasolevaLaen()]);
+    setNaitaVanuLaene(true);
+  };
+
+  const updateOlemasolevaLaen = (id, patch) => {
+    setOlemasolevaLaenud(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l));
+  };
+
+  const removeOlemasolevaLaen = (id) => {
+    setOlemasolevaLaenud(prev => {
+      const updated = prev.filter(l => l.id !== id);
+      if (updated.length === 0) setNaitaVanuLaene(false);
+      return updated;
     });
   };
 
@@ -1141,7 +1195,7 @@ export default function App() {
     if (!same) setPlan(p => ({ ...p, investmentsPipeline: { ...p.investmentsPipeline, items } }));
   }, [seisukord, muudInvesteeringud]);
 
-  useEffect(() => { if (plan.loans.length === 0) { const y = String(plan.period.year || new Date().getFullYear()); setPlan(p => ({ ...p, loans: [{ ...mkLoan({ startYM: `${y}-01` }), liik: "Remondilaen", algusKvartal: "I", algusAasta: y }] })); } }, [plan.loans.length]);
+  // Laenud algavad tühjana — luuakse ainult "+ Lisa laen" kaudu või rahastusplaanist automaatselt
   useEffect(() => { if (seisukord.length === 0) { const y = String(plan.period.year || new Date().getFullYear()); setSeisukord([{ id: crypto.randomUUID(), ese: "", seisukordVal: "", puudused: "", prioriteet: "", eeldatavKulu: 0, tegevus: "", tegevusAasta: y, tegevusKvartal: "I", investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [] }]); } }, [seisukord.length]);
 
   // Perioodi aasta muutumisel: uuenda tühjad aasta väljad
@@ -1927,6 +1981,111 @@ export default function App() {
                 <div style={sectionTitle}>Laenud</div>
               </div>
 
+              {/* ── Olemasolevad laenud (eelnevatest perioodidest) ── */}
+              {!naitaVanuLaene && olemasolevaLaenud.length === 0 && (
+                <button
+                  type="button"
+                  onClick={addOlemasolevaLaen}
+                  style={{ ...btnAdd, fontSize: 13, marginBottom: 12 }}
+                >
+                  + Eelnevatest perioodidest võetud laen
+                </button>
+              )}
+
+              {(naitaVanuLaene || olemasolevaLaenud.length > 0) && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: N.sub, marginBottom: 8 }}>Olemasolevad laenud</div>
+                  <div style={{ ...helperText, marginBottom: 8 }}>Eelnevatest perioodidest võetud laenud, mille teenindus jätkub.</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {olemasolevaLaenud.map(ol => (
+                      <div key={ol.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
+                        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "start" }}>
+                          <div style={{ width: 176 }}>
+                            <div style={fieldLabel}>Liik</div>
+                            <select value={ol.liik} onChange={(e) => updateOlemasolevaLaen(ol.id, { liik: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
+                              {LAENU_LIIGID.map(l => <option key={l} value={l}>{l}</option>)}
+                            </select>
+                          </div>
+                          <div style={{ width: 128 }}>
+                            <div style={fieldLabel}>Esialgne summa</div>
+                            <EuroInput value={ol.algSumma} onChange={(v) => updateOlemasolevaLaen(ol.id, { algSumma: v })} style={numStyle} />
+                          </div>
+                          <div style={{ width: 128 }}>
+                            <div style={fieldLabel}>Laenujääk</div>
+                            <EuroInput value={ol.jaak} onChange={(v) => updateOlemasolevaLaen(ol.id, { jaak: v })} style={numStyle} />
+                          </div>
+                          <div style={{ width: 96 }}>
+                            <div style={fieldLabel}>Intress %</div>
+                            <NumberInput value={ol.intress} onChange={(v) => updateOlemasolevaLaen(ol.id, { intress: v })} style={numStyle} />
+                          </div>
+                          {(() => {
+                            const kpDdStyle = { ...selectStyle, minWidth: 52, appearance: "auto" };
+                            const kpYears = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035];
+                            const kpMonths = Array.from({ length: 12 }, (_, i) => i + 1);
+                            const kpDays = (m, y) => (m && y) ? new Date(y, m, 0).getDate() : 31;
+                            const algKp = ol.algusKuupaev || {};
+                            const lopKp = ol.loppKuupaev || {};
+                            return (<>
+                              <div>
+                                <div style={fieldLabel}>Algus</div>
+                                <div style={{ display: "flex", gap: 4 }}>
+                                  <select value={algKp.d || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { algusKuupaev: { ...algKp, d: Number(e.target.value) || "" } })} style={kpDdStyle}>
+                                    <option value="">PP</option>
+                                    {Array.from({ length: kpDays(algKp.m, algKp.y) }, (_, i) => i + 1).map(d => <option key={d} value={d}>{String(d).padStart(2, "0")}</option>)}
+                                  </select>
+                                  <select value={algKp.m || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { algusKuupaev: { ...algKp, m: Number(e.target.value) || "" } })} style={kpDdStyle}>
+                                    <option value="">KK</option>
+                                    {kpMonths.map(m => <option key={m} value={m}>{String(m).padStart(2, "0")}</option>)}
+                                  </select>
+                                  <select value={algKp.y || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { algusKuupaev: { ...algKp, y: Number(e.target.value) || "" } })} style={{ ...kpDdStyle, minWidth: 70 }}>
+                                    <option value="">AAAA</option>
+                                    {kpYears.map(y => <option key={y} value={y}>{y}</option>)}
+                                  </select>
+                                </div>
+                              </div>
+                              <div>
+                                <div style={fieldLabel}>Lõpp</div>
+                                <div style={{ display: "flex", gap: 4 }}>
+                                  <select value={lopKp.d || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { loppKuupaev: { ...lopKp, d: Number(e.target.value) || "" } })} style={kpDdStyle}>
+                                    <option value="">PP</option>
+                                    {Array.from({ length: kpDays(lopKp.m, lopKp.y) }, (_, i) => i + 1).map(d => <option key={d} value={d}>{String(d).padStart(2, "0")}</option>)}
+                                  </select>
+                                  <select value={lopKp.m || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { loppKuupaev: { ...lopKp, m: Number(e.target.value) || "" } })} style={kpDdStyle}>
+                                    <option value="">KK</option>
+                                    {kpMonths.map(m => <option key={m} value={m}>{String(m).padStart(2, "0")}</option>)}
+                                  </select>
+                                  <select value={lopKp.y || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { loppKuupaev: { ...lopKp, y: Number(e.target.value) || "" } })} style={{ ...kpDdStyle, minWidth: 70 }}>
+                                    <option value="">AAAA</option>
+                                    {kpYears.map(y => <option key={y} value={y}>{y}</option>)}
+                                  </select>
+                                </div>
+                              </div>
+                            </>);
+                          })()}
+                          <div style={{ width: 128 }}>
+                            <div style={fieldLabel}>Kuumakse</div>
+                            <EuroInput value={ol.kuumakse} onChange={(v) => updateOlemasolevaLaen(ol.id, { kuumakse: v })} style={numStyle} />
+                          </div>
+                          <div style={{ marginTop: 20 }}>
+                            <button style={btnRemove} onClick={() => removeOlemasolevaLaen(ol.id)}>Eemalda</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {olemasolevaLaenud.length > 0 && (
+                    <div style={{ marginTop: 8, fontFamily: "monospace", fontSize: 13, color: N.sub }}>
+                      Olemasolevad kuumaksed kokku: {euro(olemasolevaLaenud.reduce((s, l) => s + (parseFloat(l.kuumakse) || 0), 0))}/kuu
+                    </div>
+                  )}
+                  <div style={{ marginTop: 8 }}>
+                    <button style={{ ...btnAdd, fontSize: 13 }} onClick={addOlemasolevaLaen}>+ Lisa olemasolev laen</button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Planeeritud laenud (investeeringutest + käsitsi) ── */}
+              <div style={{ fontWeight: 600, fontSize: 14, color: N.sub, marginBottom: 8 }}>Planeeritud laenud</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {plan.loans.map(ln => {
                   const d = derived.loans.items.find(x => x.id === ln.id);
@@ -1994,7 +2153,7 @@ export default function App() {
                 Laenuteenindus kokku: {euro(derived.loans.servicePeriodEUR)} · laenureserv kokku: {euro(derived.loans.reservePeriodEUR)}
               </div>
               <div style={{ marginTop: 8 }}>
-                <button style={btnAdd} onClick={addLoan}>+ Lisa laen</button>
+                <button style={btnAdd} onClick={addLoan}>+ Lisa planeeritud laen</button>
               </div>
             </div>
           </div>
