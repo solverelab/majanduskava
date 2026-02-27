@@ -244,6 +244,7 @@ N.sidebar="#3d3835" (sidebar'i taust)
 - Idempotentne: `setPlan(p => ({...p, field: [mkFactory()]}))` (mitte `addX()` kutse)
 - "+ Lisa" nupud asuvad tabeli/loendi all (mitte sektsiooni päises)
 - Korteri auto-label: esimene "1", järgmised `Math.max(...labels) + 1`
+- Korteri tabel: Tähis | Omanik(ud) | Pind m² | Osa | Märkused (omanikud lisaväli, placeholder "nt Tamm, Kask")
 
 ### UI: Periood — majandusaasta kiirvalik
 
@@ -254,22 +255,23 @@ N.sidebar="#3d3835" (sidebar'i taust)
 ### UI: Investeeringute parandused
 
 - Aasta väli on dropdown (perioodi aasta + järgmine)
-- Kvartal: väärtused 1–4 (mitte Q1–Q4)
-- Kokkuvõttereal tegelik summa otse massiivist
-- "Eemalda investeering" nupp iga investeeringu juures
+- Kvartal: rooma numbrid I/II/III/IV (JSON import teisendab vanad 1/2/3/4)
+- Koondrea: arv, maksumus, kaetud, katmata (rahastusplaani katvus)
+- "Eemalda" nupp iga investeeringu juures (ühtlustatud)
 - "Lisa rahastusrida" nupp iga investeeringu all (mitte päises)
 
 ### UI: Kaasomandi eseme seisukord
 
 Struktureeritud tabel `seisukord[]` state'iga:
-- Väljad: `ese` (ESEMED dropdown), `seisukordVal` (SEISUKORD_VALIKUD), `puudused`, `prioriteet` (PRIORITEEDID), `eeldatavKulu` (EuroInput), `tegevus`, `tegevusAasta` (dropdown: perioodi aasta + 3), `tegevusKvartal` (dropdown: 1–4)
+- Väljad: `ese` (ESEMED dropdown), `seisukordVal` (SEISUKORD_VALIKUD), `puudused`, `prioriteet` (PRIORITEEDID), `eeldatavKulu` (EuroInput), `tegevus`, `tegevusAasta` (dropdown: perioodi aasta + 3), `tegevusKvartal` (dropdown: I/II/III/IV)
 - Esimene rida: Ese | Seisukord | Prioriteet
-- Teine rida: Puudused | Eeldatav kulu € | Planeeritud tegevus | Aasta | Kv
+- Teine rida: Puudused | Eeldatav kulu € | Planeeritud tegevus | Aasta | Kvartal
+- Vaikeväärtused uuel real: seisukord "Rahuldav", prioriteet "Keskmine", aasta = perioodi aasta, kvartal = "I"; ese jääb tühjaks ("Vali…")
 - Helper funktsioonid: `lisaSeisukordRida`, `uuendaSeisukord`, `eemaldaSeisukordRida`
 - Dünaamilised placeholder'id (PUUDUSED_PLACEHOLDERS, TEGEVUS_PLACEHOLDERS) ese järgi
 - Kokkuvõttereal: esemed arv, eeldatav kogukulu, planeeritud aastad
-- JSON import backward compat: vana string-formaat → tühi massiiv; puuduvad `tegevusAasta`/`tegevusKvartal` väljad → tühi string
-- Prindi tabel: Ese, Seisukord, Prioriteet, Puudused, Eeldatav kulu, Planeeritud tegevus, Aeg (nt "2. kv 2026")
+- JSON import backward compat: vana string-formaat → tühi massiiv; puuduvad väljad → tühi string; kvartal 1→I teisendus
+- Prindi tabel: Ese, Seisukord, Prioriteet, Puudused, Eeldatav kulu, Planeeritud tegevus, Aeg (nt "II kvartal 2026")
 
 ### UI: Kategooriasüsteem (kulud ja tulud)
 
@@ -279,8 +281,9 @@ Struktureeritud tabel `seisukord[]` state'iga:
 - Dropdown optgroup'idega (Kommunaalteenused / Haldusteenused)
 
 **Tulude kategooriad** (TULU_KATEGOORIAD):
-- Haldus, Raamatupidamine, Koristus, Kindlustus, Hooldus, Kommunaalmaksed, Muu
-- Lame dropdown (ilma optgroup'ideta)
+- Majandamiskulude ettemaks, Vahendustasu, Renditulu, Muu tulu
+- Uue tulurea vaikekategooria: "Majandamiskulude ettemaks"
+- JSON import: TULU_KATEGOORIA_MAP teisendab vanad kategooriad (Haldus/Koristus/... → Majandamiskulude ettemaks, Muu → Muu tulu)
 
 **Kommunaalteenuste ühikud** (KOMMUNAAL_UHIKUD / KOMMUNAAL_VAIKE_UHIK):
 - Igal kommunaalteenusel on lubatud ühikute nimekiri ja vaikeühik
@@ -316,9 +319,10 @@ Struktureeritud tabel `seisukord[]` state'iga:
 - `onBlur` teeb `parseFloat(display.replace(",", "."))` ja salvestab numbri
 - Kasutuses: `areaM2`, `qty`, `annualRatePct`, `reservePct`, `monthlyRateEurPerM2`, kommunaalteenuste `kogus`
 
-**`EuroInput`** — eurode sisend, ümardab täisarvuks:
+**`EuroInput`** — eurode sisend, ümardab täisarvuks, tuhandete eraldajaga:
 - Sama muster nagu NumberInput, aga `Math.round()` onBlur
-- Kuvab ainult täisarvu (ei näita sente)
+- Blur: formateerib `toLocaleString("et-EE")` → kuvab "20 000"
+- Focus: näitab toorarvud ("20000") mugavaks muutmiseks
 - Kasutuses: kõik EUR väljad (`totalCostEUR`, `plannedEUR`, `principalEUR`, `eeldatavKulu`, `uhikuHind`, `summaInput`)
 
 **Euro formaat** — `euro()` ja `euroEE()` kasutavad `Math.round()`, kuvavad ilma sentideta
