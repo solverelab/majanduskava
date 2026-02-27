@@ -367,6 +367,7 @@ export default function App() {
   const [kyData, setKyData] = useState({ nimi: "", registrikood: "", aadress: "" });
   const [seisukord, setSeisukord] = useState([]);
   const [muudInvesteeringud, setMuudInvesteeringud] = useState([]);
+  const [olemasolevaLaenud, setOlemasolevaLaenud] = useState([]);
   const [repairFundSaldo, setRepairFundSaldo] = useState("");
 
   const derived = useMemo(() => computePlan(plan), [plan]);
@@ -457,7 +458,6 @@ export default function App() {
   const [showTechnicalInfo, setShowTechnicalInfo] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [naitaVanuLaene, setNaitaVanuLaene] = useState(false);
-  const [olemasolevaLaenud, setOlemasolevaLaenud] = useState([]);
   const [periodParts, setPeriodParts] = useState({ sd: "", sm: "", sy: "", ed: "", em: "", ey: "" });
 
   const onPrint = () => {
