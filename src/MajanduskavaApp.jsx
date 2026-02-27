@@ -1265,14 +1265,23 @@ const removeInvFundingRow = (invId, rowIndex) => {
                     </div>
 
                     <div style={{ marginTop: 8, textAlign: "right" }}>
-                      <button style={btnRemove} onClick={() => removeInvestment(it.id)}>Eemalda investeering</button>
+                      <button style={btnRemove} onClick={() => removeInvestment(it.id)}>Eemalda</button>
                     </div>
                   </div>
                 ))}
               </div>
 
               <div style={{ marginTop: 12, fontFamily: "monospace" }}>
-                Selle perioodi investeeringud: {plan.investmentsPipeline.items.length} · maksumus {euro(plan.investmentsPipeline.items.reduce((s, it) => s + (it.totalCostEUR || 0), 0))}
+                {(() => {
+                  const items = plan.investmentsPipeline.items;
+                  const koguMaksumus = items.reduce((s, it) => s + (it.totalCostEUR || 0), 0);
+                  const koguRahastus = items.reduce((s, it) => s + (it.fundingPlan || []).reduce((fs, r) => fs + (r.amountEUR || 0), 0), 0);
+                  const katmata = koguMaksumus - koguRahastus;
+                  return <>
+                    Investeeringud: {items.length} · maksumus {euro(koguMaksumus)}
+                    {koguMaksumus > 0 && <> · kaetud {euro(koguRahastus)} · katmata {euro(Math.max(0, katmata))}</>}
+                  </>;
+                })()}
               </div>
               <div style={{ marginTop: 8 }}>
                 <button style={btnAdd} onClick={addInvestment}>+ Lisa investeering</button>
