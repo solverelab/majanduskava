@@ -207,7 +207,6 @@ const ESEMED = [
   "Lift",
   "Õueala",
   "Parkla",
-  "Muu",
 ];
 
 const SEISUKORD_VALIKUD = ["Hea", "Rahuldav", "Mitterahuldav", "Avariiohtlik"];
@@ -355,6 +354,7 @@ export default function App() {
   const [preset, setPreset] = useState("BALANCED");
   const [kyData, setKyData] = useState({ nimi: "", registrikood: "", aadress: "" });
   const [seisukord, setSeisukord] = useState([]);
+  const [muudInvesteeringud, setMuudInvesteeringud] = useState([]);
 
   const derived = useMemo(() => computePlan(plan), [plan]);
 
@@ -469,6 +469,7 @@ export default function App() {
       state: plan,
       kyData,
       seisukord,
+      muudInvesteeringud,
     };
     const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -559,11 +560,13 @@ export default function App() {
           else importedSeisukord = data.seisukord.map(r => {
             const kvMap = { "1": "I", "2": "II", "3": "III", "4": "IV" };
             const kv = r.tegevusKvartal ? (kvMap[r.tegevusKvartal] || r.tegevusKvartal) : "";
-            return { tegevusAasta: "", tegevusKvartal: "", muuNimetus: "", investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [], id: crypto.randomUUID(), ...r, tegevusKvartal: kv };
+            const { tegevusKvartal: _ignored, ...rest } = r;
+            return { tegevusAasta: "", investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [], id: crypto.randomUUID(), ...rest, tegevusKvartal: kv };
           });
         }
-        // Migrate old separate investments into seisukord items
+        // Migrate old separate investments into seisukord items or muudInvesteeringud
         const oldItems = candidateState.investmentsPipeline?.items || [];
+        const importedMuudInv = [];
         if (oldItems.length > 0 && !importedSeisukord.some(r => r.investeering)) {
           oldItems.forEach(inv => {
             const kvMap = { "1": "I", "2": "II", "3": "III", "4": "IV" };
@@ -575,26 +578,36 @@ export default function App() {
               seotud.invMaksumus = inv.totalCostEUR || 0;
               seotud.rahpiiri = rahpiiri;
             } else {
-              importedSeisukord.push({
+              importedMuudInv.push({
                 id: crypto.randomUUID(),
-                ese: "Muu",
-                muuNimetus: inv.name || "",
-                seisukordVal: "",
-                puudused: "",
-                prioriteet: "",
-                eeldatavKulu: inv.totalCostEUR || 0,
-                tegevus: "",
-                tegevusAasta: String(inv.plannedYear || ""),
-                tegevusKvartal: kvMap[String(inv.quarter)] || inv.quarter || "I",
-                investeering: true,
-                invNimetus: inv.name || "",
-                invMaksumus: inv.totalCostEUR || 0,
+                nimetus: inv.name || "",
+                aasta: String(inv.plannedYear || ""),
+                kvartal: kvMap[String(inv.quarter)] || inv.quarter || "I",
+                maksumus: inv.totalCostEUR || 0,
                 rahpiiri,
               });
             }
           });
         }
+        // Migrate seisukord "Muu" items to muudInvesteeringud
+        importedSeisukord = importedSeisukord.filter(r => {
+          if (r.ese === "Muu" && r.investeering) {
+            importedMuudInv.push({
+              id: crypto.randomUUID(),
+              nimetus: r.invNimetus || r.muuNimetus || "",
+              aasta: r.tegevusAasta || "",
+              kvartal: r.tegevusKvartal || "I",
+              maksumus: r.invMaksumus || 0,
+              rahpiiri: r.rahpiiri || [],
+            });
+            return false;
+          }
+          return r.ese !== "Muu"; // drop non-investment "Muu" items too
+        });
         setSeisukord(importedSeisukord);
+        // Merge: new-format muudInvesteeringud + migrated old items
+        const newFormatMuud = Array.isArray(data.muudInvesteeringud) ? data.muudInvesteeringud : [];
+        setMuudInvesteeringud([...newFormatMuud, ...importedMuudInv]);
         // Sync period dropdowns
         const _ps = candidateState.period?.start?.split("-") || [];
         const _pe = candidateState.period?.end?.split("-") || [];
@@ -722,7 +735,6 @@ export default function App() {
     setSeisukord(prev => [...prev, {
       id: crypto.randomUUID(),
       ese: "",
-      muuNimetus: "",
       seisukordVal: "",
       puudused: "",
       prioriteet: "",
@@ -747,9 +759,7 @@ export default function App() {
 
   const handleLooInvesteering = (rida) => {
     if (rida.investeering) return;
-    const nimi = rida.ese === "Muu"
-      ? (rida.muuNimetus || "Muu") + (rida.tegevus ? " — " + rida.tegevus : "")
-      : rida.ese + (rida.tegevus ? " — " + rida.tegevus : "");
+    const nimi = rida.ese + (rida.tegevus ? " — " + rida.tegevus : "");
     setSeisukord(prev => prev.map(r => r.id === rida.id ? {
       ...r,
       investeering: true,
@@ -780,6 +790,49 @@ export default function App() {
     setSeisukord(prev => prev.map(r => r.id === id ? {
       ...r, rahpiiri: r.rahpiiri.filter((_, i) => i !== ri),
     } : r));
+  };
+
+  // --- MUUD INVESTEERINGUD ---
+  const lisaMuuInvesteering = () => {
+    setMuudInvesteeringud(prev => [...prev, {
+      id: Date.now().toString(),
+      nimetus: "",
+      aasta: String(plan.period.year || new Date().getFullYear()),
+      kvartal: "I",
+      maksumus: "",
+      rahpiiri: [],
+    }]);
+  };
+
+  const eemaldaMuuInvesteering = (idx) => {
+    setMuudInvesteeringud(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleMuuInvChange = (idx, field, value) => {
+    setMuudInvesteeringud(prev => prev.map((inv, i) =>
+      i === idx ? { ...inv, [field]: value } : inv
+    ));
+  };
+
+  const lisaMuuRahpiiriRida = (idx) => {
+    setMuudInvesteeringud(prev => prev.map((inv, i) =>
+      i === idx ? { ...inv, rahpiiri: [...inv.rahpiiri, { allikas: "Remondifond", summa: "" }] } : inv
+    ));
+  };
+
+  const eemaldaMuuRahpiiriRida = (invIdx, ridaIdx) => {
+    setMuudInvesteeringud(prev => prev.map((inv, i) =>
+      i === invIdx ? { ...inv, rahpiiri: inv.rahpiiri.filter((_, ri) => ri !== ridaIdx) } : inv
+    ));
+  };
+
+  const handleMuuRahpiiriChange = (invIdx, ridaIdx, field, value) => {
+    setMuudInvesteeringud(prev => prev.map((inv, i) =>
+      i === invIdx ? {
+        ...inv,
+        rahpiiri: inv.rahpiiri.map((r, ri) => ri === ridaIdx ? { ...r, [field]: value } : r),
+      } : inv
+    ));
   };
 
   const addLoan = () => {
@@ -836,18 +889,40 @@ export default function App() {
     if (changed) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: updated } }));
   }, [plan.budget.incomeRows, derived.period.monthEq]);
 
-  // Investeeringute sünkroonimine engine'ile (seisukord → plan.investmentsPipeline.items)
+  // Kõik investeeringud ühendatud (seisukord + muud) — ühtne formaat UI ja engine jaoks
+  const koikInvesteeringud = [
+    ...seisukord.filter(e => e.investeering).map(e => ({
+      id: e.id,
+      nimetus: e.invNimetus,
+      aasta: e.tegevusAasta,
+      kvartal: e.tegevusKvartal,
+      maksumus: e.invMaksumus,
+      rahpiiri: e.rahpiiri || [],
+      _src: "ese",
+    })),
+    ...muudInvesteeringud.map(inv => ({
+      id: inv.id,
+      nimetus: inv.nimetus,
+      aasta: inv.aasta,
+      kvartal: inv.kvartal,
+      maksumus: inv.maksumus,
+      rahpiiri: inv.rahpiiri || [],
+      _src: "muu",
+    })),
+  ];
+
+  // Investeeringute sünkroonimine engine'ile
   useEffect(() => {
-    const items = seisukord.filter(r => r.investeering).map(r => ({
+    const items = koikInvesteeringud.map(inv => ({
       ...mkInvestmentItem({
-        name: r.invNimetus,
-        plannedYear: r.tegevusAasta ? Number(r.tegevusAasta) : (plan.period.year || new Date().getFullYear()),
-        quarter: r.tegevusKvartal || "I",
-        totalCostEUR: r.invMaksumus || 0,
+        name: inv.nimetus,
+        plannedYear: inv.aasta ? Number(inv.aasta) : (plan.period.year || new Date().getFullYear()),
+        quarter: inv.kvartal || "I",
+        totalCostEUR: inv.maksumus || 0,
       }),
-      id: r.id + "::inv",
-      seisukordId: r.id,
-      fundingPlan: (r.rahpiiri || []).map(rp => ({ source: rp.allikas, amountEUR: rp.summa || 0 })),
+      id: inv.id + (inv._src === "ese" ? "::inv" : "::muuInv"),
+      seisukordId: inv._src === "ese" ? inv.id : null,
+      fundingPlan: inv.rahpiiri.map(rp => ({ source: rp.allikas, amountEUR: rp.summa || 0 })),
     }));
     const prev = plan.investmentsPipeline.items;
     const same = prev.length === items.length && items.every((it, i) =>
@@ -856,19 +931,19 @@ export default function App() {
       && JSON.stringify(prev[i]?.fundingPlan) === JSON.stringify(it.fundingPlan)
     );
     if (!same) setPlan(p => ({ ...p, investmentsPipeline: { ...p.investmentsPipeline, items } }));
-  }, [seisukord]);
+  }, [seisukord, muudInvesteeringud]);
 
   useEffect(() => { if (plan.loans.length === 0) setPlan(p => ({ ...p, loans: [mkLoan()] })); }, [plan.loans.length]);
-  useEffect(() => { if (seisukord.length === 0) { setSeisukord([{ id: crypto.randomUUID(), ese: "", muuNimetus: "", seisukordVal: "", puudused: "", prioriteet: "", eeldatavKulu: 0, tegevus: "", tegevusAasta: "", tegevusKvartal: "I", investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [] }]); } }, [seisukord.length]);
+  useEffect(() => { if (seisukord.length === 0) { setSeisukord([{ id: crypto.randomUUID(), ese: "", seisukordVal: "", puudused: "", prioriteet: "", eeldatavKulu: 0, tegevus: "", tegevusAasta: "", tegevusKvartal: "I", investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [] }]); } }, [seisukord.length]);
 
-  const SECS = ["Periood & korterid", "Kaasomandi esemed", "Kulud", "Tulud", "Fondid & laen", "Korterite maksed", "Kontroll & kokkuvõte"];
+  const SECS = ["Periood & korterid", "Esemed ja investeeringud", "Kulud", "Tulud", "Fondid & laen", "Korterite maksed", "Kontroll & kokkuvõte"];
 
   const clearSection = (tabIdx) => {
     if (!window.confirm("Kas soovid selle jaotise andmed kustutada? Seda ei saa tagasi võtta.")) return;
     if (tabIdx === 0) { setPeriodParts({ sd: "", sm: "", sy: "", ed: "", em: "", ey: "" }); setKyData({ nimi: "", registrikood: "", aadress: "" }); }
     setPlan(p => {
       if (tabIdx === 0) return { ...p, period: { ...p.period, start: "", end: "" }, building: { ...p.building, apartments: [] } };
-      if (tabIdx === 1) { setSeisukord([]); return { ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [] } }; }
+      if (tabIdx === 1) { setSeisukord([]); setMuudInvesteeringud([]); return { ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [] } }; }
       if (tabIdx === 2) return { ...p, budget: { ...p.budget, costRows: [] } };
       if (tabIdx === 3) return { ...p, budget: { ...p.budget, incomeRows: [] } };
       if (tabIdx === 4) return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, loans: [] };
@@ -1203,12 +1278,6 @@ export default function App() {
                         {ESEMED.map(e => <option key={e} value={e}>{e}</option>)}
                       </select>
                     </div>
-                    {rida.ese === "Muu" && (
-                      <div style={{ flex: 1, minWidth: 160 }}>
-                        <div style={fieldLabel}>Nimetus</div>
-                        <input value={rida.muuNimetus || ""} onChange={(e) => uuendaSeisukord(rida.id, "muuNimetus", e.target.value)} placeholder="nt Energiaaudit, Turvasüsteem" style={inputStyle} />
-                      </div>
-                    )}
                     <div style={{ flex: 1, minWidth: 140 }}>
                       <div style={fieldLabel}>Seisukord</div>
                       <select value={rida.seisukordVal} onChange={(e) => uuendaSeisukord(rida.id, "seisukordVal", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
@@ -1265,12 +1334,12 @@ export default function App() {
                   {rida.investeering && (
                     <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${N.rule}` }}>
                       <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: N.text }}>Investeering</div>
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
-                        <div style={{ flex: 1, minWidth: 200 }}>
+                      <div style={{ display: "flex", gap: 16, alignItems: "end" }}>
+                        <div style={{ flex: 1 }}>
                           <div style={fieldLabel}>Nimetus</div>
                           <input value={rida.invNimetus} onChange={(e) => uuendaSeisukord(rida.id, "invNimetus", e.target.value)} placeholder="nt Katuse remont" style={inputStyle} />
                         </div>
-                        <div style={{ width: 120 }}>
+                        <div style={{ width: 160 }}>
                           <div style={fieldLabel}>Maksumus €</div>
                           <EuroInput value={rida.invMaksumus} onChange={(v) => uuendaSeisukord(rida.id, "invMaksumus", v)} style={numStyle} />
                         </div>
@@ -1296,6 +1365,17 @@ export default function App() {
                             <button onClick={() => eemaldaRahpiiriRida(rida.id, ri)} style={{ color: N.dim, background: "none", border: "none", cursor: "pointer", fontSize: 13 }}>Eemalda</button>
                           </div>
                         ))}
+                        {(() => {
+                          const maksumus = parseFloat(rida.invMaksumus) || 0;
+                          const kaetud = (rida.rahpiiri || []).reduce((s, r) => s + (parseFloat(r.summa) || 0), 0);
+                          const vahe = maksumus - kaetud;
+                          if (maksumus <= 0) return null;
+                          return (
+                            <div style={{ fontSize: 13, marginTop: 4, color: vahe === 0 ? "#15803d" : "#d97706" }}>
+                              {vahe === 0 ? "✓ Täielikult kaetud" : vahe > 0 ? `Kaetud: ${euro(kaetud)} / ${euro(maksumus)} · katmata: ${euro(vahe)}` : `Kaetud: ${euro(kaetud)} / ${euro(maksumus)} · ületab ${euro(Math.abs(vahe))}`}
+                            </div>
+                          );
+                        })()}
                         <button onClick={() => lisaRahpiiriRida(rida.id)} style={{ ...btnAdd, fontSize: 13, padding: "4px 10px", marginTop: 4 }}>+ Lisa rahastusrida</button>
                       </div>
 
@@ -1305,23 +1385,112 @@ export default function App() {
                 </div>
               ))}
 
-              <div style={{ marginTop: 12, fontFamily: "monospace" }}>
-                {(() => {
-                  const invRead = seisukord.filter(r => r.investeering);
-                  const koguKulu = seisukord.reduce((s, r) => s + (r.eeldatavKulu || 0), 0);
-                  const koguMaksumus = invRead.reduce((s, r) => s + (r.invMaksumus || 0), 0);
-                  const koguRahastus = invRead.reduce((s, r) => s + (r.rahpiiri || []).reduce((fs, rp) => fs + (rp.summa || 0), 0), 0);
-                  const katmata = koguMaksumus - koguRahastus;
-                  return <>
-                    Esemed: {seisukord.length} · eeldatav kogukulu {euro(koguKulu)}
-                    {invRead.length > 0 && <> · investeeringuid {invRead.length} · kaetud {euro(koguRahastus)} · katmata {euro(Math.max(0, katmata))}</>}
-                  </>;
-                })()}
-              </div>
               <div style={{ marginTop: 8 }}>
                 <button style={btnAdd} onClick={lisaSeisukordRida}>+ Lisa ese</button>
               </div>
             </div>
+
+            {/* Muud investeeringud */}
+            <div style={card}>
+              <div style={{ fontWeight: 700, fontSize: 18, color: N.text, marginBottom: 4 }}>Muud investeeringud</div>
+              <div style={{ ...helperText, marginBottom: 12 }}>
+                Investeeringud, mis ei ole seotud konkreetse kaasomandi esemega (nt energiaaudit, turvasüsteem, projektijuhtimine).
+              </div>
+
+              {muudInvesteeringud.length === 0 && (
+                <p style={{ color: N.dim, fontSize: "0.9rem" }}>Muid investeeringuid pole lisatud.</p>
+              )}
+
+              {muudInvesteeringud.map((inv, idx) => (
+                <div key={inv.id} style={{ border: `1px solid ${N.rule}`, borderRadius: 8, padding: 12, marginBottom: 10 }}>
+                  <div style={{ display: "flex", gap: 16, alignItems: "end" }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={fieldLabel}>Nimetus</div>
+                      <input value={inv.nimetus} onChange={(e) => handleMuuInvChange(idx, "nimetus", e.target.value)} placeholder="nt Energiaaudit, turvasüsteem" style={inputStyle} />
+                    </div>
+                    <div style={{ width: 160 }}>
+                      <div style={fieldLabel}>Maksumus €</div>
+                      <EuroInput value={inv.maksumus} onChange={(v) => handleMuuInvChange(idx, "maksumus", v)} style={numStyle} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap", alignItems: "end" }}>
+                    <div style={{ width: 100 }}>
+                      <div style={fieldLabel}>Aasta</div>
+                      <select value={inv.aasta} onChange={(e) => handleMuuInvChange(idx, "aasta", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
+                        <option value="">–</option>
+                        {(() => { const y = plan.period.year || new Date().getFullYear(); return [y, y + 1, y + 2, y + 3].map(v => <option key={v} value={String(v)}>{v}</option>); })()}
+                      </select>
+                    </div>
+                    <div style={{ width: 80 }}>
+                      <div style={fieldLabel}>Kvartal</div>
+                      <select value={inv.kvartal} onChange={(e) => handleMuuInvChange(idx, "kvartal", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
+                        <option value="I">I</option><option value="II">II</option><option value="III">III</option><option value="IV">IV</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 4, color: N.sub }}>Rahastusplaan</div>
+                    {inv.rahpiiri.length === 0 && (
+                      <p style={{ color: N.dim, fontSize: 13 }}>Rahastusridu pole lisatud.</p>
+                    )}
+                    {inv.rahpiiri.map((rp, ri) => (
+                      <div key={ri} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
+                        <select value={rp.allikas} onChange={(e) => handleMuuRahpiiriChange(idx, ri, "allikas", e.target.value)} style={{ ...selectStyle, width: 150 }}>
+                          <option value="Remondifond">Remondifond</option>
+                          <option value="Reservkapital">Reservkapital</option>
+                          <option value="Laen">Laen</option>
+                          <option value="Toetus">Toetus</option>
+                          <option value="Erakorraline makse">Erakorraline makse</option>
+                        </select>
+                        <div style={{ width: 120 }}>
+                          <EuroInput value={rp.summa} onChange={(v) => handleMuuRahpiiriChange(idx, ri, "summa", v)} style={numStyle} />
+                        </div>
+                        <button onClick={() => eemaldaMuuRahpiiriRida(idx, ri)} style={{ color: N.dim, background: "none", border: "none", cursor: "pointer", fontSize: 13 }}>Eemalda</button>
+                      </div>
+                    ))}
+                    {(() => {
+                      const maksumus = parseFloat(inv.maksumus) || 0;
+                      const kaetud = (inv.rahpiiri || []).reduce((s, r) => s + (parseFloat(r.summa) || 0), 0);
+                      const vahe = maksumus - kaetud;
+                      if (maksumus <= 0) return null;
+                      return (
+                        <div style={{ fontSize: 13, marginTop: 4, color: vahe === 0 ? "#15803d" : "#d97706" }}>
+                          {vahe === 0 ? "✓ Täielikult kaetud" : vahe > 0 ? `Kaetud: ${euro(kaetud)} / ${euro(maksumus)} · katmata: ${euro(vahe)}` : `Kaetud: ${euro(kaetud)} / ${euro(maksumus)} · ületab ${euro(Math.abs(vahe))}`}
+                        </div>
+                      );
+                    })()}
+                    <button onClick={() => lisaMuuRahpiiriRida(idx)} style={{ ...btnAdd, fontSize: 13, padding: "4px 10px", marginTop: 4 }}>+ Lisa rahastusrida</button>
+                  </div>
+
+                  <button onClick={() => eemaldaMuuInvesteering(idx)} style={{ color: "#dc2626", fontSize: 13, background: "none", border: "none", cursor: "pointer", marginTop: 8 }}>Eemalda</button>
+                </div>
+              ))}
+
+              <div style={{ marginTop: 8 }}>
+                <button style={btnAdd} onClick={lisaMuuInvesteering}>+ Lisa investeering</button>
+              </div>
+            </div>
+
+            {(seisukord.some(e => e.investeering) || muudInvesteeringud.length > 0) && (() => {
+              const esemeInv = seisukord.filter(e => e.investeering);
+              const esemeSum = esemeInv.reduce((s, e) => s + (parseFloat(e.invMaksumus) || 0), 0);
+              const muudSum = muudInvesteeringud.reduce((s, inv) => s + (parseFloat(inv.maksumus) || 0), 0);
+              const koguarv = esemeInv.length + muudInvesteeringud.length;
+              const koguMaksumus = esemeSum + muudSum;
+              const koguKaetud = [
+                ...esemeInv.flatMap(e => e.rahpiiri || []),
+                ...muudInvesteeringud.flatMap(inv => inv.rahpiiri || []),
+              ].reduce((s, r) => s + (parseFloat(r.summa) || 0), 0);
+              const katmata = koguMaksumus - koguKaetud;
+              return (
+                <div style={{ fontSize: 14, color: N.sub, marginTop: 16 }}>
+                  Investeeringud kokku: {koguarv} · maksumus {euro(koguMaksumus)}
+                  {" · "}kaetud {euro(koguKaetud)}
+                  {katmata > 0 && <span style={{ color: "#d97706" }}> · katmata {euro(katmata)}</span>}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -2019,7 +2188,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Kaasomandi esemed & investeeringud */}
+          {/* Kaasomandi esemed */}
           {seisukord.length > 0 && seisukord.some(r => r.ese) && (
             <div className="print-section">
               <h2 className="print-section-title">Kaasomandi esemed</h2>
@@ -2031,46 +2200,55 @@ export default function App() {
                     <th style={{ padding: "4px 8px" }}>Prioriteet</th>
                     <th style={{ padding: "4px 8px" }}>Puudused</th>
                     <th style={{ padding: "4px 8px", textAlign: "right" }}>Eeldatav kulu</th>
-                    <th style={{ padding: "4px 8px" }}>Planeeritud tegevus</th>
+                    <th style={{ padding: "4px 8px" }}>Tegevus</th>
                     <th style={{ padding: "4px 8px" }}>Aeg</th>
+                    <th style={{ padding: "4px 8px" }}>Investeering</th>
                   </tr>
                 </thead>
                 <tbody>
                   {seisukord.filter(r => r.ese).map((s) => (
                     <tr key={s.id} style={{ borderBottom: "1px solid #ccc" }}>
-                      <td style={{ padding: "4px 8px" }}>{s.ese === "Muu" ? (s.muuNimetus || "Muu") : s.ese}</td>
+                      <td style={{ padding: "4px 8px" }}>{s.ese}</td>
                       <td style={{ padding: "4px 8px" }}>{s.seisukordVal || ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.prioriteet || ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.puudused || ""}</td>
                       <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{s.eeldatavKulu ? euroEE(s.eeldatavKulu) : ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.tegevus || ""}</td>
-                      <td style={{ padding: "4px 8px" }}>{s.tegevusAasta ? `${s.tegevusKvartal ? s.tegevusKvartal + " kvartal " : ""}${s.tegevusAasta}` : ""}</td>
+                      <td style={{ padding: "4px 8px" }}>{s.tegevusAasta ? `${s.tegevusKvartal ? s.tegevusKvartal + " kv " : ""}${s.tegevusAasta}` : ""}</td>
+                      <td style={{ padding: "4px 8px" }}>{s.investeering ? <>{s.invNimetus || "—"} · {euroEE(s.invMaksumus)}{(s.rahpiiri || []).length > 0 && <> ({s.rahpiiri.map(rp => `${rp.allikas}: ${euroEE(rp.summa)}`).join(", ")})</>}</> : ""}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
 
-              {seisukord.some(r => r.investeering) && (
-                <>
-                  <h3 style={{ fontSize: 13, fontWeight: 700, marginTop: 12, marginBottom: 6 }}>Investeeringud</h3>
-                  {seisukord.filter(r => r.investeering).map(s => (
-                    <div key={s.id} style={{ marginBottom: 8 }}>
-                      <div>
-                        <span style={{ fontWeight: 700 }}>{s.invNimetus || "—"}</span>
-                        {" · "}{s.tegevusKvartal ? s.tegevusKvartal + " kvartal " : ""}{s.tegevusAasta || ""}
-                        {" · "}{euroEE(s.invMaksumus)}
-                      </div>
-                      {(s.rahpiiri || []).length > 0 && (
-                        <div style={{ marginLeft: 16, fontSize: 12 }}>
-                          {s.rahpiiri.map((rp, i) => (
-                            <div key={i}>{rp.allikas}: {euroEE(rp.summa)}</div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+          {/* Muud investeeringud */}
+          {muudInvesteeringud.length > 0 && (
+            <div className="print-section">
+              <h2 className="print-section-title">Muud investeeringud</h2>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ textAlign: "left", fontSize: 12, borderBottom: "2px solid #000" }}>
+                    <th style={{ padding: "4px 8px" }}>Nimetus</th>
+                    <th style={{ padding: "4px 8px" }}>Aasta</th>
+                    <th style={{ padding: "4px 8px" }}>Kvartal</th>
+                    <th style={{ padding: "4px 8px", textAlign: "right" }}>Maksumus</th>
+                    <th style={{ padding: "4px 8px" }}>Rahastusplaan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {muudInvesteeringud.map(inv => (
+                    <tr key={inv.id} style={{ borderBottom: "1px solid #ccc" }}>
+                      <td style={{ padding: "4px 8px" }}>{inv.nimetus || "—"}</td>
+                      <td style={{ padding: "4px 8px" }}>{inv.aasta || ""}</td>
+                      <td style={{ padding: "4px 8px" }}>{inv.kvartal || ""}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{euroEE(inv.maksumus)}</td>
+                      <td style={{ padding: "4px 8px" }}>{(inv.rahpiiri || []).map(rp => `${rp.allikas}: ${euroEE(rp.summa)}`).join(", ") || "—"}</td>
+                    </tr>
                   ))}
-                </>
-              )}
+                </tbody>
+              </table>
             </div>
           )}
 
