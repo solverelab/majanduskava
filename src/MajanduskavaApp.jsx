@@ -153,7 +153,7 @@ const btnRemove   = { ..._btnBase, background: "transparent", color: N.dim, font
 const btn         = btnSecondary; // legacy alias
 
 // ── CATEGORIES & ENUMS ──
-const KOMMUNAALTEENUSED = ["Kütus", "Soojus", "Vesi ja kanalisatsioon", "Elekter", "Prügivedu"];
+const KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Prügivedu", "Kütus"];
 
 const HALDUSTEENUSED = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Muu"];
 
@@ -665,7 +665,7 @@ export default function App() {
         calc: { type: "FIXED_PERIOD", params: { amountEUR: 0 } },
       }),
       ...(side === "COST"
-        ? { kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 }
+        ? { category: "Haldus", kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 }
         : { category: "Majandamiskulude ettemaks", arvutus: "kuus", summaInput: 0 }),
     };
     setPlan(p => ({
@@ -836,7 +836,8 @@ export default function App() {
   };
 
   const addLoan = () => {
-    setPlan(p => ({ ...p, loans: [...p.loans, mkLoan()] }));
+    const y = plan.period.year || new Date().getFullYear();
+    setPlan(p => ({ ...p, loans: [...p.loans, mkLoan({ startYM: `${y}-01` })] }));
   };
 
   const updateLoan = (id, patch) => {
@@ -850,7 +851,7 @@ export default function App() {
   // Auto-add one empty row when section is empty (setPlan, not addX — idempotent even if effect fires twice)
   useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [{ ...mkApartment({ label: "1" }), omanikud: "" }] } })); }, [plan.building.apartments.length]);
   // Investeeringud algavad tühjana — luuakse ainult "Loo investeering" või "+ Lisa investeering" kaudu
-  useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
+  useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "Haldus", kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
   useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME", category: "Majandamiskulude ettemaks" }), arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.incomeRows.length]);
 
   // Kulude summa sünkroonimine engine'ile (→ calc.params.amountEUR)
@@ -933,7 +934,7 @@ export default function App() {
     if (!same) setPlan(p => ({ ...p, investmentsPipeline: { ...p.investmentsPipeline, items } }));
   }, [seisukord, muudInvesteeringud]);
 
-  useEffect(() => { if (plan.loans.length === 0) setPlan(p => ({ ...p, loans: [mkLoan()] })); }, [plan.loans.length]);
+  useEffect(() => { if (plan.loans.length === 0) { const y = plan.period.year || new Date().getFullYear(); setPlan(p => ({ ...p, loans: [mkLoan({ startYM: `${y}-01` })] })); } }, [plan.loans.length]);
   useEffect(() => { if (seisukord.length === 0) { setSeisukord([{ id: crypto.randomUUID(), ese: "", seisukordVal: "", puudused: "", prioriteet: "", eeldatavKulu: 0, tegevus: "", tegevusAasta: "", tegevusKvartal: "I", investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [] }]); } }, [seisukord.length]);
 
   const SECS = ["Periood & korterid", "Esemed ja investeeringud", "Kulud", "Tulud", "Fondid & laen", "Korterite maksed", "Kontroll & kokkuvõte"];
@@ -1509,10 +1510,9 @@ export default function App() {
                   {rows.map(r => (
                     <div key={r.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        <div style={{ width: 180 }}>
+                        <div style={{ width: side === "INCOME" ? 220 : 180 }}>
                           <div style={fieldLabel}>Kategooria</div>
                           <select value={r.category || ""} onChange={(e) => side === "COST" ? handleKuluKategooriaChange(r.id, e.target.value) : updateRow(side, r.id, { category: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
-                            <option value="">Vali…</option>
                             {side === "COST" ? (
                               <>
                                 <optgroup label="Kommunaalteenused">
@@ -1553,7 +1553,7 @@ export default function App() {
                             <div style={{ width: 130 }}>
                               <div style={fieldLabel}>Summa €</div>
                               <div style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 700, paddingTop: 6 }}>
-                                {euro((parseFloat(r.kogus) || 0) * (parseFloat(r.uhikuHind) || 0))}
+                                {(parseFloat(r.kogus) || 0) * (parseFloat(r.uhikuHind) || 0) ? euro((parseFloat(r.kogus) || 0) * (parseFloat(r.uhikuHind) || 0)) : "–"}
                               </div>
                             </div>
                           </>
@@ -1573,14 +1573,14 @@ export default function App() {
                             </div>
                             <div style={{ width: 140 }}>
                               <div style={fieldLabel}>
-                                {r.arvutus === "aastas" ? "€/aasta" : r.arvutus === "perioodis" ? "Summa €" : "€/kuu"}
+                                {r.arvutus === "aastas" ? "€/aasta" : r.arvutus === "perioodis" ? "Summa €" : "Summa"}
                               </div>
                               <EuroInput value={r.summaInput} onChange={(v) => updateRow(side, r.id, { summaInput: v })} style={numStyle} />
                             </div>
                             <div style={{ width: 130 }}>
                               <div style={fieldLabel}>Perioodis</div>
                               <div style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 700, paddingTop: 6 }}>
-                                {euro(arvutaHaldusSumma(r))}
+                                {arvutaHaldusSumma(r) ? euro(arvutaHaldusSumma(r)) : "–"}
                               </div>
                             </div>
                           </>
@@ -1602,8 +1602,8 @@ export default function App() {
 
                 <div style={{ ...helperText, marginTop: 12, fontFamily: "monospace" }}>
                   {side === "COST"
-                    ? <>Kulud perioodis: {euro(derived.totals.costPeriodEUR)} · kuus {euro(derived.totals.costMonthlyEUR)}/kuu</>
-                    : <>Tulud perioodis: {euro(derived.totals.incomePeriodEUR)} · kuus {euro(derived.totals.incomeMonthlyEUR)}/kuu</>
+                    ? <>Kulud perioodis: {derived.totals.costPeriodEUR ? euro(derived.totals.costPeriodEUR) : "–"} · kuus {derived.totals.costMonthlyEUR ? euro(derived.totals.costMonthlyEUR) : "–"}/kuu</>
+                    : <>Tulud perioodis: {derived.totals.incomePeriodEUR ? euro(derived.totals.incomePeriodEUR) : "–"} · kuus {derived.totals.incomeMonthlyEUR ? euro(derived.totals.incomeMonthlyEUR) : "–"}/kuu</>
                   }
                 </div>
                 <div style={{ marginTop: 8 }}>
@@ -1690,10 +1690,23 @@ export default function App() {
                           <div style={fieldLabel}>Tähtaeg kuud</div>
                           <NumberInput value={ln.termMonths} onChange={(v) => updateLoan(ln.id, { termMonths: v })} style={numStyle} />
                         </div>
-                        <div style={{ width: 140 }}>
-                          <div style={fieldLabel}>Algus (KK.AAAA)</div>
-                          <input value={ln.startYM} onChange={(e) => updateLoan(ln.id, { startYM: e.target.value })} style={inputStyle} />
-                          <div style={{ ...helperText, marginTop: 4, fontFamily: "monospace" }}>{formatYMEE(ln.startYM)}</div>
+                        <div style={{ width: 160 }}>
+                          <div style={fieldLabel}>Algus</div>
+                          {(() => {
+                            const parts = (ln.startYM || "").split("-");
+                            const algusAasta = parts[0] || String(plan.period.year || new Date().getFullYear());
+                            const algusKuu = parts[1] || "01";
+                            return (
+                              <div style={{ display: "flex", gap: 4 }}>
+                                <select value={algusKuu} onChange={(e) => updateLoan(ln.id, { startYM: `${algusAasta}-${e.target.value}` })} style={{ ...selectStyle, width: 60 }}>
+                                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(k => <option key={k} value={String(k).padStart(2,"0")}>{String(k).padStart(2,"0")}</option>)}
+                                </select>
+                                <select value={algusAasta} onChange={(e) => updateLoan(ln.id, { startYM: `${e.target.value}-${algusKuu}` })} style={{ ...selectStyle, flex: 1 }}>
+                                  {Array.from({ length: 10 }, (_, i) => 2024 + i).map(a => <option key={a} value={String(a)}>{a}</option>)}
+                                </select>
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div style={{ width: 140 }}>
                           <div style={fieldLabel}>Laenumakse reserv %</div>
@@ -1706,7 +1719,7 @@ export default function App() {
 
                       {d && (
                         <div style={{ marginTop: 12, fontFamily: "monospace" }}>
-                          Teenindus perioodis: {euro(d.servicingPeriodEUR)} · kuus {euro(d.servicingMonthlyEUR)}/kuu · laenureserv perioodis: {euro(d.reservePeriodEUR)}
+                          Teenindus perioodis: {euro(d.servicingPeriodEUR)} · kuumakse: {euro(d.servicingMonthlyEUR)} · laenureserv: {euro(d.reservePeriodEUR)}
                         </div>
                       )}
                     </div>
@@ -1715,7 +1728,7 @@ export default function App() {
               </div>
 
               <div style={{ marginTop: 12, fontFamily: "monospace" }}>
-                Laenuteenindus kokku perioodis: {euro(derived.loans.servicePeriodEUR)} · laenureserv perioodis: {euro(derived.loans.reservePeriodEUR)}
+                Laenuteenindus kokku: {euro(derived.loans.servicePeriodEUR)} · laenureserv kokku: {euro(derived.loans.reservePeriodEUR)}
               </div>
               <div style={{ marginTop: 8 }}>
                 <button style={btnAdd} onClick={addLoan}>+ Lisa laen</button>
