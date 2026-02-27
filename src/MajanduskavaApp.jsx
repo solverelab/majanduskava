@@ -887,8 +887,8 @@ export default function App() {
   const tabStatus = [
     // 0: Periood & korterid
     (hasPeriod && hasApts) ? "done" : (plan.period.start || plan.period.end || hasApts) ? "partial" : "empty",
-    // 1: Investeeringud
-    plan.investmentsPipeline.items.length > 0 ? "done" : "empty",
+    // 1: Kaasomandi esemed
+    seisukord.some(r => r.ese) ? (seisukord.some(r => r.investeering) ? "done" : "partial") : "empty",
     // 2: Kulud
     plan.budget.costRows.length > 0 ? "done" : "empty",
     // 3: Tulud
