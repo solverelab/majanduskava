@@ -530,24 +530,71 @@ export default function App() {
             quarter: kvMap[String(it.quarter)] || it.quarter || "I",
           }));
         }
-        // Migrate old income categories
+        // Migrate old income categories + add missing fields
         if (candidateState.budget?.incomeRows) {
           candidateState.budget.incomeRows = candidateState.budget.incomeRows.map(r => ({
+            arvutus: "perioodis",
+            summaInput: r.calc?.params?.amountEUR || 0,
             ...r,
             category: TULU_KATEGOORIA_MAP[r.category] || r.category,
           }));
         }
+        // Migrate old cost rows — add missing UI fields
+        if (candidateState.budget?.costRows) {
+          candidateState.budget.costRows = candidateState.budget.costRows.map(r => {
+            if (r.arvutus !== undefined || r.kogus !== undefined) return r; // already migrated
+            const isKommunaal = KOMMUNAALTEENUSED.includes(r.category);
+            return isKommunaal
+              ? { kogus: "", uhik: KOMMUNAAL_VAIKE_UHIK[r.category] || "", uhikuHind: "", ...r }
+              : { arvutus: "perioodis", summaInput: r.calc?.params?.amountEUR || 0, ...r };
+          });
+        }
         setPlan(candidateState);
         // Sync KÜ data
         if (data.kyData) setKyData(data.kyData);
+        // Migrate seisukord + old investments → eseme-based
+        let importedSeisukord = [];
         if (data.seisukord) {
-          if (typeof data.seisukord === "string") setSeisukord([]);
-          else setSeisukord(data.seisukord.map(r => {
+          if (typeof data.seisukord === "string") importedSeisukord = [];
+          else importedSeisukord = data.seisukord.map(r => {
             const kvMap = { "1": "I", "2": "II", "3": "III", "4": "IV" };
             const kv = r.tegevusKvartal ? (kvMap[r.tegevusKvartal] || r.tegevusKvartal) : "";
-            return { tegevusAasta: "", tegevusKvartal: "", id: crypto.randomUUID(), ...r, tegevusKvartal: kv };
-          }));
+            return { tegevusAasta: "", tegevusKvartal: "", muuNimetus: "", investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [], id: crypto.randomUUID(), ...r, tegevusKvartal: kv };
+          });
         }
+        // Migrate old separate investments into seisukord items
+        const oldItems = candidateState.investmentsPipeline?.items || [];
+        if (oldItems.length > 0 && !importedSeisukord.some(r => r.investeering)) {
+          oldItems.forEach(inv => {
+            const kvMap = { "1": "I", "2": "II", "3": "III", "4": "IV" };
+            const seotud = inv.seisukordId ? importedSeisukord.find(e => e.id === inv.seisukordId) : null;
+            const rahpiiri = (inv.fundingPlan || []).map(fp => ({ allikas: ({ REPAIR_FUND: "Remondifond", RESERVE: "Reservkapital", LOAN: "Laen", GRANT: "Toetus", ONE_OFF: "Erakorraline makse" })[fp.source] || fp.source, summa: fp.amountEUR || 0 }));
+            if (seotud) {
+              seotud.investeering = true;
+              seotud.invNimetus = inv.name || "";
+              seotud.invMaksumus = inv.totalCostEUR || 0;
+              seotud.rahpiiri = rahpiiri;
+            } else {
+              importedSeisukord.push({
+                id: crypto.randomUUID(),
+                ese: "Muu",
+                muuNimetus: inv.name || "",
+                seisukordVal: "",
+                puudused: "",
+                prioriteet: "",
+                eeldatavKulu: inv.totalCostEUR || 0,
+                tegevus: "",
+                tegevusAasta: String(inv.plannedYear || ""),
+                tegevusKvartal: kvMap[String(inv.quarter)] || inv.quarter || "I",
+                investeering: true,
+                invNimetus: inv.name || "",
+                invMaksumus: inv.totalCostEUR || 0,
+                rahpiiri,
+              });
+            }
+          });
+        }
+        setSeisukord(importedSeisukord);
         // Sync period dropdowns
         const _ps = candidateState.period?.start?.split("-") || [];
         const _pe = candidateState.period?.end?.split("-") || [];
@@ -604,7 +651,9 @@ export default function App() {
         },
         calc: { type: "FIXED_PERIOD", params: { amountEUR: 0 } },
       }),
-      ...(side === "COST" ? { kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 } : { category: "Majandamiskulude ettemaks" }),
+      ...(side === "COST"
+        ? { kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 }
+        : { category: "Majandamiskulude ettemaks", arvutus: "kuus", summaInput: 0 }),
     };
     setPlan(p => ({
       ...p,
@@ -644,6 +693,14 @@ export default function App() {
       patch.uhik = KOMMUNAAL_VAIKE_UHIK[newKategooria] || "";
       patch.kogus = "";
       patch.uhikuHind = "";
+      patch.arvutus = undefined;
+      patch.summaInput = undefined;
+    } else {
+      patch.arvutus = "kuus";
+      patch.summaInput = 0;
+      patch.kogus = undefined;
+      patch.uhik = undefined;
+      patch.uhikuHind = undefined;
     }
     updateRow("COST", id, patch);
   };
@@ -665,13 +722,18 @@ export default function App() {
     setSeisukord(prev => [...prev, {
       id: crypto.randomUUID(),
       ese: "",
-      seisukordVal: "Rahuldav",
+      muuNimetus: "",
+      seisukordVal: "",
       puudused: "",
-      prioriteet: "Keskmine",
+      prioriteet: "",
       eeldatavKulu: 0,
       tegevus: "",
       tegevusAasta: String(y),
       tegevusKvartal: "I",
+      investeering: false,
+      invNimetus: "",
+      invMaksumus: 0,
+      rahpiiri: [],
     }]);
   };
 
@@ -684,103 +746,41 @@ export default function App() {
   };
 
   const handleLooInvesteering = (rida) => {
-    const olemas = plan.investmentsPipeline.items.some(it => it.seisukordId === rida.id);
-    if (olemas) return;
-    const nimi = rida.ese + (rida.tegevus ? " — " + rida.tegevus : "");
-    const y = rida.tegevusAasta ? Number(rida.tegevusAasta) : (plan.period.year || new Date().getFullYear());
-    const inv = {
-      ...mkInvestmentItem({ name: nimi, plannedYear: y, quarter: rida.tegevusKvartal || "I", totalCostEUR: rida.eeldatavKulu || 0 }),
-      seisukordId: rida.id,
-    };
-    setPlan(p => ({ ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [...p.investmentsPipeline.items, inv] } }));
+    if (rida.investeering) return;
+    const nimi = rida.ese === "Muu"
+      ? (rida.muuNimetus || "Muu") + (rida.tegevus ? " — " + rida.tegevus : "")
+      : rida.ese + (rida.tegevus ? " — " + rida.tegevus : "");
+    setSeisukord(prev => prev.map(r => r.id === rida.id ? {
+      ...r,
+      investeering: true,
+      invNimetus: nimi,
+      invMaksumus: r.eeldatavKulu || 0,
+    } : r));
   };
 
-  const addInvestment = () => {
-    setPlan(p => ({
-      ...p,
-      investmentsPipeline: {
-        ...p.investmentsPipeline,
-        items: [...p.investmentsPipeline.items, { ...mkInvestmentItem({ plannedYear: p.period.year || new Date().getFullYear(), quarter: "I", totalCostEUR: 0 }), seisukordId: null }],
-      },
-    }));
+  const eemaldaInvesteering = (id) => {
+    setSeisukord(prev => prev.map(r => r.id === id ? {
+      ...r, investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [],
+    } : r));
   };
 
-  const updateInvestment = (id, patch) => {
-    setPlan(p => ({
-      ...p,
-      investmentsPipeline: {
-        ...p.investmentsPipeline,
-        items: p.investmentsPipeline.items.map(it => it.id === id ? { ...it, ...patch } : it),
-      },
-    }));
+  const lisaRahpiiriRida = (id) => {
+    setSeisukord(prev => prev.map(r => r.id === id ? {
+      ...r, rahpiiri: [...r.rahpiiri, { allikas: "Remondifond", summa: 0 }],
+    } : r));
   };
 
-  const removeInvestment = (id) => {
-    setPlan(p => ({
-      ...p,
-      investmentsPipeline: {
-        ...p.investmentsPipeline,
-        items: p.investmentsPipeline.items.filter(it => it.id !== id),
-      },
-    }));
+  const uuendaRahpiiriRida = (id, ri, patch) => {
+    setSeisukord(prev => prev.map(r => r.id === id ? {
+      ...r, rahpiiri: r.rahpiiri.map((row, i) => i === ri ? { ...row, ...patch } : row),
+    } : r));
   };
-// --- INVESTEERINGU RAHASTUSREAD ---
 
-const addInvFundingRow = (invId) => {
-  setPlan(p => ({
-    ...p,
-    investmentsPipeline: {
-      ...p.investmentsPipeline,
-      items: p.investmentsPipeline.items.map(it =>
-        it.id === invId
-          ? {
-              ...it,
-              fundingPlan: [
-                ...(it.fundingPlan || []),
-                { source: "REPAIR_FUND", amountEUR: 0, loanId: "" },
-              ],
-            }
-          : it
-      ),
-    },
-  }));
-};
-
-const updateInvFundingRow = (invId, rowIndex, patch) => {
-  setPlan(p => ({
-    ...p,
-    investmentsPipeline: {
-      ...p.investmentsPipeline,
-      items: p.investmentsPipeline.items.map(it =>
-        it.id === invId
-          ? {
-              ...it,
-              fundingPlan: (it.fundingPlan || []).map((row, i) =>
-                i === rowIndex ? { ...row, ...patch } : row
-              ),
-            }
-          : it
-      ),
-    },
-  }));
-};
-
-const removeInvFundingRow = (invId, rowIndex) => {
-  setPlan(p => ({
-    ...p,
-    investmentsPipeline: {
-      ...p.investmentsPipeline,
-      items: p.investmentsPipeline.items.map(it =>
-        it.id === invId
-          ? {
-              ...it,
-              fundingPlan: (it.fundingPlan || []).filter((_, i) => i !== rowIndex),
-            }
-          : it
-      ),
-    },
-  }));
-};
+  const eemaldaRahpiiriRida = (id, ri) => {
+    setSeisukord(prev => prev.map(r => r.id === id ? {
+      ...r, rahpiiri: r.rahpiiri.filter((_, i) => i !== ri),
+    } : r));
+  };
 
   const addLoan = () => {
     setPlan(p => ({ ...p, loans: [...p.loans, mkLoan()] }));
@@ -796,9 +796,9 @@ const removeInvFundingRow = (invId, rowIndex) => {
 
   // Auto-add one empty row when section is empty (setPlan, not addX — idempotent even if effect fires twice)
   useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [{ ...mkApartment({ label: "1" }), omanikud: "" }] } })); }, [plan.building.apartments.length]);
-  useEffect(() => { if (plan.investmentsPipeline.items.length === 0) setPlan(p => ({ ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [{ ...mkInvestmentItem({ plannedYear: p.period.year || new Date().getFullYear(), quarter: "I" }), seisukordId: null }] } })); }, [plan.investmentsPipeline.items.length]);
+  // Investeeringud algavad tühjana — luuakse ainult "Loo investeering" või "+ Lisa investeering" kaudu
   useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
-  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [mkCashflowRow({ side: "INCOME", category: "Majandamiskulude ettemaks" })] } })); }, [plan.budget.incomeRows.length]);
+  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME", category: "Majandamiskulude ettemaks" }), arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.incomeRows.length]);
 
   // Kulude summa sünkroonimine engine'ile (→ calc.params.amountEUR)
   useEffect(() => {
@@ -820,10 +820,48 @@ const removeInvFundingRow = (invId, rowIndex) => {
     });
     if (changed) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: updated } }));
   }, [plan.budget.costRows, derived.period.monthEq]);
-  useEffect(() => { if (plan.loans.length === 0) setPlan(p => ({ ...p, loans: [mkLoan()] })); }, [plan.loans.length]);
-  useEffect(() => { if (seisukord.length === 0) { const y = plan.period.year || new Date().getFullYear(); setSeisukord([{ id: crypto.randomUUID(), ese: "", seisukordVal: "Rahuldav", puudused: "", prioriteet: "Keskmine", eeldatavKulu: 0, tegevus: "", tegevusAasta: String(y), tegevusKvartal: "I" }]); } }, [seisukord.length]);
 
-  const SECS = ["Periood & korterid", "Investeeringud", "Kulud", "Tulud", "Fondid & laen", "Korterite maksed", "Kontroll & kokkuvõte"];
+  // Tulude summa sünkroonimine engine'ile (→ calc.params.amountEUR)
+  useEffect(() => {
+    let changed = false;
+    const updated = plan.budget.incomeRows.map(r => {
+      if (r.arvutus === undefined) return r;
+      const summa = arvutaHaldusSumma(r);
+      if (r.calc.params.amountEUR !== summa) {
+        changed = true;
+        return { ...r, calc: { type: "FIXED_PERIOD", params: { amountEUR: summa } } };
+      }
+      return r;
+    });
+    if (changed) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: updated } }));
+  }, [plan.budget.incomeRows, derived.period.monthEq]);
+
+  // Investeeringute sünkroonimine engine'ile (seisukord → plan.investmentsPipeline.items)
+  useEffect(() => {
+    const items = seisukord.filter(r => r.investeering).map(r => ({
+      ...mkInvestmentItem({
+        name: r.invNimetus,
+        plannedYear: r.tegevusAasta ? Number(r.tegevusAasta) : (plan.period.year || new Date().getFullYear()),
+        quarter: r.tegevusKvartal || "I",
+        totalCostEUR: r.invMaksumus || 0,
+      }),
+      id: r.id + "::inv",
+      seisukordId: r.id,
+      fundingPlan: (r.rahpiiri || []).map(rp => ({ source: rp.allikas, amountEUR: rp.summa || 0 })),
+    }));
+    const prev = plan.investmentsPipeline.items;
+    const same = prev.length === items.length && items.every((it, i) =>
+      prev[i]?.id === it.id && prev[i]?.name === it.name && prev[i]?.totalCostEUR === it.totalCostEUR
+      && prev[i]?.plannedYear === it.plannedYear && prev[i]?.quarter === it.quarter
+      && JSON.stringify(prev[i]?.fundingPlan) === JSON.stringify(it.fundingPlan)
+    );
+    if (!same) setPlan(p => ({ ...p, investmentsPipeline: { ...p.investmentsPipeline, items } }));
+  }, [seisukord]);
+
+  useEffect(() => { if (plan.loans.length === 0) setPlan(p => ({ ...p, loans: [mkLoan()] })); }, [plan.loans.length]);
+  useEffect(() => { if (seisukord.length === 0) { const y = plan.period.year || new Date().getFullYear(); setSeisukord([{ id: crypto.randomUUID(), ese: "", muuNimetus: "", seisukordVal: "", puudused: "", prioriteet: "", eeldatavKulu: 0, tegevus: "", tegevusAasta: String(y), tegevusKvartal: "I", investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [] }]); } }, [seisukord.length]);
+
+  const SECS = ["Periood & korterid", "Kaasomandi esemed", "Kulud", "Tulud", "Fondid & laen", "Korterite maksed", "Kontroll & kokkuvõte"];
 
   const clearSection = (tabIdx) => {
     if (!window.confirm("Kas soovid selle jaotise andmed kustutada? Seda ei saa tagasi võtta.")) return;
@@ -1158,6 +1196,12 @@ const removeInvFundingRow = (invId, rowIndex) => {
                         {ESEMED.map(e => <option key={e} value={e}>{e}</option>)}
                       </select>
                     </div>
+                    {rida.ese === "Muu" && (
+                      <div style={{ flex: 1, minWidth: 160 }}>
+                        <div style={fieldLabel}>Nimetus</div>
+                        <input value={rida.muuNimetus || ""} onChange={(e) => uuendaSeisukord(rida.id, "muuNimetus", e.target.value)} placeholder="nt Energiaaudit, Turvasüsteem" style={inputStyle} />
+                      </div>
+                    )}
                     <div style={{ flex: 1, minWidth: 140 }}>
                       <div style={fieldLabel}>Seisukord</div>
                       <select value={rida.seisukordVal} onChange={(e) => uuendaSeisukord(rida.id, "seisukordVal", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
@@ -1190,7 +1234,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
                       <div style={fieldLabel}>Aasta</div>
                       <select value={rida.tegevusAasta || ""} onChange={(e) => uuendaSeisukord(rida.id, "tegevusAasta", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
                         <option value="">–</option>
-                        {(() => { const y = plan.period.year || new Date().getFullYear(); return [y, y + 1, y + 2, y + 3].map(v => <option key={v} value={v}>{v}</option>); })()}
+                        {(() => { const y = plan.period.year || new Date().getFullYear(); return [y, y + 1, y + 2, y + 3].map(v => <option key={v} value={String(v)}>{v}</option>); })()}
                       </select>
                     </div>
                     <div style={{ width: 70 }}>
@@ -1206,118 +1250,69 @@ const removeInvFundingRow = (invId, rowIndex) => {
                   </div>
                   <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <button style={btnRemove} onClick={() => eemaldaSeisukordRida(rida.id)}>Eemalda</button>
-                    {rida.ese && (rida.eeldatavKulu > 0 || rida.tegevus) && (
-                      plan.investmentsPipeline.items.some(it => it.seisukordId === rida.id) ? (
-                        <span style={{ color: "#16a34a", fontSize: 13, cursor: "pointer" }} onClick={() => {
-                          const inv = plan.investmentsPipeline.items.find(it => it.seisukordId === rida.id);
-                          if (inv) document.getElementById("inv-" + inv.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
-                        }}>Investeering loodud</span>
-                      ) : (
-                        <button style={{ fontSize: 13, color: "#2563eb", background: "none", border: "1px solid #2563eb", borderRadius: 4, padding: "2px 8px", cursor: "pointer" }} onClick={() => handleLooInvesteering(rida)}>Loo investeering</button>
-                      )
+                    {rida.ese && (rida.eeldatavKulu > 0 || rida.tegevus) && !rida.investeering && (
+                      <button style={{ fontSize: 13, color: "#2563eb", background: "none", border: "1px solid #2563eb", borderRadius: 4, padding: "2px 8px", cursor: "pointer" }} onClick={() => handleLooInvesteering(rida)}>Loo investeering</button>
                     )}
                   </div>
+
+                  {rida.investeering && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${N.rule}` }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: N.text }}>Investeering</div>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
+                        <div style={{ flex: 1, minWidth: 200 }}>
+                          <div style={fieldLabel}>Nimetus</div>
+                          <input value={rida.invNimetus} onChange={(e) => uuendaSeisukord(rida.id, "invNimetus", e.target.value)} placeholder="nt Katuse remont" style={inputStyle} />
+                        </div>
+                        <div style={{ width: 120 }}>
+                          <div style={fieldLabel}>Maksumus €</div>
+                          <EuroInput value={rida.invMaksumus} onChange={(v) => uuendaSeisukord(rida.id, "invMaksumus", v)} style={numStyle} />
+                        </div>
+                      </div>
+
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 4, color: N.sub }}>Rahastusplaan</div>
+                        {rida.rahpiiri.length === 0 && (
+                          <p style={{ color: N.dim, fontSize: 13 }}>Rahastusridu pole lisatud.</p>
+                        )}
+                        {rida.rahpiiri.map((rp, ri) => (
+                          <div key={ri} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
+                            <select value={rp.allikas} onChange={(e) => uuendaRahpiiriRida(rida.id, ri, { allikas: e.target.value })} style={{ ...selectStyle, width: 150 }}>
+                              <option value="Remondifond">Remondifond</option>
+                              <option value="Reservkapital">Reservkapital</option>
+                              <option value="Laen">Laen</option>
+                              <option value="Toetus">Toetus</option>
+                              <option value="Erakorraline makse">Erakorraline makse</option>
+                            </select>
+                            <div style={{ width: 120 }}>
+                              <EuroInput value={rp.summa} onChange={(v) => uuendaRahpiiriRida(rida.id, ri, { summa: v })} style={numStyle} />
+                            </div>
+                            <button onClick={() => eemaldaRahpiiriRida(rida.id, ri)} style={{ color: N.dim, background: "none", border: "none", cursor: "pointer", fontSize: 13 }}>Eemalda</button>
+                          </div>
+                        ))}
+                        <button onClick={() => lisaRahpiiriRida(rida.id)} style={{ ...btnAdd, fontSize: 13, padding: "4px 10px", marginTop: 4 }}>+ Lisa rahastusrida</button>
+                      </div>
+
+                      <button onClick={() => eemaldaInvesteering(rida.id)} style={{ color: "#dc2626", fontSize: 13, background: "none", border: "none", cursor: "pointer", marginTop: 8 }}>Eemalda investeering</button>
+                    </div>
+                  )}
                 </div>
               ))}
 
-              <div style={{ marginTop: 8, fontFamily: "monospace" }}>
-                Esemed: {seisukord.length} · eeldatav kogukulu {euro(seisukord.reduce((sum, r) => sum + (r.eeldatavKulu || 0), 0))}
-                {seisukord.some(r => r.tegevusAasta) && <> · tegevused planeeritud {[...new Set(seisukord.filter(r => r.tegevusAasta).map(r => r.tegevusAasta))].sort().join(", ")}</>}
-              </div>
-              <div style={{ marginTop: 8 }}>
-                <button style={btnAdd} onClick={lisaSeisukordRida}>+ Lisa ese</button>
-              </div>
-            </div>
-
-            <div style={card}>
-              <div style={{ marginBottom: 12 }}>
-                <div style={sectionTitle}>Investeeringud</div>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {plan.investmentsPipeline.items.map(it => (
-                  <div key={it.id} id={"inv-" + it.id} style={{ border: `1px solid ${N.rule}`, borderRadius: 12, padding: 12 }}>
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      <div style={{ flex: 2 }}>
-                        <div style={fieldLabel}>Nimetus</div>
-                        <input value={it.name} onChange={(e) => updateInvestment(it.id, { name: e.target.value })} placeholder="nt Katuse remont" style={inputStyle} />
-                      </div>
-                      <div style={{ width: 120 }}>
-                        <div style={fieldLabel}>Aasta</div>
-                        <select value={it.plannedYear} onChange={(e) => updateInvestment(it.id, { plannedYear: Number(e.target.value) })} style={{ ...selectStyle, width: "100%" }}>
-                          {(() => { const y = plan.period.year || new Date().getFullYear(); return [y, y + 1].map(v => <option key={v} value={v}>{v}</option>); })()}
-                        </select>
-                      </div>
-                      <div style={{ width: 120 }}>
-                        <div style={fieldLabel}>Kvartal</div>
-                        <select value={it.quarter} onChange={(e) => updateInvestment(it.id, { quarter: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
-                          <option value="I">I</option><option value="II">II</option><option value="III">III</option><option value="IV">IV</option>
-                        </select>
-                      </div>
-                      <div style={{ width: 160 }}>
-                        <div style={fieldLabel}>Maksumus €</div>
-                        <EuroInput value={it.totalCostEUR} onChange={(v) => updateInvestment(it.id, { totalCostEUR: v })} style={numStyle} />
-                      </div>
-                    </div>
-
-                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${N.rule}` }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Rahastusplaan</div>
-
-                      {(it.fundingPlan || []).length === 0 && (
-                        <div style={{ ...helperText }}>
-                          Rahastusridu pole lisatud.
-                        </div>
-                      )}
-
-                      {(it.fundingPlan || []).length > 0 && (
-                        <div style={{ display: "flex", gap: 8, paddingLeft: 4, marginBottom: 4 }}>
-                          <span style={{ width: 160, fontSize: 11, color: N.dim }}>Allikas</span>
-                          <span style={{ width: 130, fontSize: 11, color: N.dim }}>Summa €</span>
-                        </div>
-                      )}
-
-                      {(it.fundingPlan || []).map((row, index) => (
-                        <div key={index} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4, paddingLeft: 4 }}>
-                          <select value={row.source} onChange={(e) => updateInvFundingRow(it.id, index, { source: e.target.value })} style={{ ...selectStyle, width: 160 }}>
-                            <option value="REPAIR_FUND">Remondifond</option>
-                            <option value="RESERVE">Reservkapital</option>
-                            <option value="LOAN">Laen</option>
-                            <option value="GRANT">Toetus</option>
-                            <option value="ONE_OFF">Erakorraline makse</option>
-                          </select>
-                          <div style={{ width: 130 }}>
-                            <EuroInput value={row.amountEUR} onChange={(v) => updateInvFundingRow(it.id, index, { amountEUR: v })} style={numStyle} />
-                          </div>
-                          <button onClick={() => removeInvFundingRow(it.id, index)} style={{ ...btnRemove, padding: "4px 8px", fontSize: 13 }}>Eemalda</button>
-                        </div>
-                      ))}
-
-                      <div style={{ marginTop: 6 }}>
-                        <button style={btnAdd} onClick={() => addInvFundingRow(it.id)}>+ Lisa rahastusrida</button>
-                      </div>
-                    </div>
-
-                    <div style={{ marginTop: 8, textAlign: "right" }}>
-                      <button style={btnRemove} onClick={() => removeInvestment(it.id)}>Eemalda</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
               <div style={{ marginTop: 12, fontFamily: "monospace" }}>
                 {(() => {
-                  const items = plan.investmentsPipeline.items;
-                  const koguMaksumus = items.reduce((s, it) => s + (it.totalCostEUR || 0), 0);
-                  const koguRahastus = items.reduce((s, it) => s + (it.fundingPlan || []).reduce((fs, r) => fs + (r.amountEUR || 0), 0), 0);
+                  const invRead = seisukord.filter(r => r.investeering);
+                  const koguKulu = seisukord.reduce((s, r) => s + (r.eeldatavKulu || 0), 0);
+                  const koguMaksumus = invRead.reduce((s, r) => s + (r.invMaksumus || 0), 0);
+                  const koguRahastus = invRead.reduce((s, r) => s + (r.rahpiiri || []).reduce((fs, rp) => fs + (rp.summa || 0), 0), 0);
                   const katmata = koguMaksumus - koguRahastus;
                   return <>
-                    Investeeringud: {items.length} · maksumus {euro(koguMaksumus)}
-                    {koguMaksumus > 0 && <> · kaetud {euro(koguRahastus)} · katmata {euro(Math.max(0, katmata))}</>}
+                    Esemed: {seisukord.length} · eeldatav kogukulu {euro(koguKulu)}
+                    {invRead.length > 0 && <> · investeeringuid {invRead.length} · kaetud {euro(koguRahastus)} · katmata {euro(Math.max(0, katmata))}</>}
                   </>;
                 })()}
               </div>
               <div style={{ marginTop: 8 }}>
-                <button style={btnAdd} onClick={addInvestment}>+ Lisa investeering</button>
+                <button style={btnAdd} onClick={lisaSeisukordRida}>+ Lisa ese</button>
               </div>
             </div>
           </div>
@@ -1377,7 +1372,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
                             </div>
                             <div style={{ width: 130 }}>
                               <div style={fieldLabel}>Ühiku hind €</div>
-                              <EuroInput value={r.uhikuHind} onChange={(v) => updateRow(side, r.id, { uhikuHind: v })} placeholder="0" style={numStyle} />
+                              <NumberInput value={r.uhikuHind} onChange={(v) => updateRow(side, r.id, { uhikuHind: v })} placeholder="0" style={numStyle} />
                             </div>
                             <div style={{ width: 130 }}>
                               <div style={fieldLabel}>Summa €</div>
@@ -1386,7 +1381,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
                               </div>
                             </div>
                           </>
-                        ) : (
+                        ) : r.category ? (
                           <>
                             <div style={{ width: 140 }}>
                               <div style={fieldLabel}>Arvutus</div>
@@ -1413,6 +1408,11 @@ const removeInvFundingRow = (invId, rowIndex) => {
                               </div>
                             </div>
                           </>
+                        ) : (
+                          <div style={{ width: 140 }}>
+                            <div style={fieldLabel}>Summa €</div>
+                            <EuroInput value={r.summaInput || 0} onChange={(v) => updateRow(side, r.id, { summaInput: v, arvutus: "perioodis" })} style={numStyle} />
+                          </div>
                         )}
 
                         <div style={{ width: 120, alignSelf: "end" }}>
@@ -2012,10 +2012,10 @@ const removeInvFundingRow = (invId, rowIndex) => {
             </div>
           </div>
 
-          {/* Kaasomandi eseme seisukord */}
+          {/* Kaasomandi esemed & investeeringud */}
           {seisukord.length > 0 && seisukord.some(r => r.ese) && (
             <div className="print-section">
-              <h2 className="print-section-title">Kaasomandi eseme seisukord</h2>
+              <h2 className="print-section-title">Kaasomandi esemed</h2>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ textAlign: "left", fontSize: 12, borderBottom: "2px solid #000" }}>
@@ -2031,7 +2031,7 @@ const removeInvFundingRow = (invId, rowIndex) => {
                 <tbody>
                   {seisukord.filter(r => r.ese).map((s) => (
                     <tr key={s.id} style={{ borderBottom: "1px solid #ccc" }}>
-                      <td style={{ padding: "4px 8px" }}>{s.ese === "Muu" ? "Muu" : s.ese}</td>
+                      <td style={{ padding: "4px 8px" }}>{s.ese === "Muu" ? (s.muuNimetus || "Muu") : s.ese}</td>
                       <td style={{ padding: "4px 8px" }}>{s.seisukordVal || ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.prioriteet || ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.puudused || ""}</td>
@@ -2042,28 +2042,30 @@ const removeInvFundingRow = (invId, rowIndex) => {
                   ))}
                 </tbody>
               </table>
+
+              {seisukord.some(r => r.investeering) && (
+                <>
+                  <h3 style={{ fontSize: 13, fontWeight: 700, marginTop: 12, marginBottom: 6 }}>Investeeringud</h3>
+                  {seisukord.filter(r => r.investeering).map(s => (
+                    <div key={s.id} style={{ marginBottom: 8 }}>
+                      <div>
+                        <span style={{ fontWeight: 700 }}>{s.invNimetus || "—"}</span>
+                        {" · "}{s.tegevusKvartal ? s.tegevusKvartal + " kvartal " : ""}{s.tegevusAasta || ""}
+                        {" · "}{euroEE(s.invMaksumus)}
+                      </div>
+                      {(s.rahpiiri || []).length > 0 && (
+                        <div style={{ marginLeft: 16, fontSize: 12 }}>
+                          {s.rahpiiri.map((rp, i) => (
+                            <div key={i}>{rp.allikas}: {euroEE(rp.summa)}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
-
-          {/* Investeeringud */}
-          <div className="print-section">
-            <h2 className="print-section-title">Investeeringud</h2>
-            {plan.investmentsPipeline.items.length === 0
-              ? <div>Investeeringuid pole lisatud.</div>
-              : plan.investmentsPipeline.items.map(it => (
-                <div key={it.id} style={{ marginBottom: 8 }}>
-                  <div><span style={{ fontWeight: 700 }}>{it.name || "—"}</span> · {it.quarter} kvartal {it.plannedYear} · {euroEE(it.totalCostEUR)}</div>
-                  {(it.fundingPlan || []).length > 0 && (
-                    <div style={{ marginLeft: 16, fontSize: 12 }}>
-                      {it.fundingPlan.map((row, i) => (
-                        <div key={i}>{row.source}: {euroEE(row.amountEUR)}</div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))
-            }
-          </div>
 
           {/* Kulud */}
           <div className="print-section">
@@ -2072,12 +2074,9 @@ const removeInvFundingRow = (invId, rowIndex) => {
               ? <div>Kulusid pole lisatud.</div>
               : plan.budget.costRows.map(r => (
                 <div key={r.id} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #ccc" }}>
-                  <span>{r.name || "—"}</span>
+                  <span>{r.category ? <span style={{ color: "#666" }}>{r.category} · </span> : ""}{r.name || "—"}</span>
                   <span style={{ fontFamily: "monospace" }}>
-                    {r.calc.type === "FIXED_PERIOD" && euroEE(r.calc.params.amountEUR)}
-                    {r.calc.type === "MONTHLY_FIXED" && euroEE(r.calc.params.monthlyEUR) + "/kuu"}
-                    {r.calc.type === "ANNUAL_FIXED" && euroEE(r.calc.params.annualEUR) + "/a"}
-                    {r.calc.type === "QTY_PRICE_ANNUAL" && (r.calc.params.qty + " × " + euroEE(r.calc.params.unitEUR) + "/a")}
+                    {euroEE(r.calc.params.amountEUR)}
                   </span>
                 </div>
               ))
@@ -2094,12 +2093,9 @@ const removeInvFundingRow = (invId, rowIndex) => {
               ? <div>Tulusid pole lisatud.</div>
               : plan.budget.incomeRows.map(r => (
                 <div key={r.id} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #ccc" }}>
-                  <span>{r.name || "—"}</span>
+                  <span>{r.category ? <span style={{ color: "#666" }}>{r.category} · </span> : ""}{r.name || "—"}</span>
                   <span style={{ fontFamily: "monospace" }}>
-                    {r.calc.type === "FIXED_PERIOD" && euroEE(r.calc.params.amountEUR)}
-                    {r.calc.type === "MONTHLY_FIXED" && euroEE(r.calc.params.monthlyEUR) + "/kuu"}
-                    {r.calc.type === "ANNUAL_FIXED" && euroEE(r.calc.params.annualEUR) + "/a"}
-                    {r.calc.type === "QTY_PRICE_ANNUAL" && (r.calc.params.qty + " × " + euroEE(r.calc.params.unitEUR) + "/a")}
+                    {euroEE(r.calc.params.amountEUR)}
                   </span>
                 </div>
               ))
