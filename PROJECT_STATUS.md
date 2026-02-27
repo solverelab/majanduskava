@@ -1,495 +1,164 @@
 # PROJECT_STATUS.md
 
-Projekti seis: 2026-02-27 (uuendatud)
+Projekti seis: 2026-02-27
+
+---
 
 ## 1. Mis on tehtud
 
-### Solvere Core Contract v1 (frozen)
-
-`src/solvereBridge/majanduskavaHost.js` deklareerib formaalse lepingu:
-
-1. Deterministlik runtime — sama state + policyVersion → sama evaluation fingerprint, loopGuard, policyVersion
-2. TRACE/v1 invariant — evaluation.trace peab olema schemaVersion "trace/v1", events array, non-empty policyVersion
-3. Action chain ordering — finding → actionCandidate → actionSelected → actionApplied (downstream ilma upstream'ita keelatud)
-4. autoResolve contract — steps on array, iga step sisaldab evaluationSnapshotBefore/After
-5. No nondeterministic fields — trace ei tohi sisaldada timestamp/time/date/now/generatedAt/createdAt/updatedAt
-6. stateSignature + reportDigest stability — content hashid on deterministlikud ja key-order-sõltumatud
-
-Breaking changes nõuavad explicit v2 version bump'i.
-
-### actionCandidates kiht
-
-- **`ActionCandidateV1`** interface lisatud `solvereCoreV1.ts`-i: `candidateId`, `findingId`, `findingCode`, `actionCode`, `action` (täis ActionV1), `riskScoreDelta`, `isEligible`, `rank`
-- **`buildActionCandidates()`** (`buildActionCandidates.ts`) — puhas funktsioon, mis itereerib `evaluation.findings[].actions[]` ja ehitab flat `actionCandidates[]` listi. Lisab `kind: "actionCandidate"` trace event'id koos `rankVector`-iga.
-- **Pipeline järjekord** `moduleHost.ts`-s: `evaluatePolicy → resolveActions → withActionImpacts → buildActionCandidates → policyVersion → assertEvaluationContract`. Trace propageeritakse eksplitsiitselt läbi pipeline.
-- `EvaluationV1`-le lisatud `actionCandidates?: ActionCandidateV1[]`, `trace?: EvaluationTraceV1`, `policyVersion?: string`
-- Trace event'ide järjekord on deterministlik: sorted `candidateId ASC`
-
-### rankVector-põhine selection
-
-- **`RankVector`**: `{ primary: riskScoreDelta, secondary: actionCode, tertiary: candidateId }`
-- Sortimisreegel: primary ASC → secondary ASC → tertiary ASC (täielikult deterministlik)
-- `tieBreakUsed: boolean` — `true` kui mitu candidate'i jagavad sama primary väärtust
-- `reasonCode: "LOWEST_PRIMARY_RANK"`
-- rankVector on ka `actionCandidate` trace event'ides (explainable ranking)
-
-### CandidateEligibilityReason ja annoteeritud candidate'id
-
-- **`CandidateEligibilityReasonV1`** tüüp: `"ELIGIBLE"`, `"FILTERED_BY_SEEN"`, `"MISSING_INPUT"`, `"CONFLICTS_WITH_PRESET"`, `"NOT_APPLICABLE"`, `"BLOCKED_BY_CONTRACT"`
-- **`AnnotatedCandidate`** — candidate + `eligible: boolean` + `reasons: CandidateEligibilityReason[]`
-- `pickFromCandidates` annoteerib **kõik** candidate'id enne selection'i:
-  - `isEligible === false` → `eligible: false, reasons: ["NOT_APPLICABLE"]`
-  - `isEligible === true` aga seenKey on seen-setis → `eligible: false, reasons: ["FILTERED_BY_SEEN"]`
-  - `isEligible === true` ja pole seen → `eligible: true, reasons: ["ELIGIBLE"]`
-- Selection toimub ainult `eligible === true` candidate'ide seast
-- NO_CHOICE korral `stop.details.candidateReasons[]` sisaldab iga candidate'i annotatsioone
-- Trace event'id sisaldavad kõiki candidate'e (nii eligible kui ineligible) koos `reasons`-iga
-
-### Evaluation snapshots
-
-- **`EvaluationSnapshot`**: `{ riskScore, riskLevel, findingsCount, findingCodes (sorted ASC), actionCandidatesCount }`
-- `buildEvaluationSnapshot()` funktsioon `moduleHost.ts`-s
-- Step'id sisaldavad `evaluationSnapshotBefore` / `evaluationSnapshotAfter` (mitte täisobjekte)
-- `delta: { riskScore, findingsCount }` — arvutuslikud deltad
-- `isProgress` — deterministlik: `sigAfter !== sigBefore && (riskScoreDelta < 0 || findingsCountDelta < 0)`
-- Trace, evidence, metrics EI salvestata step'i
-
-### State signature
-
-- **`buildStateSignature(state)`** (`moduleHost.ts`) — deterministlik, key-order-sõltumatu content hash
-- Kasutab `deepCloneWithSortedKeys()` (rekursiivne sorted-key deep clone, arrays säilitavad järjekorra) + `canonicalStringify()` + kaks FNV-1a hashi (64-bit efektiivne kollisioonikindlus)
-- Dev-mode assertion: kontrollib et canonical ja raw path annavad sama tulemuse
-- Tagastab 16-kohaline hex string
-- Ei kasuta timestamp'e, runtime ID-sid ega mitte-deterministlikke allikaid
-- Iga step sisaldab `stateSignatureBefore` ja `stateSignatureAfter`
-- **State signature override**: kui `stateSignatureAfter === stateSignatureBefore` → `isProgress = false` → `stop.reason = "NO_PROGRESS"` **sõltumata** risk/findings loogikast
-
-### policyVersion
-
-- **`buildPolicyVersion(bundle)`** (`moduleHost.ts`) — deterministlik content hash policy bundle'ist
-- Sama `canonicalStringify()` + FNV-1a muster nagu `buildStateSignature`
-- Lisatakse `evaluation.policyVersion`-ile `run()` pipeline'is enne `assertEvaluationContract`-i
-- Lisatakse `RunReportV1.policyVersion`-ile `autoResolveWithHost`-is (ekstraheeritakse initial evaluation'ist)
-- `assertEvaluationContract` nõuab `policyVersion` olemasolu (viskab vea kui puudub)
-
-### reportDigest
-
-- **`buildReportDigest(report)`** (`autoResolve.ts`) — deterministlik content hash RunReportV1 sisust
-- Sisaldab: `policyVersion`, `preset`, `initial`, `final`, `stepsTaken`, `stop`, `selectedActionCodes`
-- Sama `stableStringify()` + FNV-1a muster
-- `report.reportDigest` — 16-kohaline hex string
-- Muutub kui muutub ükskõik milline sisendväli
-- Arvutatakse `autoResolveWithHost`-is pärast report'i ehitamist, enne consistency check'i
-
-### seenKey loop guard
-
-- **`seenKey`** = `candidateId + "::" + canonicalizePatch(patch)`
-- **`canonicalizePatch()`** (`moduleHost.ts`) — sorteerib patch operations deterministlikult (op, path, value); sama sisuga patch erineva järjekorraga → alati sama string
-- `pickFromCandidates` filtreerib seenKey järgi (mitte candidateId järgi)
-- Iga step sisaldab `loopGuard: { seenKey, seenCountBefore, seenCountAfter }`
-- Kui kõik eligible candidate'd on seen → `stop.reason = "NO_CHOICE"` koos `details: { candidatesEligible, filteredBySeenCount, seenKeys, seenCount, candidateReasons }`
-
-### assertEvaluationContract
-
-- **`assertEvaluationContract(evaluation)`** (`moduleHost.ts`) — valideerib pipeline väljundit:
-  - `evaluation.schemaVersion === "evaluation/v1"`
-  - `evaluation.policyVersion` on olemas ja non-empty string
-  - `trace.schemaVersion === "trace/v1"` ja `trace.events` on array
-  - `actionCandidates[]` kohustuslikud väljad: `candidateId`, `findingId`, `action.code`
-  - `risk.score` on number, `risk.level` on string
-  - Nondeterministlike võtmete puudumine trace'is ja candidates'is (timestamp, time, date, random, uuid, nonce, seed, createdAt, updatedAt, generatedAt)
-- **`EvaluationContractError`** koodiga `E_EVAL_CONTRACT_VIOLATION` ja `details: { missing, nondeterministic }`
-- Kutsutakse `run()` meetodis pärast `buildActionCandidates` ja `policyVersion` lisamist
-
-### assertModuleContract
-
-- **`assertModuleContract(evaluation)`** (`moduleHost.ts`) — varajane pipeline kontroll enne autoResolve:
-  - `evaluation.schemaVersion === "evaluation/v1"`
-  - `evaluation.policyVersion` on olemas ja non-empty string
-  - `trace.schemaVersion === "trace/v1"`
-- **`ModuleContractError`** koodiga `E_MODULE_CONTRACT_VIOLATION` ja `details: { violations: string[] }`
-- Kutsutakse `run()` meetodis pärast `_computingImpacts` guard'i (ainult põhiteel, mitte impact simulation'i ajal)
-
-### assertRunReportConsistency
-
-- **`assertRunReportConsistency(report, steps)`** (`moduleHost.ts`) — deterministlik kontroll:
-  - `stepsTaken > 0`: `report.final.stateSignature === steps[last].stateSignatureAfter`
-  - `stepsTaken === 0`: `report.final.stateSignature === report.initial.stateSignature`
-- **`RunReportInconsistentError`** koodiga `E_RUN_REPORT_INCONSISTENT` ja `details: { expected, actual, rule }`
-- Kutsutakse `autoResolveWithHost` lõpus pärast report'i ehitamist
-
-### Development-mode nondeterminism guard
-
-- **`NondeterministicSourceError`** koodiga `E_NONDETERMINISTIC_SOURCE_USED` ja `details: { tampered: string[] }`
-- `run()` meetodis, kui `NODE_ENV !== "production"`: salvestab `Date.now` ja `Math.random` viited enne `compute`/`evaluate`/`resolveActions`, kontrollib pärast et viited pole muutunud
-- Ei muuda production käitumist, ei lisa mitte-deterministlikke välju report'i
-- `IS_DEV` arvutatakse mooduli tasemel üks kord (`typeof process !== "undefined" && process.env?.NODE_ENV !== "production"`)
-
-### Dev-only runtime guard'id (solvereBridge)
-
-`src/solvereBridge/majanduskavaHost.js` sisaldab 8 dev-only runtime kontrolli:
-
-**Master switch**: `SOLVERE_DEV_GUARDS_ENABLED = IS_DEV && true` — üks keskne konstant, mis kontrollib kõigi guard'ide aktiveerimist. Väljalülitamiseks muuda `&& true` → `&& false`.
-
-**Diagnostika**: `export const __DEV_GUARDS_STATUS__ = { enabled: SOLVERE_DEV_GUARDS_ENABLED }` — staatiline boolean-objekt testide ja debugimise jaoks (ei kasutata UI-s ega trace'is).
-
-Guard'id `runPlan()` ja `applyActionAndRun()` sees (järjekorras):
-
-1. **`assertTraceV1Invariant(evaluation)`** — kontrollib `trace` olemasolu, `trace.schemaVersion === "trace/v1"`, `trace.events` on array, `evaluation.policyVersion` on non-empty string. Error: `TRACE_V1_INVARIANT_FAILED`
-2. **`assertNoNondeterministicFields(trace)`** — rekursiivne walk läbi `evaluation.trace`, otsib keelatud võtmeid (case-insensitive): timestamp, time, date, now, generatedAt, createdAt, updatedAt. Error: `NONDETERMINISM_FIELD_FOUND`
-3. **`assertPolicyVersionStability(state, evaluation)`** — cache'ib `policyVersion` per `stateSignature`. Sama state peab alati andma sama policyVersion. Cache tühjendatakse `setPreset()` kutsel. Error: `DETERMINISM_FAILED: policyVersion changed`
-4. **`assertDeterminismStability(state, evaluation)`** — cache'ib evaluation fingerprint (`risk|level|findingCodes|candidateCount`) per `stateSignature::policyVersion`. Sama sisend peab alati andma sama väljundi. Error: `DETERMINISM_FAILED: evaluation fingerprint mismatch`
-5. **`assertLoopGuardStability(state, evaluation)`** — cache'ib eligible candidate count per `stateSignature::policyVersion`. `"OK:n"` vs `"BLOCKED:0"` peab olema stabiilne. Error: `DETERMINISM_FAILED: loopGuard mismatch`
-6. **`assertActionChainCompleteness(evaluation)`** — valideerib action chain ordering invariant per finding: finding → actionCandidate → actionSelected → actionApplied. Keelab downstream ilma upstream'ita. Nõuab `isEligible` boolean'i igalt candidate'ilt. Error: `TRACE_ACTION_CHAIN_INVARIANT_FAILED`
-7. **`deepFreeze(evaluation)`** — rekursiivne `Object.freeze` evaluation objektile, et UI ei saaks muteerida
-
-Guard `runAutoResolve()` sees:
-
-8. **`assertAutoResolveContract(result)`** — valideerib et `steps` on array ja iga step sisaldab `evaluationSnapshotBefore` + `evaluationSnapshotAfter`. Error: `AUTORESOLVE_CONTRACT_FAILED`
-
-Kõik cache'd on module-scope `Map`-id (mitte localStorage), piiratud 200 kirjele (FIFO eviction).
-
-### RunReport (runReport/v1)
-
-- **`RunReportV1`** — autoResolve kokkuvõte:
-  - `schemaVersion: "runReport/v1"`
-  - `moduleId`, `preset?`, `policyVersion?`, `reportDigest?`
-  - `initial: { stateSignature, riskScore, findingsCount }`
-  - `final: { stateSignature, riskScore, findingsCount }`
-  - `stepsTaken`
-  - `stop: { reason, details? }`
-  - `selectedActionCodes: string[]` (järjekorras, step 0, 1, 2...)
-- `autoResolveWithHost` tagastab `report: RunReportV1` top-level väljana
-- Report on kokkuvõte; `steps[]` jääb eraldi detailvaateks
-
-### Step trace struktuur (stepTrace/v1)
-
-Iga `AutoResolveStep` sisaldab:
-- `schemaVersion: "stepTrace/v1"`
-- `index` (mitte `step`)
-- `stateSignatureBefore` / `stateSignatureAfter`
-- `evaluationSnapshotBefore` / `evaluationSnapshotAfter`
-- `delta: { riskScore, findingsCount }`
-- `isProgress: boolean`
-- `actionSelected: { candidateId, reasonCode, rankVector, tieBreakUsed }`
-- `actionApplied: { actionCode, kind, patch }`
-- `loopGuard: { seenKey, seenCountBefore, seenCountAfter }`
-
-### Trace event'id (evaluation.trace.events)
-
-Trace sisaldab ainult pipeline event'e (EI autoResolve resolve-event'e):
-- `kind: "finding"` — evaluatePolicy poolt
-- `kind: "actionCandidate"` — buildActionCandidates poolt (koos `eligible`, `reasons`, `rankVector`-iga)
-
-Trace event'ide järjekord:
-- `actionCandidate` event'id sorted `candidateId ASC`
-- Kõik candidate'id (nii eligible kui ineligible) saavad event'i
-
-AutoResolve explainability elab step'ides, mitte trace'is.
-
-### Tüübid (src/policy/trace/traceV1.ts)
-
-- `EvaluationSnapshotV1`
-- `LoopGuardV1`
-- `RankVectorV1`
-- `CandidateEligibilityReasonV1`
-- `StepTraceV1` (koos stateSignatureBefore/After)
-- `AutoResolveStopDetailsV1` (seenKeys, seenCount, threshold, candidatesEligible, filteredBySeenCount)
-- `AutoResolveStopV1` (reason, stepsTaken, details?)
-- `AutoResolveResultV1` (koos report?: RunReportV1)
-- `RunReportV1` (koos policyVersion?, reportDigest?)
-
-### UI: Visuaalne disain ja layout
-
-**Soe neutraalne palett** — "paber laual" esteetika:
-```
-N.bg="#f0eeeb" (lehe taust, soe kivi)
-N.surface="#ffffff" (kaart / vorm)
-N.muted="#f7f6f4" (sekundaarne pind)
-N.border="#e0ddd8" (kaardi äär, eraldajad)
-N.rule="#e5e2de" (tabeli/rea eraldajad)
-N.text="#2c2825" (põhitekst, soe must)
-N.sub="#5c554d" (sekundaarne tekst)
-N.dim="#9b9389" (tertsiaarne / tuhm tekst)
-N.accent="#3b3632" (primaarne nupp, soe tume)
-N.sidebar="#3d3835" (sidebar'i taust)
-```
-
-**Vertikaalne sidebar navigatsioon**:
-- 7 tabi: Periood & korterid, Investeeringud, Kulud, Tulud, Fondid & laen, Korterite maksed, Kontroll & kokkuvõte
-- Iga tabi kõrval staatuse-indikaator (dot): `empty` (tühi/hall), `partial` (poolik/kollane), `done` (täidetud/roheline)
-- Aktiivne tab: valge-tooniga esiletõst + kuldne vasakäär (`#c4b08a`)
-
-**Tab-kohane "Tühjenda" nupp**:
-- Iga tabi päises lingistiilne "Tühjenda" nupp, mis kustutab ainult selle jaotise andmed
-- `clearSection(tabIdx)` handler koos confirm dialoogiga
-
-### UI: Periood & KÜ andmed (Tab 0)
-
-**Perioodi sisestus — 3 dropdowni per kuupäev (PP/KK/AAAA)**:
-- `periodParts` state: `{ sd, sm, sy, ed, em, ey }` — eraldi UI state mis säilitab iga dropdown'i väärtuse
-- Sync `plan.period.start/end` (ISO string) ainult kui kõik 3 osa täidetud
-- Auto-end: alguskuupäeva valimisel seatakse lõpp automaatselt aasta lõppu
-- Kuupäeva tekst kuvatakse otse `periodParts`-ist (mitte `plan.period`-ist)
-
-**KÜ andmed**:
-- `kyData` state: `{ nimi, registrikood, aadress }` — eraldi top-level state
-- Kaasatakse JSON eksporti/importi: `bundle.kyData`
-- Kuvatakse prindi päises (nimi + registrikood · aadress)
-- Tühjendatakse Tab 0 kustutamisel
-
-### UI: Automaatne tühirida ja "Lisa" nupud
-
-- `useEffect` auto-add: kui sektsiooni array on tühi, lisatakse automaatselt üks tühi rida (korterid, investeeringud, kulud, tulud, laenud, seisukord)
-- Idempotentne: `setPlan(p => ({...p, field: [mkFactory()]}))` (mitte `addX()` kutse)
-- "+ Lisa" nupud asuvad tabeli/loendi all (mitte sektsiooni päises)
-- Korteri auto-label: esimene "1", järgmised `Math.max(...labels) + 1`
-- Korteri tabel: Tähis | Omanik(ud) | Pind m² | Osa | Märkused (omanikud lisaväli, placeholder "nt Tamm, Kask")
-
-### UI: Periood — majandusaasta kiirvalik
-
-- Dropdown (2024–2030) seab kogu perioodi üheks kalendriaastaks
-- Algusaasta muutmisel sünkroonib automaatselt lõppaasta
-- Hoiatus kui alguskuupäev > lõppkuupäev
-
-### UI: Investeeringute parandused
-
-- Aasta väli on dropdown (perioodi aasta + järgmine)
-- Kvartal: rooma numbrid I/II/III/IV (JSON import teisendab vanad 1/2/3/4)
-- Koondrea: arv, maksumus, kaetud, katmata (rahastusplaani katvus)
-- "Eemalda" nupp iga investeeringu juures (ühtlustatud)
-- "Lisa rahastusrida" nupp iga investeeringu all (mitte päises)
-
-### UI: Kaasomandi eseme seisukord
-
-Struktureeritud tabel `seisukord[]` state'iga:
-- Väljad: `ese` (ESEMED dropdown), `seisukordVal` (SEISUKORD_VALIKUD), `puudused`, `prioriteet` (PRIORITEEDID), `eeldatavKulu` (EuroInput), `tegevus`, `tegevusAasta` (dropdown: perioodi aasta + 3), `tegevusKvartal` (dropdown: I/II/III/IV)
-- Esimene rida: Ese | Seisukord | Prioriteet
-- Teine rida: Puudused | Eeldatav kulu € | Planeeritud tegevus | Aasta | Kvartal
-- Vaikeväärtused uuel real: seisukord "Rahuldav", prioriteet "Keskmine", aasta = perioodi aasta, kvartal = "I"; ese jääb tühjaks ("Vali…")
-- Helper funktsioonid: `lisaSeisukordRida`, `uuendaSeisukord`, `eemaldaSeisukordRida`
-- Dünaamilised placeholder'id (PUUDUSED_PLACEHOLDERS, TEGEVUS_PLACEHOLDERS) ese järgi
-- Kokkuvõttereal: esemed arv, eeldatav kogukulu, planeeritud aastad
-- JSON import backward compat: vana string-formaat → tühi massiiv; puuduvad väljad → tühi string; kvartal 1→I teisendus
-- Prindi tabel: Ese, Seisukord, Prioriteet, Puudused, Eeldatav kulu, Planeeritud tegevus, Aeg (nt "II kvartal 2026")
-
-### UI: Kategooriasüsteem (kulud ja tulud)
-
-**Kulude kategooriad** (KULU_KATEGOORIAD):
-- `KOMMUNAALTEENUSED`: Kütus, Soojus, Vesi ja kanalisatsioon, Elekter, Prügivedu
-- `HALDUSTEENUSED`: Haldus, Raamatupidamine, Koristus, Kindlustus, Hooldus, Muu
-- Dropdown optgroup'idega (Kommunaalteenused / Haldusteenused)
-
-**Tulude kategooriad** (TULU_KATEGOORIAD):
-- Majandamiskulude ettemaks, Vahendustasu, Renditulu, Muu tulu
-- Uue tulurea vaikekategooria: "Majandamiskulude ettemaks"
-- JSON import: TULU_KATEGOORIA_MAP teisendab vanad kategooriad (Haldus/Koristus/... → Majandamiskulude ettemaks, Muu → Muu tulu)
-
-**Kommunaalteenuste ühikud** (KOMMUNAAL_UHIKUD / KOMMUNAAL_VAIKE_UHIK):
-- Igal kommunaalteenusel on lubatud ühikute nimekiri ja vaikeühik
-- Kütus: m³/l/t, Soojus: MWh/kWh, Vesi: m³, Elekter: kWh/MWh, Prügivedu: periood/kuu
-- Kategooria vahetamisel seatakse automaatselt vaikeühik (`handleKuluKategooriaChange`)
-
-**Tingimuslik kulurea UI**:
-- Kommunaalteenus → Kogus | Ühik (dropdown) | Ühiku hind € | Summa € (arvutatud: kogus × ühikuHind)
-- Haldusteenus → Arvutus (HALDUS_ARVUTUS_VALIKUD: €/kuu, €/aasta, Kokku perioodis) | Sisend € | Perioodis (arvutatud)
-- `arvutaHaldusSumma(r)`: €/kuu → val × kuud, €/aasta → val / 12 × kuud, perioodis → val otse
-- useEffect sünkroonib mõlema tüübi summad engine'ile `calc.params.amountEUR` kaudu
-- Kulurea lisakäljad: `kogus`, `uhik`, `uhikuHind`, `arvutus` (vaikimisi "kuus"), `summaInput`
-
-**Dünaamilised placeholder'id** — KULU_NIMETUS_PLACEHOLDERS, TULU_NIMETUS_PLACEHOLDERS kategooria järgi
-
-### UI: Fondid & laen (Tab 4)
-
-**Remondifond** — eraldi kaart:
-- Remondifondi määr (€/m²/kuu) sisend + laekumine perioodis
-- Kirjeldav tekst: "Hoone pikaajalise korrashoiu fond..."
-
-**Reservkapital** — eraldi kaart:
-- Kavandatud reserv € sisend + nõutav miinimum kuva
-- Kirjeldav tekst: "KrtS §48 — reservkapital ettenägematute kulude katteks"
-
-**Laenud** — eraldi kaart (muutmata)
-
-### UI: NumberInput ja EuroInput komponendid
-
-**`NumberInput`** — universaalne Eesti komakohaga sisend:
-- `type="text"` + `inputMode="decimal"` (mobiilil numpad komaga)
-- Lokaalne `display` string-state, `editing` lipp
-- `onBlur` teeb `parseFloat(display.replace(",", "."))` ja salvestab numbri
-- Kasutuses: `areaM2`, `qty`, `annualRatePct`, `reservePct`, `monthlyRateEurPerM2`, kommunaalteenuste `kogus`
-
-**`EuroInput`** — eurode sisend, ümardab täisarvuks, tuhandete eraldajaga:
-- Sama muster nagu NumberInput, aga `Math.round()` onBlur
-- Blur: formateerib `toLocaleString("et-EE")` → kuvab "20 000"
-- Focus: näitab toorarvud ("20000") mugavaks muutmiseks
-- Kasutuses: kõik EUR väljad (`totalCostEUR`, `plannedEUR`, `principalEUR`, `eeldatavKulu`, `uhikuHind`, `summaInput`)
-
-**Euro formaat** — `euro()` ja `euroEE()` kasutavad `Math.round()`, kuvavad ilma sentideta
-
-### UI: Risk-info gating
-
-- `showTechnicalInfo` toggle — "Kaalutud skoor" ja "Risk -1/+2" badge'id peidetud vaikimisi
-- Section komponent saab `showTechnicalInfo` prop'i
-
-### UI (TracePanel.jsx)
-
-- **Rule trace**: finding event'id grupeeritud `findingCode ASC`, iga finding'u all `actionCandidate` event'id sorted `candidateId ASC`
-- Iga candidate näitab: `actionCode`, `eligible` (roheline/punane), `reasons` (badge'id), `rankVector.primary`
-- Kasutab ainult `trace.events` andmeid (mitte evaluation objekti tuletusi)
-- **Solver steps**: andmepõhine renderdamine step'ide struktuurist
-- Näitab: candidate ID, rankVector (primary/secondary/tertiary), tie-break märge, action code, kind
-- **State signature**: iga step näitab `stateSignatureBefore → stateSignatureAfter`; kui võrdsed → punane badge **STATE_UNCHANGED**
-- Snapshot deltad värvikoodidega (roheline = paranemine)
-- Stop reason eestikeelse label'iga
-- "Näita patch" detailvaade `actionApplied.patch`-ist
-
-### UI: Tab 6 visuaalne struktuur
-
-Tab 6 ("Kontroll & kokkuvõte") on jagatud kolmeks visuaalseks plokiks:
-
-**A) Vastavuse kokkuvõte** (sinine äär):
-- loopGuard status badge (OK / BLOCKED, tuletatud `evaluation.actionCandidates` eligible count'ist)
-- RunReport kokkuvõte badge (OK / Tähelepanu vajab / Andmed puuduvad)
-- "Prindi kokkuvõte" nupp
-
-**B) Ekspordi / impordi** (roheline äär):
-- "Salvesta fail" nupp — ExportBundle: `{ schemaVersion: "majanduskavaExport/v1", moduleId, preset, policyVersion, stateSignature, state, kyData }`
-- "Ava fail" nupp — import koos dry-run valideerimisega (taastab ka `kyData`)
-- Skeemiversiooni veateade (kui import ebaõnnestub)
-
-**C) Süsteemi info** (hall äär, muted toon):
-- policyVersion, reportDigest, stateSignature
-- Helehall taust, väiksem font
-
-### UI: JSON import dry-run
-
-Import handler teostab deterministliku dry-run valideerimise enne state'i asendamist:
-
-1. **Parse** — `JSON.parse`
-2. **Guard** — `majanduskavaExport/v1` (composite või split `type + version`) + `moduleId` + `state` olemasolu
-3. **Dry-run** — `runPlan(candidateState)` (läbib kõik dev-guard'id)
-4. **Trace kontroll** — `evaluation.trace` olemas ja `schemaVersion === "trace/v1"`
-5. **Commit** — alles siis: `setPlan`, `setEvaluation`, `setSolvereMetrics`, preset, `setKyData`
-6. **Error** — kui dry-run ebaõnnestub, state ei muutu; veateade Tab 6 sees
-
-### UI: autoResolve bridge wrapper
-
-- `autoResolve` import MajanduskavaApp.jsx-s asendatud `runAutoResolve`-ga bridge'ist
-- `runAutoResolve(args)` kutsub `autoResolve(args)` + dev-režiimis `assertAutoResolveContract(result)`
-- Kõik autoResolve kutsed lähevad nüüd läbi bridge'i
-
-### UI: Pilot-checklist ja tagasiside
-
-- **Pilot launch checklist** — 6 staatilist kontrollpunkti Tab 6 ülaosas
-- **Kasutustest (dev) — tagasiside mall** — eelformaaditud mall 9 väljaga, "Kopeeri tagasiside mall" nupp (clipboard API + fallback), secondary stiil (hall äär)
-
-### Deploy seadistus
-
-- `vite.config.js`: `base: '/majanduskava/'` (GitHub Pages alamkaust)
-- `package.json`: `"deploy": "npm run build && gh-pages -d dist"` (build enne deploy'i)
-- `README.md`: Majanduskava Launch Protocol v1 (6-sammuline kontroll-loend)
-
-## 2. Mis on pooleli / tegemata
-
-- **Ühtegi pooleliolevat ülesannet ei ole.** Kõik nõutud muudatused on implementeeritud.
-- Potentsiaalsed edasiarendused (pole veel küsitud):
-  - Kommunaalteenuste ühikupõhine hinnastus prindi vaatesse
-  - `canonicalizePatch` unit testid eraldi failina
-  - Multi-step undo/redo tugi
-  - CI/CD pipeline (GitHub Actions)
+### Solvere Core framework (packages/solvere-core/)
+
+| Komponent | Fail | Kirjeldus |
+|-----------|------|-----------|
+| **moduleHost** | `moduleHost.ts` (16KB) | Orkestraator: `createModuleHost()`, `buildStateSignature()` (FNV-1a), `buildPolicyVersion()`, `buildEvaluationSnapshot()`, deterministlikkuse kontrollid |
+| **autoResolve** | `autoResolve.ts` (18KB) | Loop: `pickFromCandidates()` rankVector-ranking (riskScoreDelta ASC → actionCode ASC → candidateId ASC), seenKey loop guard, max 10 sammu, 5 stop-reason'it (NO_ACTIONS, NO_CHOICE, LOOP_GUARD, NO_PROGRESS, MAX_STEPS) |
+| **actionCandidates** | `buildActionCandidates.ts` | Findings→actions flat list, `candidateId = findingId::actionCode`, eligibility (severity !== "info"), trace events sorted candidateId ASC |
+| **applyPatch** | `applyPatch.ts` (7KB) | Immutable JSON patch engine: set/increment/decrement, dot-path/bracket notation, 10+ veakoodiga `PatchError` |
+| **actionImpact** | `computeActionImpact.ts` | `withActionImpacts()` simuleerib iga action'i riskScoreDelta, `_computingImpacts` guard |
+| **evaluateRisk** | `evaluateRisk.ts` | Riskiskoor: error/warning/info kaalud, band A/B/C, top 2 contributors |
+| **registry** | `registry.ts` | Konstantid: finding codes (RF_NEG, RESERVE_LOW jne), action codes, preset codes |
+| **tüübid** | `solvereCoreV1.ts` (5KB) | ActionV1, FindingV1, EvaluationV1, ActionCandidateV1, RunReportV1, PolicyBundleV1, DeterminismDepsV1 |
+
+### Majanduskava moodul (solvere-modules/majanduskava/)
+
+| Komponent | Fail | Kirjeldus |
+|-----------|------|-----------|
+| **runtime** | `runtime.ts` | `createMajanduskavaRuntime()`: compute→evaluate→resolveActions→applyAction pipeline, setPolicyBundle/setDeterminismDeps laiendused |
+| **evaluatePolicy** | `evaluatePolicy.ts` (5.6KB) | Finding'ute genereerimine: RF_NEG (remondifond negatiivne), RES_NEG (reserv negatiivne), RESERVE_LOW (reserv alla miinimumi), trace events |
+| **compileRemedies** | `compileRemedies.ts` (3KB) | Remedy strategies: set_to, increase_by, decrease_by, increase_until; finding → ActionV1 kompileerimine |
+| **policyLoader** | `policyLoader.ts` | 3 preset'i (BALANCED/CONSERVATIVE/LOAN_FRIENDLY), hardcoded remedies (YAML defineeritud aga mitte parsitud) |
+| **manifest** | `manifest.ts` | moduleId: "majanduskava", version: "0.1.0" |
+
+### Solverge Bridge (src/solvereBridge/)
+
+`majanduskavaHost.js` (318 rida) — Solvere Core Contract v1 (frozen):
+- `runPlan()`, `applyActionAndRun()`, `setPreset()`, `applyOnly()`, `runAutoResolve()`
+- 8 dev-only runtime guard'i (SOLVERE_DEV_GUARDS_ENABLED master switch):
+  1. traceV1 invariant
+  2. nondeterministic fields check
+  3. policyVersion stability
+  4. determinism stability (evaluation fingerprint cache)
+  5. loopGuard stability
+  6. actionChain completeness
+  7. deepFreeze
+  8. autoResolve contract
+
+### Engine (src/engine/)
+
+`computePlan.js` (~400 rida) — puhas finantsmootor:
+- Annuiteetlaen: igakuine makse, põhiosa, intress, jääk
+- Rahavoogude agregatsioon kulude/tulude ridadest
+- Remondifondi ja reservi bilanss (avamine → laekumine → väljaminek → sulgemine)
+- Investeeringute rahastusplaani katvus
+- Riskimõõdikud: laenukoormus €/m², omanike vajadus €/m²
+
+### UI (src/MajanduskavaApp.jsx, ~2460 rida)
+
+Implementeeritud funktsioonid:
+- 7-tabi sidebar navigatsioon (dot-indikaatoritega)
+- Perioodi sisestus (PP/KK/AAAA dropdown'id, majandusaasta kiirvalik)
+- KÜ andmed (nimi, registrikood, aadress)
+- Korterite tabel (tähis, omanikud, pind m², osa, märkused)
+- Kaasomandi eseme seisukord (ESEMED × SEISUKORD × PRIORITEEDID, eeldatav kulu, planeeritud tegevus)
+- Seisukord → investeering link ("Loo investeering" nupp, scrollIntoView)
+- Muud investeeringud (nimi, maksumus, rahastusplaan)
+- Kulude kategooriasüsteem (kommunaalteenused ühikupõhiselt, haldusteenused 3 arvutusviisiga)
+- Tulude kategooriad (Majandamiskulude ettemaks, Vahendustasu, Renditulu, Muu tulu)
+- Fondid: remondifond (€/m²/kuu), reservkapital, laenud
+- Laenu liigid dropdown (Remondilaen, Investeerimislaen, Kapitalirent, Laen omanikelt, Muu)
+- Laenu algus: kvartal + aasta dropdown'id (migreeritud vanast KK.AAAA formaadist)
+- Korterite maksete tabel
+- Kontroll & kokkuvõte (vastavus, eksport/import, süsteemi info)
+- Prindi kokkuvõte
+- NumberInput (Eesti koma) ja EuroInput (täisarv, tuhandete eraldaja) komponendid
+- JSON eksport/import dry-run valideerimisega
+- autoResolve bridge'i kaudu
+- TracePanel visualiseerimine
+
+---
+
+## 2. Mis on pooleli (uncommitted)
+
+Failis `src/MajanduskavaApp.jsx` on 103 rida muudatusi (committimata):
+
+| Muudatus | Kirjeldus |
+|----------|-----------|
+| **LAENU_LIIGID** konstant | 5 laenuliiki: Remondilaen, Investeerimislaen, Kapitalirent, Laen omanikelt, Muu |
+| **repairFundSaldo** state | Uus väli remondifondi praeguse saldo sisestamiseks (EuroInput) |
+| **Laenu startYM migratsiooni loogika** | Import: vana `algus` "KK.AAAA" ja `startYM` "AAAA-KK" → `algusKvartal` + `algusAasta` |
+| **Laenu algus UI** | Kuu dropdown (01–12) → kvartal dropdown (I–IV) + aasta |
+| **Laenu liigi dropdown** | Uus "Liik" väli iga laenu juures |
+| **Perioodi aasta sünkroonimine** | `useEffect` mis uuendab tühjad tegevusAasta/aasta väljad seisukord/muudInvesteeringud massiivis |
+| **Remondifondi saldo sisend** | Uus EuroInput "Remondifondi saldo €" fondide tab'is |
+| **Reservkapitali tekst** | "KrtS §48 — reservkapital..." → "Seadusega nõutav reserv ettenägematute kulude katteks (1/12 aasta kuludest)" |
+| **Euro kuvamine** | Kulude/tulude koondrea ja haldusteenuste summad: enam ei kuva "–" kui 0, vaid kuvab "0 €" |
+| **Eksport/import** | `repairFundSaldo` kaasatud JSON bundle'isse ja taastatud importimisel |
+| **Tühjendamine** | Tab 4 tühjendamine kustutab ka `repairFundSaldo` |
+
+---
 
 ## 3. Testide seis
 
-**33/33 testi läbivad (0 failed)**
+**33/33 testi — kõik läbivad (0 failed)**
 
-| Testifail | Testide arv | Staatus |
-|-----------|-------------|---------|
-| `determinism.test.ts` | 1 | PASS |
-| `policyRuntime.test.js` | 12 | PASS |
-| `majanduskava.e2e.test.ts` | 5 | PASS |
-| `autoResolve.test.ts` | 15 | PASS |
+| Testifail | Testide arv | Staatus | Aeg |
+|-----------|-------------|---------|-----|
+| `determinism.test.ts` | 1 | PASS | 8ms |
+| `policyRuntime.test.js` | 12 | PASS | 78ms |
+| `majanduskava.e2e.test.ts` | 5 | PASS | 71ms |
+| `autoResolve.test.ts` | 15 | PASS | 287ms |
 
-### autoResolve.test.ts testid (15):
+### autoResolve.test.ts testide katvus:
 
-1. **same patch key order stability** — legacy actions, sama patch erineva key-järjekorraga → sama action key
-2. **distinct patches allowed** — erinevad patch'id → erinevad sammud lubatud
-3. **LOOP_GUARD/NO_CHOICE when same candidate re-selected** — sama candidate+patch → NO_CHOICE, `filteredBySeenCount === candidatesEligible`
-4. **stable seenKey regardless of patch key order** — canonical seenKey ei sõltu key-järjekorrast
-5. **next eligible candidate when first is seen** — A (rank -3) on seen → valitakse B (rank -2)
-6. **NO_PROGRESS when state signature unchanged** — apply ei muuda state'i → `isProgress = false` sõltumata risk deltast
-7. **runReport/v1 consistency (stepsTaken > 0)** — `final.stateSignature === steps[last].stateSignatureAfter`, `selectedActionCodes[i] === steps[i].actionApplied.actionCode`
-8. **runReport/v1 consistency (stepsTaken === 0)** — `final.stateSignature === initial.stateSignature`, `selectedActionCodes === []`
-9. **preset affects runReport output** — erinev preset → erinev `stepsTaken`, `selectedActionCodes`, `stateSignature`; `report.preset` vastab kasutatud preset'ile
-10. **idempotent** — re-run final state'il → 0 sammu, NO_ACTIONS
-11. **determinism** — kaks identset jooksu annavad täpselt sama tulemuse (state, evaluation, steps)
-12. **replay determinism** — kaks identset jooksu → identsed report'id (stateSignature, selectedActionCodes, stop.reason)
-13. **schemaVersion contract** — kontrollib `evaluation/v1`, `trace/v1`, `stepTrace/v1`, `runReport/v1`
-14. **golden-trace snapshot** — fikseeritud input, serialiseeritud snapshot (report + steps + candidateEvents) → täpne võrdlus inline GOLDEN objektiga; sisaldab `policyVersion` ja `reportDigest` kontrolli
-15. **JSON round-trip serializable** — `JSON.stringify` → `JSON.parse` round-trip; kontrollib report.schemaVersion, final.stateSignature, selectedActionCodes, steps.length, steps[i].stateSignatureAfter, reportDigest
+- seenKey canonicalization (patch key-order sõltumatus)
+- rankVector-põhine selection (primary/secondary/tertiary)
+- CandidateEligibilityReason (ELIGIBLE, FILTERED_BY_SEEN, NOT_APPLICABLE)
+- stateSignature NO_PROGRESS tuvastamine
+- RunReportV1 consistency (stepsTaken > 0 ja === 0)
+- Preset'i mõju report'ile
+- Idempotentsus (re-run → 0 sammu)
+- Determinism (kaks identset jooksu → identne tulemus)
+- schemaVersion contract (evaluation/v1, trace/v1, stepTrace/v1, runReport/v1)
+- Golden-trace snapshot (inline GOLDEN objekt)
+- JSON round-trip serializable
+
+### majanduskava.e2e.test.ts testide katvus:
+
+- RF_NEG → INCREASE_REPAIR_FUND_RATE_SMALL action
+- RESERVE_LOW → SET_RESERVE_TO_REQUIRED (reads metric)
+- Risk shape ja presets (BALANCED vs CONSERVATIVE skoorid)
+- Action impact arvutused
+
+### Testidega katmata alad:
+
+- `applyPatch.ts` veakoodid (unit testid puuduvad)
+- `canonicalizePatch()` eraldi testid
+- UI komponentide testid (puuduvad täielikult)
+- `computePlan.js` engine testid (puuduvad)
+- Laenu migratsiooniloogika testid
+- policyLoader preset remedy struktuur
+
+---
 
 ## 4. Failide struktuur
 
 ```
 packages/solvere-core/src/
-  index.ts              — ekspordi hub (kõik public API)
-  solvereCoreV1.ts      — põhitüübid (ActionV1, FindingV1, EvaluationV1, ActionCandidateV1 jne)
-  moduleHost.ts         — createModuleHost, buildEvaluationSnapshot, buildStateSignature,
-                          buildPolicyVersion, canonicalizePatch, deepCloneWithSortedKeys,
-                          assertEvaluationContract, assertModuleContract,
-                          assertRunReportConsistency, NondeterministicSourceError (dev-mode guard)
-  autoResolve.ts        — autoResolve loop (rankVector, seenKey, snapshots, stateSignature,
-                          AnnotatedCandidate, CandidateEligibilityReason, RunReportV1,
-                          buildReportDigest)
-  buildActionCandidates.ts — actionCandidates[] ehitamine + trace events (sorted candidateId ASC)
-  computeActionImpact.ts — withActionImpacts (riskScoreDelta arvutamine)
-  applyPatch.ts         — patch rakendamine (set/increment/decrement)
-  evaluateRisk.ts       — riski hindamine (low/medium/high)
-  registry.ts           — FINDING_CODES, ACTION_CODES, PRESET_CODES
+  index.ts, solvereCoreV1.ts, moduleHost.ts, autoResolve.ts,
+  buildActionCandidates.ts, computeActionImpact.ts, applyPatch.ts,
+  evaluateRisk.ts, registry.ts
 
 solvere-modules/majanduskava/src/
-  runtime.ts            — createMajanduskavaRuntime()
-  evaluatePolicy.ts     — findings + trace genereerimine
-  compileRemedies.ts    — remedy → ActionV1 kompileerimine
-  policyLoader.ts       — YAML preset'ide laadimine
-  manifest.ts           — mooduli manifest
-  types.ts              — PlanState, PlanMetrics
+  index.ts, runtime.ts, evaluatePolicy.ts, compileRemedies.ts,
+  policyLoader.ts, manifest.ts, types.ts
 
-src/solvereBridge/
-  majanduskavaHost.js   — Solvere Core Contract v1 (frozen)
-                          bridge: createModuleHost + SOLVERE_DEV_GUARDS_ENABLED master switch
-                          + __DEV_GUARDS_STATUS__ diagnostika eksport
-                          + runAutoResolve wrapper (autoResolve + contract assert)
-                          + 8 dev-only runtime guard'i:
-                            runPlan/applyActionAndRun: traceV1 invariant,
-                            noNondeterministicFields, policyVersion stability,
-                            determinism stability, loopGuard stability,
-                            actionChainCompleteness, deepFreeze
-                            runAutoResolve: autoResolveContract
-
-src/policy/trace/
-  traceV1.ts            — kõik trace tüübid (TraceV1, StepTraceV1, EvaluationSnapshotV1,
-                          CandidateEligibilityReasonV1, RunReportV1, AutoResolveResultV1 jne)
-
-src/components/
-  TracePanel.jsx        — trace/step visualiseerimine (grupeeritud finding → candidates,
-                          stateSignature, snapshots, rankVector)
-
-src/MajanduskavaApp.jsx — monolitne UI (~2100 rida), vertikaalne sidebar nav,
-                          soe neutraalne palett, periodParts + kyData + seisukord state,
-                          NumberInput + EuroInput komponendid (koma-decimal),
-                          kategooriasüsteem (KOMMUNAALTEENUSED/HALDUSTEENUSED/TULU_KATEGOORIAD),
-                          kommunaalteenuste ühikupõhine hinnastus,
-                          kaasomandi eseme seisukord tabel,
-                          tab-kohane tühjendamine, automaatne tühirea lisamine,
-                          Tab 6 kolme-ploki struktuur,
-                          dry-run import valideerimisega, autoResolve läbi bridge'i
-
-src/policy/__tests__/
-  autoResolve.test.ts   — 15 testi (seenKey, ranking, eligibility, stateSignature, runReport,
-                          preset, idempotency, determinism, schemaVersion, golden snapshot,
-                          JSON serializable)
-  determinism.test.ts   — 1 test (täielik determinism)
-  majanduskava.e2e.test.ts — 5 testi (e2e pipeline)
-  policyRuntime.test.js — 12 testi (legacy policy engine)
+src/
+  MajanduskavaApp.jsx, App.jsx, main.jsx
+  engine/computePlan.js
+  domain/planSchema.js
+  solvereBridge/majanduskavaHost.js
+  policy/majanduskava-policy.v1.yaml
+  policy/trace/traceV1.ts
+  policy/__tests__/{autoResolve,determinism,majanduskava.e2e,policyRuntime}.test.{ts,js}
+  components/TracePanel.jsx
 ```
