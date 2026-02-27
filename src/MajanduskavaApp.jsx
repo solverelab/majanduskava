@@ -1050,13 +1050,20 @@ export default function App() {
               const eDays = daysInMonth(pp.em, pp.ey);
               const ddStyle = { ...selectStyle, minWidth: 70, appearance: "auto" };
 
+              // Kas kuupäevad vastavad täisaastale? (01.01.XXXX – 31.12.XXXX)
+              const majandusaasta = (
+                Number(pp.sd) === 1 && Number(pp.sm) === 1 &&
+                Number(pp.ed) === 31 && Number(pp.em) === 12 &&
+                pp.sy && pp.sy === pp.ey
+              ) ? String(pp.sy) : "";
+
               return (
                 <div style={card}>
                   <div style={{ ...sectionTitle, marginBottom: 12 }}>Periood</div>
                   <div style={{ marginBottom: 12 }}>
                     <div style={fieldLabel}>Majandusaasta</div>
                     <select
-                      value=""
+                      value={majandusaasta}
                       onChange={(e) => {
                         const y = Number(e.target.value);
                         const next = { sd: 1, sm: 1, sy: y, ed: 31, em: 12, ey: y };
@@ -1067,7 +1074,7 @@ export default function App() {
                     >
                       <option value="" disabled>Vali aasta…</option>
                       {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
-                        <option key={y} value={y}>{y}</option>
+                        <option key={y} value={String(y)}>{y}</option>
                       ))}
                     </select>
                   </div>
