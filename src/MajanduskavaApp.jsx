@@ -815,7 +815,7 @@ export default function App() {
   const addApartment = () => {
     setPlan(p => {
       const nextLabel = String(Math.max(0, ...p.building.apartments.map(a => parseInt(a.label) || 0)) + 1);
-      return { ...p, building: { ...p.building, apartments: [...p.building.apartments, { ...mkApartment({ label: nextLabel, areaM2: 0 }), omanikud: "" }] } };
+      return { ...p, building: { ...p.building, apartments: [...p.building.apartments, mkApartment({ label: nextLabel, areaM2: 0 })] } };
     });
   };
 
@@ -837,7 +837,7 @@ export default function App() {
         if (!ok) return p;
       }
       const newApts = apartmentsFromEHR.map(a =>
-        ({ ...mkApartment({ label: a.number, areaM2: a.area }), omanikud: "" })
+        mkApartment({ label: a.number, areaM2: a.area })
       );
       return { ...p, building: { ...p.building, apartments: newApts } };
     });
@@ -1179,7 +1179,7 @@ export default function App() {
   };
 
   // Auto-add one empty row when section is empty (setPlan, not addX — idempotent even if effect fires twice)
-  useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [{ ...mkApartment({ label: "1" }), omanikud: "" }] } })); }, [plan.building.apartments.length]);
+  useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [mkApartment({ label: "1" })] } })); }, [plan.building.apartments.length]);
   // Investeeringud algavad tühjana — luuakse ainult "Loo investeering" või "+ Lisa investeering" kaudu
   useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "Haldus", kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
   useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME", category: "Majandamiskulude ettemaks" }), arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.incomeRows.length]);
@@ -1597,38 +1597,29 @@ export default function App() {
                 <div style={sectionTitle}>Korterid</div>
               </div>
               <div style={tableWrap}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 500 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={thRow}>
-                    <th style={{ padding: "6px 8px" }}>Tähis</th>
-                    <th style={{ padding: "6px 8px" }}>Omanik(ud)</th>
-                    <th style={{ padding: "6px 8px", textAlign: "right" }}>Pind m²</th>
-                    <th style={{ padding: "6px 8px", textAlign: "right" }}>Osa</th>
-                    <th style={{ padding: "6px 8px" }}>Märkused</th>
-                    <th style={{ padding: "6px 8px" }}></th>
+                    <th style={{ padding: "6px 8px" }}>Nr</th>
+                    <th style={{ padding: "6px 8px", textAlign: "right" }}>m²</th>
+                    <th style={{ padding: "6px 8px", width: 40 }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {apts.map((a, idx) => {
-                    const share = derived.building.totAreaM2 > 0 ? (a.areaM2 / derived.building.totAreaM2) : 0;
-                    return (
-                      <tr key={a.id} style={tdSep}>
-                        <td style={{ padding: "6px 8px" }}><input value={a.label} onChange={(e) => updateApartment(a.id, { label: e.target.value })} style={inputStyle} /></td>
-                        <td style={{ padding: "6px 8px" }}><input value={a.omanikud || ""} onChange={(e) => updateApartment(a.id, { omanikud: e.target.value })} placeholder="nt Tamm, Kask" style={inputStyle} /></td>
-                        <td style={{ padding: "6px 8px" }}><NumberInput value={a.areaM2} onChange={(v) => updateApartment(a.id, { areaM2: v })} style={numStyle} /></td>
-                        <td style={{ padding: "6px 8px", textAlign: "right", fontFamily: "monospace" }}>{(share * 100).toFixed(2)}%</td>
-                        <td style={{ padding: "6px 8px" }}><input value={a.notes} onChange={(e) => updateApartment(a.id, { notes: e.target.value })} style={inputStyle} /></td>
-                        <td style={{ padding: "6px 8px", textAlign: "right" }}>
-                          <button style={btnRemove} onClick={() => removeApartment(a.id)}>×</button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {apts.map((a) => (
+                    <tr key={a.id} style={tdSep}>
+                      <td style={{ padding: "6px 8px" }}><input value={a.label} onChange={(e) => updateApartment(a.id, { label: e.target.value })} style={inputStyle} /></td>
+                      <td style={{ padding: "6px 8px" }}><NumberInput value={a.areaM2} onChange={(v) => updateApartment(a.id, { areaM2: v })} style={numStyle} /></td>
+                      <td style={{ padding: "6px 8px", textAlign: "right" }}>
+                        <button style={btnRemove} onClick={() => removeApartment(a.id)}>×</button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
               </div>
-              <div style={{ marginTop: 12, fontFamily: "monospace" }}>
-                Kokku: {derived.building.apartmentsCount} korterit · {derived.building.totAreaM2.toFixed(2)} m²
+              <div style={{ marginTop: 12, fontSize: 14, color: N.sub }}>
+                Kortereid: {derived.building.apartmentsCount} | Kogupind: {derived.building.totAreaM2.toFixed(1)} m²
               </div>
               <div style={{ marginTop: 8 }}>
                 <button style={btnAdd} onClick={addApartment}>+ Lisa korter</button>
@@ -2805,30 +2796,21 @@ export default function App() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ textAlign: "left", fontSize: 12, borderBottom: "2px solid #000" }}>
-                  <th style={{ padding: "4px 8px" }}>Korter</th>
-                  <th style={{ padding: "4px 8px" }}>Omanik(ud)</th>
-                  <th style={{ padding: "4px 8px", textAlign: "right" }}>Pind m²</th>
-                  <th style={{ padding: "4px 8px", textAlign: "right" }}>Osa</th>
-                  <th style={{ padding: "4px 8px" }}>Märkused</th>
+                  <th style={{ padding: "4px 8px" }}>Nr</th>
+                  <th style={{ padding: "4px 8px", textAlign: "right" }}>m²</th>
                 </tr>
               </thead>
               <tbody>
-                {apts.map(a => {
-                  const share = derived.building.totAreaM2 > 0 ? (a.areaM2 / derived.building.totAreaM2) : 0;
-                  return (
-                    <tr key={a.id} style={{ borderBottom: "1px solid #ccc" }}>
-                      <td style={{ padding: "4px 8px" }}>{a.label}</td>
-                      <td style={{ padding: "4px 8px" }}>{a.omanikud || ""}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{a.areaM2.toFixed(2)}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{(share * 100).toFixed(2)}%</td>
-                      <td style={{ padding: "4px 8px" }}>{a.notes}</td>
-                    </tr>
-                  );
-                })}
+                {apts.map(a => (
+                  <tr key={a.id} style={{ borderBottom: "1px solid #ccc" }}>
+                    <td style={{ padding: "4px 8px" }}>{a.label}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{a.areaM2.toFixed(2)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-            <div style={{ marginTop: 8, fontFamily: "monospace" }}>
-              Kokku: {derived.building.apartmentsCount} korterit · {derived.building.totAreaM2.toFixed(2)} m²
+            <div style={{ marginTop: 8, fontSize: 13 }}>
+              Kortereid: {derived.building.apartmentsCount} | Kogupind: {derived.building.totAreaM2.toFixed(1)} m²
             </div>
           </div>
 
