@@ -229,6 +229,53 @@ function EuroInput({ value, onChange, ...props }) {
   );
 }
 
+function DateInput({ value, onChange, ...props }) {
+  const isoToEE = (iso) => {
+    if (!iso || typeof iso !== "string") return "";
+    const p = iso.split("-");
+    if (p.length !== 3) return iso;
+    return p[2] + "." + p[1] + "." + p[0];
+  };
+  const eeToISO = (ee) => {
+    if (!ee) return "";
+    const p = ee.replace(/\//g, ".").replace(/-/g, ".").split(".");
+    if (p.length !== 3) return "";
+    const d = p[0].padStart(2, "0");
+    const m = p[1].padStart(2, "0");
+    const y = p[2].length === 2 ? "20" + p[2] : p[2];
+    if (!y || !m || !d || isNaN(Date.parse(y + "-" + m + "-" + d))) return "";
+    return y + "-" + m + "-" + d;
+  };
+
+  const [display, setDisplay] = useState(isoToEE(value));
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDisplay(isoToEE(value));
+  }, [value, editing]);
+
+  return (
+    <input
+      type="text"
+      placeholder="PP.KK.AAAA"
+      value={display}
+      onChange={(e) => { setDisplay(e.target.value); }}
+      onFocus={() => { setEditing(true); }}
+      onBlur={() => {
+        setEditing(false);
+        const iso = eeToISO(display.trim());
+        if (iso) {
+          onChange(iso);
+        } else if (display.trim() === "") {
+          onChange("");
+        }
+        setDisplay(isoToEE(iso || value));
+      }}
+      {...props}
+    />
+  );
+}
+
 // ── BUTTONS ──
 const _btnBase    = { padding: "8px 14px", borderRadius: 8, cursor: "pointer", fontSize: 15, border: "none", lineHeight: 1.4 };
 const btnPrimary  = { ..._btnBase, background: N.accent, color: "#fff", fontWeight: 700 };
