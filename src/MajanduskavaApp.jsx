@@ -1406,16 +1406,15 @@ export default function App() {
           </div>
         )}
 
-        {/* ── Koondvaade — alati nähtav ── */}
-        {(() => {
-          const { haldusKokku, kommunaalKokku, tuludKokku, laenumaksedKokku } = kopiiriondvaade;
+        {/* ── Koondvaade — nähtav alates Tab 2 ── */}
+        {sec >= 2 && (() => {
+          const { haldusKokku, kommunaalKokku, tuludKokku } = kopiiriondvaade;
           const mEq = derived.period.monthEq || 12;
           const haldusA = haldusKokku * mEq;
           const kommunaalA = kommunaalKokku * mEq;
-          const kuludKokkuA = haldusA + kommunaalA;
+          const kokkuA = haldusA + kommunaalA;
           const tuludA = tuludKokku * mEq;
-          const laenudA = laenumaksedKokku * mEq;
-          const vaheA = tuludA - haldusA - laenudA;
+          const vaheA = tuludA - kokkuA;
           const naitaKoondribana = haldusA > 0 || kommunaalA > 0 || tuludA > 0;
           if (!naitaKoondribana) return null;
           const vaheColor = vaheA > 0 ? "#15803d" : vaheA < 0 ? "#dc2626" : N.dim;
@@ -1435,16 +1434,12 @@ export default function App() {
                 <span style={kvSep}>|</span>
                 <span style={{ ...kvLabel, opacity: 0.6 }}>Kommunaal</span> <span style={{ ...kvNum, opacity: 0.6 }}>{euro(kommunaalA)}</span>
                 <span style={kvSep}>|</span>
-                <span style={kvLabel}>Kulud kokku</span> <span style={kvNum}>{euro(kuludKokkuA + laenudA)}</span>
+                <span style={kvLabel}>Kokku</span> <span style={kvNum}>{euro(kokkuA)}</span>
               </div>
               <div style={rowStyle}>
                 <span style={kvLabel}>Tulud</span> <span style={kvNum}>{euro(tuludA)}</span>
                 <span style={kvSep}>|</span>
                 <span style={kvLabel}>{vaheLabel}</span> <span style={{ ...kvNum, color: vaheColor }}>{euro(Math.abs(vaheA))}</span>
-                {laenudA > 0 && (<>
-                  <span style={kvSep}>|</span>
-                  <span style={{ fontSize: 12, color: N.dim }}>sh laenumaksed {euro(laenudA)}</span>
-                </>)}
               </div>
             </div>
           );
