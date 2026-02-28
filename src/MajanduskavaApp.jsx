@@ -1607,11 +1607,9 @@ export default function App() {
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                 <div style={{ width: 200 }}>
                   <div style={fieldLabel}>Algus</div>
-                  <input
-                    type="date"
+                  <DateInput
                     value={plan.period.start || ""}
-                    onChange={(e) => {
-                      const iso = e.target.value;
+                    onChange={(iso) => {
                       const y = iso ? Number(iso.slice(0,4)) : plan.period.year;
                       setPlan(p => ({ ...p, period: { ...p.period, start: iso, year: y || p.period.year } }));
                     }}
@@ -1620,11 +1618,10 @@ export default function App() {
                 </div>
                 <div style={{ width: 200 }}>
                   <div style={fieldLabel}>Lõpp</div>
-                  <input
-                    type="date"
+                  <DateInput
                     value={plan.period.end || ""}
-                    onChange={(e) => {
-                      setPlan(p => ({ ...p, period: { ...p.period, end: e.target.value } }));
+                    onChange={(iso) => {
+                      setPlan(p => ({ ...p, period: { ...p.period, end: iso } }));
                     }}
                     style={inputStyle}
                   />
