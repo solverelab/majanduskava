@@ -1452,7 +1452,7 @@ export default function App() {
             </div>
 
             {(() => {
-              const YEARS = [2024, 2025, 2026, 2027, 2028, 2029, 2030];
+              const YEARS = [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035];
               const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
               const daysInMonth = (m, y) => (m && y) ? new Date(y, m, 0).getDate() : 31;
               const toISO = (d, m, y) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -1530,7 +1530,7 @@ export default function App() {
                       style={{ ...selectStyle, appearance: "auto" }}
                     >
                       <option value="" disabled>Vali aasta…</option>
-                      {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+                      {YEARS.map(y => (
                         <option key={y} value={String(y)}>{y}</option>
                       ))}
                     </select>
