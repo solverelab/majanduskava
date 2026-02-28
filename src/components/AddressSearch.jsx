@@ -32,7 +32,7 @@ const inputStyle = {
  *   onChange(addr) — sünkroniseerib vanema state'i
  *   onApartmentsLoaded([{number, area}]) — callback korterite laadimise järel
  */
-export function AddressSearch({ value, onChange, onApartmentsLoaded }) {
+export function AddressSearch({ value, onChange, onApartmentsLoaded, onAddressSelected }) {
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -83,6 +83,7 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded }) {
   const handleSelect = useCallback(
     async (item) => {
       onChange(item.address);
+      if (onAddressSelected) onAddressSelected(item.address);
       setOpen(false);
       setResults([]);
       setLoading(true);
@@ -111,7 +112,7 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded }) {
         setLoading(false);
       }
     },
-    [onChange, onApartmentsLoaded],
+    [onChange, onApartmentsLoaded, onAddressSelected],
   );
 
   return (

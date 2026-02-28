@@ -1439,6 +1439,13 @@ export default function App() {
                     value={kyData.aadress}
                     onChange={(addr) => setKyData(prev => ({ ...prev, aadress: addr }))}
                     onApartmentsLoaded={handleApartmentsLoaded}
+                    onAddressSelected={(addr) => {
+                      setKyData(prev => {
+                        if (prev.nimi) return prev;
+                        const street = addr.split(",")[0].trim();
+                        return { ...prev, nimi: street ? `KÜ ${street}` : prev.nimi };
+                      });
+                    }}
                   />
                 </div>
               </div>
