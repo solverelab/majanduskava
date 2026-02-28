@@ -97,24 +97,14 @@ Projekti seis: 2026-02-28
 - inputMode="numeric" mobiilile numpad'i kuvamiseks
 - select-all fookuse saamisel mugavaks ülekirjutamiseks
 - onBlur valideerimine ja fallback eelmisele väärtusele
-- Kasutusel: perioodi kuupäevad (Tab 0), olemasolevate laenude kuupäevad (Tab 4)
-
-#### Olemasolevate laenude arvutusfunktsioonid (inline)
-
-- `kuudeVahe(algusISO, loppISO)` — kuude arv kahe ISO kuupäeva vahel
-- `arvutaOlemasolevLaen(laen, periodiAlgusISO)` — koondarvutusfunktsioon:
-  - Annuiteet: iteratiivne jäägiarvestus (`jaak = jaak * (1+r) - makse`)
-  - Võrdse põhiosaga: perioodi keskmine kuumakse
-  - Tagastab `{ kuumakse, jaak, piisavAndmeid, arvutuskaik[] }`
-  - `arvutuskaik[]` — loetavad arvutussammud kasutajale kuvamiseks
-- `olLaenArvutused` useMemo — kõigi laenude arvutuste cache
+- Kasutusel: perioodi kuupäevad (Tab 0)
 
 #### Kategooriasüsteem:
 
 - **Kommunaalteenused** (ühikupõhine sisestus: kogus + ühik + maksumus €/periood):
   - Soojus, Vesi ja kanalisatsioon, Elekter, Kütus
 - **Haldusteenused** (€/aasta sisestus):
-  - Haldus, Raamatupidamine, Koristus, Kindlustus, Hooldus, Prügivedu, Muu
+  - Haldus, Raamatupidamine, Koristus, Kindlustus, Hooldus, Prügivedu, Laenumakse, Muu
 - **Tulukategooriad**:
   - Halduskulude ettemaks, Renditulu, Muu tulu
 - Nimetusväli ainult "Muu" / "Muu tulu" kategooriate puhul
@@ -127,7 +117,7 @@ Projekti seis: 2026-02-28
 | 1 | Esemed ja investeeringud | Kaasomandi esemed (seisukord, prioriteet, eeldatav kulu, tegevus), seisukord→investeering link (bidirectional sync eeldatavKulu ↔ invMaksumus), muud investeeringud (nimi, maksumus), rahastusplaan (allikas + summa) |
 | 2 | Kulud | Kommunaalteenused (kogus + ühik + maksumus €/periood), haldusteenused (€/aasta), inforibana viitega Tab 4-le |
 | 3 | Tulud | Kategooriad (Halduskulude ettemaks, Renditulu, Muu tulu), €/aasta sisestus, inforibana viitega Tab 4-le |
-| 4 | Fondid & laen | Remondifond (saldo + määr, arvutuslik kokkuvõte, reservkapitali nõutav miinimum arvutuskäiguga), olemasolevad laenud (DateInput kuupäevad, makseviisi valik, automaatne arvutus + arvutuskäik), planeeritud laenud (liigid, kvartal+aasta algus) |
+| 4 | Fondid & laen | Remondifond (saldo + määr, arvutuslik kokkuvõte, reservkapitali nõutav miinimum arvutuskäiguga), planeeritud laenud (liigid, kvartal+aasta algus) |
 | 5 | Korterite maksed | Kuumaksete lahtikirjutus per korter (kommunaal, haldus, remondifond, laenumakse), laiendatavad detailread valemitega |
 | 6 | Kontroll & kokkuvõte | Solvere findings + risk badge, "Lahenda kõik" nupp, JSON eksport/import, printimise kokkuvõte, tehniline info (TracePanel) |
 
@@ -135,12 +125,11 @@ Projekti seis: 2026-02-28
 
 - **Aadressi autocomplete** — AddressSearch komponent Tab 0-s, In-ADS → EHR ahel laadib korterite m² andmed automaatselt, klaviatuurinavigatsioon
 - **Korterite tabel** — lihtsustatud: ainult Nr ja m² veerud + kustuta nupp, kokkuvõtterida "Kortereid: N | Kogupind: X m²"
-- **Koondribana** — kõigil tabilehekülgedel, kahel real: Haldus | Kommunaal (tuhmim) | Kulud kokku || Tulud | Ülejääk/Puudujääk (roheline/punane) | sh laenumaksed
+- **Koondribana** — nähtav alates Tab 2, kahel real: Haldus | Kommunaal (tuhmim) | Kokku || Tulud | Ülejääk/Puudujääk (roheline/punane)
 - **Koondvaade kaardid** (Tab 6) — eraldi halduskulud ja kommunaalkulud (läbivool, opacity 0.7), tulud, laenumaksed, vahe (haldus) + aastane kokkuvõte
 - **Automaatne laenurida rahastusplaanist** — "Laen" allika valimisel investeeringu rahastusplaanis tekib automaatselt laenurida Fondid & laen tabi
-- **Olemasolevad laenud** — eraldi `olemasolevaLaenud` state, DateInput kuupäevad, makseviisi valik (annuiteet/võrdse põhiosaga), automaatne kuumakse ja jäägi arvutus, arvutuskäik read-only kastis
 - **Remondifondi arvutus** — saldo alguses + laekumine − investeeringud = saldo lõpus, negatiivse saldo hoiatus
-- **Reservkapital** — nõutav miinimum arvutatakse UI-s (costPeriodEUR / 12), arvutuskäik nähtav
+- **Reservkapital** — nõutav miinimum arvutatakse UI-s (kõik väljaminekud sh laenumaksed aastas / 12), arvutuskäik nähtav
 - **Esemete seisukord ↔ investeering** — bidirectional sync eeldatavKulu ↔ invMaksumus
 - **Korterite kuumaksed** — per korter kommunaal/haldus/remondifond/laenumakse jaotus, laiendatavad valemid
 - **DateInput** — PP.KK.AAAA formaat automaatse punkti-eraldajaga, select-all fookuses
@@ -155,6 +144,10 @@ Projekti seis: 2026-02-28
 - "Vahendustasu" **eemaldatud** eraldi kategooriana (seadusega piiratud, vajadusel kasutab "Muu tulu")
 - "Prügivedu" liigutatud kommunaalteenustest **haldusteenuste** alla
 - Arvutusviisi dropdown eemaldatud — ainult €/aasta sisestus haldus- ja tuluridadel
+- **Olemasolev laenumakse on halduskulu** — kategooria "Laenumakse" (€/aasta nagu teised haldusteenused). Eraldi kalkulaatorit ei vaja — summa on KÜ-l teada.
+- **Olemasolevad laenud sektsioon eemaldatud** Tab 4-st (koos state, arvutusfunktsioonide, import/export käsitlusega)
+- **Reservkapitali nõutav miinimum** — kõik väljaminekud (sh laenumaksed) aastas / 12
+- **Koondribana** peidetud Tab 0-1, nähtav alates Tab 2
 - JSON import migratsioon tagab tagasiühilduvuse vanade failidega
 
 ---
@@ -290,6 +283,11 @@ src/
 ## 5. Commit'ide ajalugu (viimased)
 
 ```
+89c06b4 cleanup: surnud kood ja olemasolevate laenude jäägid
+f1107a5 koondribana: 2 rida, peidetud tab 0-1
+c48111c eemalda olemasolevad laenud sektsioon tab 4-st
+20db70b laenumakse haldusteenuste alla kategooriana
+a1a51a0 docs: uuenda PROJECT_STATUS.md praeguse seisuga
 5e048bf feat: koondribana kahel real — kulud kokku + ülejääk/puudujääk
 fdc03f8 simplify: nimetusväli ainult Muu/Muu tulu kategooriale
 d204c36 remove: väljaminekute koondplokk kulud tabist
