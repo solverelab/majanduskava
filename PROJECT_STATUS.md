@@ -1,6 +1,6 @@
 # PROJECT_STATUS.md
 
-Projekti seis: 2026-02-27
+Projekti seis: 2026-02-28
 
 ---
 
@@ -10,90 +10,129 @@ Projekti seis: 2026-02-27
 
 | Komponent | Fail | Kirjeldus |
 |-----------|------|-----------|
-| **moduleHost** | `moduleHost.ts` (16KB) | Orkestraator: `createModuleHost()`, `buildStateSignature()` (FNV-1a), `buildPolicyVersion()`, `buildEvaluationSnapshot()`, deterministlikkuse kontrollid |
-| **autoResolve** | `autoResolve.ts` (18KB) | Loop: `pickFromCandidates()` rankVector-ranking (riskScoreDelta ASC → actionCode ASC → candidateId ASC), seenKey loop guard, max 10 sammu, 5 stop-reason'it (NO_ACTIONS, NO_CHOICE, LOOP_GUARD, NO_PROGRESS, MAX_STEPS) |
-| **actionCandidates** | `buildActionCandidates.ts` | Findings→actions flat list, `candidateId = findingId::actionCode`, eligibility (severity !== "info"), trace events sorted candidateId ASC |
-| **applyPatch** | `applyPatch.ts` (7KB) | Immutable JSON patch engine: set/increment/decrement, dot-path/bracket notation, 10+ veakoodiga `PatchError` |
-| **actionImpact** | `computeActionImpact.ts` | `withActionImpacts()` simuleerib iga action'i riskScoreDelta, `_computingImpacts` guard |
-| **evaluateRisk** | `evaluateRisk.ts` | Riskiskoor: error/warning/info kaalud, band A/B/C, top 2 contributors |
-| **registry** | `registry.ts` | Konstantid: finding codes (RF_NEG, RESERVE_LOW jne), action codes, preset codes |
-| **tüübid** | `solvereCoreV1.ts` (5KB) | ActionV1, FindingV1, EvaluationV1, ActionCandidateV1, RunReportV1, PolicyBundleV1, DeterminismDepsV1 |
+| **moduleHost** | `moduleHost.ts` (477 rida) | Orkestraator: `createModuleHost()`, `buildStateSignature()` (FNV-1a hash), `buildPolicyVersion()`, `buildEvaluationSnapshot()`, deterministlikkuse kontrollid, contract assertions |
+| **autoResolve** | `autoResolve.ts` (558 rida) | Loop: `pickFromCandidates()` rankVector-ranking (riskScoreDelta ASC → actionCode ASC → candidateId ASC), seenKey loop guard (`candidateId::canonicalPatch`), max 10 sammu, 5 stop-reason'it (NO_ACTIONS, NO_CHOICE, LOOP_GUARD, NO_PROGRESS, MAX_STEPS), RunReportV1 genereerimine |
+| **actionCandidates** | `buildActionCandidates.ts` (67 rida) | Findings→actions flat list, `candidateId = findingId::actionCode`, eligibility (severity !== "info"), trace events sorted candidateId ASC |
+| **applyPatch** | `applyPatch.ts` (156 rida) | Immutable JSON patch engine: set/increment/decrement, dot-path + bracket notation, `parsePath()` tokenizer, 10+ veakoodiga `PatchError` |
+| **actionImpact** | `computeActionImpact.ts` (41 rida) | `withActionImpacts()` simuleerib iga action'i mõju: `afterRiskScore - baseRiskScore` → `action.impact.riskScoreDelta` |
+| **evaluateRisk** | `evaluateRisk.ts` (57 rida) | Riskiskoor 0–100: error/warning/info kaalud preset'i järgi, band A/B/C, top 2 contributors |
+| **registry** | `registry.ts` | 19 finding code'i (RF_NEG, RES_NEG, RESERVE_LOW, APT_MIN, AREA_ZERO jne), 5 action code'i, 3 preset code'i |
+| **tüübid** | `solvereCoreV1.ts` | ActionV1, FindingV1, EvaluationV1, ActionCandidateV1, RunReportV1, PolicyBundleV1, DeterminismDepsV1, PatchOperation |
 
 ### Majanduskava moodul (solvere-modules/majanduskava/)
 
 | Komponent | Fail | Kirjeldus |
 |-----------|------|-----------|
-| **runtime** | `runtime.ts` | `createMajanduskavaRuntime()`: compute→evaluate→resolveActions→applyAction pipeline, setPolicyBundle/setDeterminismDeps laiendused |
-| **evaluatePolicy** | `evaluatePolicy.ts` (5.6KB) | Finding'ute genereerimine: RF_NEG (remondifond negatiivne), RES_NEG (reserv negatiivne), RESERVE_LOW (reserv alla miinimumi), trace events |
-| **compileRemedies** | `compileRemedies.ts` (3KB) | Remedy strategies: set_to, increase_by, decrease_by, increase_until; finding → ActionV1 kompileerimine |
-| **policyLoader** | `policyLoader.ts` | 3 preset'i (BALANCED/CONSERVATIVE/LOAN_FRIENDLY), hardcoded remedies (YAML defineeritud aga mitte parsitud) |
-| **manifest** | `manifest.ts` | moduleId: "majanduskava", version: "0.1.0" |
+| **runtime** | `runtime.ts` (43 rida) | `createMajanduskavaRuntime()`: compute→evaluate→resolveActions→applyAction pipeline, setPolicyBundle/setDeterminismDeps |
+| **evaluatePolicy** | `evaluatePolicy.ts` (143 rida) | Finding'ute genereerimine: RF_NEG, RES_NEG, RESERVE_LOW + controls.issues mappimine, kohandatud riskiskoor (deficit-põhine) |
+| **compileRemedies** | `compileRemedies.ts` (79 rida) | 4 remedy strateegiat: set_to, increase_by, decrease_by, increase_until; finding → ActionV1 kompileerimine |
+| **policyLoader** | `policyLoader.ts` (65 rida) | 3 preset'i (BALANCED/CONSERVATIVE/LOAN_FRIENDLY), hardcoded remedies: RF_NEG → +0.05/+0.10 €/m², RES_NEG → +250/+500 €, RESERVE_LOW → set_to_required |
+| **manifest** | `manifest.ts` | moduleId: "majanduskava", version: "0.1.0", 3 preset'i |
 
-### Solverge Bridge (src/solvereBridge/)
+### Solvere Bridge (src/solvereBridge/)
 
-`majanduskavaHost.js` (318 rida) — Solvere Core Contract v1 (frozen):
+`majanduskavaHost.js` (318 rida) — Solvere Core Contract v1:
 - `runPlan()`, `applyActionAndRun()`, `setPreset()`, `applyOnly()`, `runAutoResolve()`
-- 8 dev-only runtime guard'i (SOLVERE_DEV_GUARDS_ENABLED master switch):
-  1. traceV1 invariant
-  2. nondeterministic fields check
+- 8 dev-only runtime guard'i (SOLVERE_DEV_GUARDS_ENABLED):
+  1. traceV1 invariant (schemaVersion, events array)
+  2. nondeterministic fields check (timestamp, random)
   3. policyVersion stability
-  4. determinism stability (evaluation fingerprint cache)
+  4. determinism stability (evaluation fingerprint cache, 200 max)
   5. loopGuard stability
   6. actionChain completeness
-  7. deepFreeze
-  8. autoResolve contract
+  7. deepFreeze (dev-mode immutability)
+  8. autoResolve contract assertions
 
 ### Engine (src/engine/)
 
-`computePlan.js` (~400 rida) — puhas finantsmootor:
-- Annuiteetlaen: igakuine makse, põhiosa, intress, jääk
-- Rahavoogude agregatsioon kulude/tulude ridadest
+`computePlan.js` (~500 rida) — puhas finantsmootor:
+- Annuiteetlaen: igakuine makse, põhiosa, intress, jääk (`arvutaKuumakse()`)
+- Perioodi arvutus: `daysBetween()`, `monthEquiv()`, `yearFraction()`
+- Rahavoogude agregatsioon: 4 calc-tüüpi (FIXED_PERIOD, MONTHLY_FIXED, ANNUAL_FIXED, QTY_PRICE_ANNUAL)
 - Remondifondi ja reservi bilanss (avamine → laekumine → väljaminek → sulgemine)
-- Investeeringute rahastusplaani katvus
+- Investeeringute rahastusplaani katvus ja valdkondade väljavoolud
 - Riskimõõdikud: laenukoormus €/m², omanike vajadus €/m²
+- Controls/issues: 19 validatsioonireeglit (APT_MIN, AREA_ZERO, RF_NEG, NET_SURPLUS jne)
+- `euro()` formaat (tuhandete eraldaja), `round2()`
 
-### UI (src/MajanduskavaApp.jsx, ~2460 rida)
+### Poliitika definitsioon (src/policy/)
 
-Implementeeritud funktsioonid:
-- 7-tabi sidebar navigatsioon (dot-indikaatoritega)
-- Perioodi sisestus (PP/KK/AAAA dropdown'id, majandusaasta kiirvalik)
-- KÜ andmed (nimi, registrikood, aadress)
-- Korterite tabel (tähis, omanikud, pind m², osa, märkused)
-- Kaasomandi eseme seisukord (ESEMED × SEISUKORD × PRIORITEEDID, eeldatav kulu, planeeritud tegevus)
-- Seisukord → investeering link ("Loo investeering" nupp, scrollIntoView)
-- Muud investeeringud (nimi, maksumus, rahastusplaan)
-- Kulude kategooriasüsteem (kommunaalteenused ühikupõhiselt, haldusteenused 3 arvutusviisiga)
-- Tulude kategooriad (Majandamiskulude ettemaks, Vahendustasu, Renditulu, Muu tulu)
-- Fondid: remondifond (€/m²/kuu), reservkapital, laenud
-- Laenu liigid dropdown (Remondilaen, Investeerimislaen, Kapitalirent, Laen omanikelt, Muu)
-- Laenu algus: kvartal + aasta dropdown'id (migreeritud vanast KK.AAAA formaadist)
-- Korterite maksete tabel
-- Kontroll & kokkuvõte (vastavus, eksport/import, süsteemi info)
-- Prindi kokkuvõte
-- NumberInput (Eesti koma) ja EuroInput (täisarv, tuhandete eraldaja) komponendid
-- JSON eksport/import dry-run valideerimisega
-- autoResolve bridge'i kaudu
-- TracePanel visualiseerimine
+`majanduskava-policy.v1.yaml` (153 rida):
+- 3 preset'i: BALANCED (tasakaalustatud), CONSERVATIVE (konservatiivne), LOAN_FRIENDLY (laenusõbralik)
+- Hard rules: requireNonNegativeRepairFund, requireReserveAtLeastRequired
+- Limits per preset: loanWarnPerM2, loanErrorPerM2, ownersWarnPerM2, ownersErrorPerM2
+- Scoring weights: loan vs owners kaalud, band piirid
+- Remedy definitsioonid: ADJUST_REPAIR_FUND_RATE, ONE_OFF_PAYMENT
+
+### Domeeniskeem (src/domain/)
+
+`planSchema.js` (76 rida):
+- `mkApartment()`, `mkCashflowRow()`, `mkInvestmentItem()`, `mkLoan()`
+- `defaultPlan({ year })` → täielik plan skeleton (period, building, budget, funds, loans, openingBalances)
+
+### EHR API integratsioon (src/services/ + src/components/)
+
+`ehrService.js` (112 rida) — In-ADS + EHR API liides:
+- `searchAddress(query)` — In-ADS gazetteer aadressi otsing, filtreerib hooned (liik=E), timeout 8s
+- `fetchBuildingCode(adsOid)` — fallback EHR koodi päring ADS OID järgi
+- `fetchApartments(ehrCode)` — EHR buildingData v2, korterite m² (ehitiseOsaPohiandmed.pind), loomulik sortimine
+- API-d testitud reaalsete andmetega (nt Tartu mnt 18, Tallinn → 29 korterit, 1716 m²)
+
+`AddressSearch.jsx` (183 rida) — Aadressi autocomplete komponent:
+- Debounce 300ms, min 3 tähemärki, dropdown kuni 10 tulemust
+- Click-outside sulgemine (useRef + useEffect)
+- Aadressi valikul laadib automaatselt korterite m² andmed EHR-ist
+- Laadimisindikaator ("Laadin korterite andmeid...") ja veateade
+- Inline styles N paletiga (sama muster nagu TracePanel.jsx)
+
+### UI (src/MajanduskavaApp.jsx, ~2900 rida)
+
+#### 7 tabi:
+
+| Tab | Nimetus | Sisu |
+|-----|---------|------|
+| 0 | Periood & korterid | KÜ andmed (nimi, registrikood, **aadress autocomplete + EHR**), perioodi PP/KK/AAAA dropdown'id, majandusaasta kiirvalik, korterite tabel (Nr, m²) koos kokkuvõttega |
+| 1 | Esemed ja investeeringud | Kaasomandi esemed (seisukord, prioriteet, eeldatav kulu, tegevus), seisukord→investeering link, muud investeeringud (nimi, maksumus), rahastusplaan (allikas + summa) |
+| 2 | Kulud | Kategooriasüsteem (kommunaalteenused ühikupõhiselt, haldusteenused 3 arvutusviisiga), 4 calc-tüüpi, koondread |
+| 3 | Tulud | Kategooriad (Majandamiskulude ettemaks, Vahendustasu, Renditulu, Muu tulu), koondread |
+| 4 | Fondid & laen | Remondifond (saldo + määr, arvutuslik kokkuvõte tabel), olemasolevad laenud (kuupäeva-dropdown'id), planeeritud laenud (liigid, kvartal+aasta algus) |
+| 5 | Korterite maksed | Kuumaksete lahtikirjutus per korter (kommunaal, haldus, remondifond, laenumakse), laiendatavad detailread valemitega |
+| 6 | Kontroll & kokkuvõte | Solvere findings + risk badge, "Lahenda kõik" nupp, JSON eksport/import, printimise kokkuvõte, tehniline info (TracePanel) |
+
+#### Olulised UI-funktsioonid:
+
+- **Aadressi autocomplete** — AddressSearch komponent Tab 0-s, In-ADS → EHR ahel laadib korterite m² andmed automaatselt
+- **Korterite tabel** — lihtsustatud: ainult Nr ja m² veerud + kustuta nupp, kokkuvõtterida "Kortereid: N | Kogupind: X m²"
+- **Koondvaade riba** — kõigil tabilehekülgedel, näitab: Kulud | Tulud | Laenumaksed | Vahe (roheline/hall/punane)
+- **Koondvaade kaart** (sec 6) — kommunaal/haldus kulud, laenumaksed, väljaminekud/tulud/vahe + aastane kokkuvõte
+- **Automaatne laenurida rahastusplaanist** — "Laen" allika valimisel investeeringu rahastusplaanis tekib automaatselt laenurida Fondid & laen tabi
+- **Olemasolevad laenud** — eraldi `olemasolevaLaenud` state, kuupäevad {d,m,y} dropdown'iga, peidetavad toggle
+- **Remondifondi arvutus** — saldo alguses + laekumine − investeeringud = saldo lõpus, negatiivse saldo hoiatus
+- **Korterite kuumaksed** — per korter kommunaal/haldus/remondifond/laenumakse jaotus, laiendatavad valemid
+- **NumberInput** (Eesti koma) ja **EuroInput** (täisarv, tuhandete eraldaja)
+- **JSON eksport/import** dry-run valideerimisega, migratsioonidega
+- **Prindi kokkuvõte** — täislehekülje layout (lihtsustatud korterite tabel Nr + m²)
 
 ---
 
-## 2. Mis on pooleli (uncommitted)
+## 2. Mis on pooleli
 
-Failis `src/MajanduskavaApp.jsx` on 103 rida muudatusi (committimata):
+Hetkel ei ole pooleliolevaid muudatusi — kõik committitud.
 
-| Muudatus | Kirjeldus |
-|----------|-----------|
-| **LAENU_LIIGID** konstant | 5 laenuliiki: Remondilaen, Investeerimislaen, Kapitalirent, Laen omanikelt, Muu |
-| **repairFundSaldo** state | Uus väli remondifondi praeguse saldo sisestamiseks (EuroInput) |
-| **Laenu startYM migratsiooni loogika** | Import: vana `algus` "KK.AAAA" ja `startYM` "AAAA-KK" → `algusKvartal` + `algusAasta` |
-| **Laenu algus UI** | Kuu dropdown (01–12) → kvartal dropdown (I–IV) + aasta |
-| **Laenu liigi dropdown** | Uus "Liik" väli iga laenu juures |
-| **Perioodi aasta sünkroonimine** | `useEffect` mis uuendab tühjad tegevusAasta/aasta väljad seisukord/muudInvesteeringud massiivis |
-| **Remondifondi saldo sisend** | Uus EuroInput "Remondifondi saldo €" fondide tab'is |
-| **Reservkapitali tekst** | "KrtS §48 — reservkapital..." → "Seadusega nõutav reserv ettenägematute kulude katteks (1/12 aasta kuludest)" |
-| **Euro kuvamine** | Kulude/tulude koondrea ja haldusteenuste summad: enam ei kuva "–" kui 0, vaid kuvab "0 €" |
-| **Eksport/import** | `repairFundSaldo` kaasatud JSON bundle'isse ja taastatud importimisel |
-| **Tühjendamine** | Tab 4 tühjendamine kustutab ka `repairFundSaldo` |
+### Tegemata / tulevikus:
+
+| Valdkond | Kirjeldus | Prioriteet |
+|----------|-----------|------------|
+| **YAML poliitika parsimine** | `policyLoader.ts` kasutab hardcoded remedies, YAML fail defineerib need aga parsimist ei toimu | Keskmine |
+| **CONSERVATIVE/LOAN_FRIENDLY eristus** | Praegu on 3 preset'i remedied identsed; YAML-is defineeritud limits/scoring erinevused ei rakendu | Keskmine |
+| **SHIFT_INVESTMENT action** | `policyRuntime.js` rida 115-122: confidence "LOW", `patch: []` (tühi), vajab käsitsi investeeringu valikut | Madal |
+| **EXTEND_LOAN_TERM action** | Heuristiline arvutus (lineaarne koormuse vähendamine), mitte täpne annuiteet-ümberarvutus | Madal |
+| **computePlan.js testid** | Engine'il puuduvad unit testid (annuiteet, rahavood, fondid) | Keskmine |
+| **applyPatch unit testid** | Puuduvad eraldi testid veakoodidele (KEY_NOT_FOUND, INDEX_OOB jne) | Madal |
+| **UI testid** | Puuduvad täielikult — pole React Testing Library ega Playwright teste | Madal |
+| **Laenu graafik UI-s** | computePlan arvutab laenugraafiku, aga UI ei kuva detailselt igakuiseid makseid | Madal |
+| **Undo/redo** | Immutable state võimaldaks, aga pole implementeeritud | Madal |
+| **Validatsioonihoiatused inline** | computePlan genereerib controls.issues, aga neid näidatakse ainult Solvere findings'ina, mitte vormivigadena | Madal |
 
 ---
 
@@ -101,17 +140,24 @@ Failis `src/MajanduskavaApp.jsx` on 103 rida muudatusi (committimata):
 
 **33/33 testi — kõik läbivad (0 failed)**
 
-| Testifail | Testide arv | Staatus | Aeg |
-|-----------|-------------|---------|-----|
-| `determinism.test.ts` | 1 | PASS | 8ms |
-| `policyRuntime.test.js` | 12 | PASS | 78ms |
-| `majanduskava.e2e.test.ts` | 5 | PASS | 71ms |
-| `autoResolve.test.ts` | 15 | PASS | 287ms |
+```
+vitest v4.0.18
+ ✓ src/policy/__tests__/determinism.test.ts        (1 test)    8ms
+ ✓ src/policy/__tests__/policyRuntime.test.js       (12 tests)  39ms
+ ✓ src/policy/__tests__/majanduskava.e2e.test.ts    (5 tests)   44ms
+ ✓ src/policy/__tests__/autoResolve.test.ts         (15 tests)  168ms
 
-### autoResolve.test.ts testide katvus:
+ Test Files  4 passed (4)
+      Tests  33 passed (33)
+   Duration  1.15s
+```
+
+### Testide katvus detailne:
+
+#### autoResolve.test.ts (15 testi)
 
 - seenKey canonicalization (patch key-order sõltumatus)
-- rankVector-põhine selection (primary/secondary/tertiary)
+- rankVector-põhine selection (primary: riskScoreDelta, secondary: actionCode, tertiary: candidateId)
 - CandidateEligibilityReason (ELIGIBLE, FILTERED_BY_SEEN, NOT_APPLICABLE)
 - stateSignature NO_PROGRESS tuvastamine
 - RunReportV1 consistency (stepsTaken > 0 ja === 0)
@@ -122,21 +168,38 @@ Failis `src/MajanduskavaApp.jsx` on 103 rida muudatusi (committimata):
 - Golden-trace snapshot (inline GOLDEN objekt)
 - JSON round-trip serializable
 
-### majanduskava.e2e.test.ts testide katvus:
+#### policyRuntime.test.js (12 testi)
 
-- RF_NEG → INCREASE_REPAIR_FUND_RATE_SMALL action
-- RESERVE_LOW → SET_RESERVE_TO_REQUIRED (reads metric)
-- Risk shape ja presets (BALANCED vs CONSERVATIVE skoorid)
-- Action impact arvutused
+- Policy YAML laadimine ja parseerimine
+- Finding'ute genereerimine: RF_NEG, RES_NEG, RESERVE_LOW
+- LOAN_WARN, LOAN_ERROR künnised
+- OWNERS_WARN, OWNERS_ERROR künnised
+- Riskiskoori arvutamine (score, level, band)
+- Preset'ide laadimine (BALANCED, CONSERVATIVE, LOAN_FRIENDLY)
+- `applyPatch()` operatsioonid (set, increment, array indices)
 
-### Testidega katmata alad:
+#### majanduskava.e2e.test.ts (5 testi)
+
+- RF_NEG finding → INCREASE_REPAIR_FUND_RATE_SMALL action (+0.05 patch)
+- RESERVE_LOW → SET_RESERVE_TO_REQUIRED (loeb metrics.funds.reserveRequiredEUR)
+- Risk shape ja presets (BALANCED vs CONSERVATIVE riskiskoorid)
+- Action impact arvutused (riskScoreDelta)
+- Täielik pipeline: plan → host.run → applyActionAndRun → uus evaluation
+
+#### determinism.test.ts (1 test)
+
+- Sama sisend → identne väljund (ei sisalda timestamp'e, random väärtusi)
+
+### Testidega katmata:
 
 - `applyPatch.ts` veakoodid (unit testid puuduvad)
 - `canonicalizePatch()` eraldi testid
-- UI komponentide testid (puuduvad täielikult)
-- `computePlan.js` engine testid (puuduvad)
-- Laenu migratsiooniloogika testid
-- policyLoader preset remedy struktuur
+- `computePlan.js` engine arvutused (annuiteet, periood, fondid)
+- `evaluateRisk.ts` kaalud ja band'id
+- `ehrService.js` API funktsioonid (mocked testid puuduvad)
+- `AddressSearch.jsx` komponendi testid
+- UI komponentide testid üldiselt
+- JSON eksport/import migratsioonid
 
 ---
 
@@ -144,21 +207,54 @@ Failis `src/MajanduskavaApp.jsx` on 103 rida muudatusi (committimata):
 
 ```
 packages/solvere-core/src/
-  index.ts, solvereCoreV1.ts, moduleHost.ts, autoResolve.ts,
-  buildActionCandidates.ts, computeActionImpact.ts, applyPatch.ts,
-  evaluateRisk.ts, registry.ts
+  index.ts                    — Public API eksport (~30 tüüpi ja funktsiooni)
+  solvereCoreV1.ts            — Tüübidefinitsioonid (Action, Finding, Evaluation, Risk jne)
+  moduleHost.ts               — Orkestraator, state signature, contract assertions
+  autoResolve.ts              — Automaatne lahendusloop, candidate selection, loop guard
+  buildActionCandidates.ts    — Findings→candidates flat list
+  computeActionImpact.ts      — Action simulatsioon, riskScoreDelta
+  applyPatch.ts               — Immutable JSON patch engine (set/increment/decrement)
+  evaluateRisk.ts             — Riskiskoor 0–100, band A/B/C
+  registry.ts                 — Finding codes, action codes, preset codes
 
 solvere-modules/majanduskava/src/
-  index.ts, runtime.ts, evaluatePolicy.ts, compileRemedies.ts,
-  policyLoader.ts, manifest.ts, types.ts
+  index.ts                    — Module eksport
+  manifest.ts                 — Module ID, versioon, skeemid
+  types.ts                    — PlanState, PlanMetrics tüübid
+  runtime.ts                  — Runtime factory (compute→evaluate→resolve→apply)
+  evaluatePolicy.ts           — Finding'ute genereerimine (RF_NEG, RES_NEG, RESERVE_LOW)
+  compileRemedies.ts          — Remedy→Action kompileerimine (4 strateegiat)
+  policyLoader.ts             — 3 preset'i hardcoded remedies'ega
 
 src/
-  MajanduskavaApp.jsx, App.jsx, main.jsx
-  engine/computePlan.js
-  domain/planSchema.js
-  solvereBridge/majanduskavaHost.js
-  policy/majanduskava-policy.v1.yaml
-  policy/trace/traceV1.ts
-  policy/__tests__/{autoResolve,determinism,majanduskava.e2e,policyRuntime}.test.{ts,js}
-  components/TracePanel.jsx
+  MajanduskavaApp.jsx         — Monoliitne React UI (~2900 rida, 7 tabi)
+  App.jsx                     — Root wrapper
+  main.jsx                    — Entry point
+  engine/computePlan.js       — Puhas finantsmootor (~500 rida)
+  domain/planSchema.js        — Domeenimudelite factory'd (76 rida)
+  solvereBridge/majanduskavaHost.js — Solvere Core ↔ React bridge (318 rida)
+  policy/majanduskava-policy.v1.yaml — Poliitika definitsioon (153 rida)
+  policy/policyRuntime.js     — Legacy poliitikamootor (296 rida)
+  policy/__tests__/           — 4 testifaili, 33 testi
+  services/ehrService.js      — In-ADS + EHR API liides (112 rida)
+  components/TracePanel.jsx   — Solvere trace visualiseerimine
+  components/AddressSearch.jsx — Aadressi autocomplete + EHR korterite laadimine
+```
+
+---
+
+## 5. Commit'ide ajalugu (viimased)
+
+```
+3739f76 feat: integreeri AddressSearch Tab 1-sse + korterite tabel
+eaa1b5d feat: lisa AddressSearch komponent (autocomplete + EHR)
+843cff3 feat: lisa ehrService — In-ADS + EHR API teenus
+159916d feat: integreeri AddressSearch Tab 1-sse + korterite laadimine
+a71eefe feat: lisa AddressSearch komponent (autocomplete + EHR)
+597b042 feat: lisa ehrService — In-ADS + EHR API teenus
+aaaaf1e feat: remondifondi arvutus, korterite kuumaksete lahtikirjutus, laenu algusAasta sync
+289764a fix: olemasolevaLaenud useState deklaratsioon enne useMemo kasutust
+757a502 feat: olemasolevad laenud sektsioon, laenude peitmine, koondvaade + aastane kokkuvõte
+e449942 feat: automaatne laenurida rahastusplaanist, koondvaade kõigil tabilehekülgedel
+dd6fc46 feat: laenuliigid, remondifondi saldo, perioodi aasta sync, PROJECT_STATUS uuendus
 ```

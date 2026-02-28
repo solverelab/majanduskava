@@ -9,7 +9,23 @@
       "Bash(tail:*)",
       "Bash(cd:*)",
       "Bash(cd /c/Users/ilona/Documents/GitHub/majanduskava && npm run build 2>&1)",
-      "Bash(cd /c/Users/ilona/Documents/GitHub/majanduskava && npx vitest run 2>&1 && npm run build 2>&1)"
+      "Bash(cd /c/Users/ilona/Documents/GitHub/majanduskava && npx vitest run 2>&1 && npm run build 2>&1)",
+      "Bash(xargs ls:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "WebFetch(domain:livekluster.ehr.ee)",
+      "WebFetch(domain:avaandmed.ehr.ee)",
+      "WebFetch(domain:devportal.ehr.ee)",
+      "WebFetch(domain:inaadress.maaamet.ee)",
+      "WebSearch",
+      "Bash(curl:*)",
+      "WebFetch(domain:swaggerui.ehr.ee)",
+      "WebFetch(domain:api.store)",
+      "WebFetch(domain:imo.ut.ee)",
+      "WebFetch(domain:tormi.gitbooks.io)",
+      "WebFetch(domain:avaandmed.ee)",
+      "WebFetch(domain:data.europa.eu)",
+      "WebFetch(domain:geoportaal.maaamet.ee)"
     ]
   }
 }
