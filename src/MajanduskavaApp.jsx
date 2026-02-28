@@ -1414,6 +1414,20 @@ export default function App() {
             <div style={card}>
               <div style={{ ...sectionTitle, marginBottom: 12 }}>Korteriühistu andmed</div>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 240px" }}>
+                  <AddressSearch
+                    value={kyData.aadress}
+                    onChange={(addr) => setKyData(prev => ({ ...prev, aadress: addr }))}
+                    onApartmentsLoaded={handleApartmentsLoaded}
+                    onAddressSelected={(addr) => {
+                      setKyData(prev => {
+                        if (prev.nimi) return prev;
+                        const street = addr.split(",")[0].trim();
+                        return { ...prev, nimi: street ? `KÜ ${street}` : prev.nimi };
+                      });
+                    }}
+                  />
+                </div>
                 <div style={{ flex: "1 1 200px" }}>
                   <div style={fieldLabel}>KÜ nimi</div>
                   <input
@@ -1432,20 +1446,6 @@ export default function App() {
                     value={kyData.registrikood}
                     onChange={(e) => setKyData(prev => ({ ...prev, registrikood: e.target.value }))}
                     style={inputStyle}
-                  />
-                </div>
-                <div style={{ flex: "1 1 240px" }}>
-                  <AddressSearch
-                    value={kyData.aadress}
-                    onChange={(addr) => setKyData(prev => ({ ...prev, aadress: addr }))}
-                    onApartmentsLoaded={handleApartmentsLoaded}
-                    onAddressSelected={(addr) => {
-                      setKyData(prev => {
-                        if (prev.nimi) return prev;
-                        const street = addr.split(",")[0].trim();
-                        return { ...prev, nimi: street ? `KÜ ${street}` : prev.nimi };
-                      });
-                    }}
                   />
                 </div>
               </div>
@@ -2782,13 +2782,14 @@ export default function App() {
         {/* ── Print-only: all sections rendered for print ── */}
       {isPrinting && (
         <div className="print-content">
-          {kyData.nimi && (
+          {(kyData.nimi || kyData.registrikood || kyData.aadress) && (
             <div style={{ textAlign: "center", marginBottom: 16 }}>
-              <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{kyData.nimi}</h1>
-              {(kyData.registrikood || kyData.aadress) && (
-                <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
-                  {[kyData.registrikood, kyData.aadress].filter(Boolean).join(" · ")}
-                </div>
+              {kyData.nimi && <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{kyData.nimi}</h1>}
+              {kyData.registrikood && (
+                <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>{kyData.registrikood}</div>
+              )}
+              {kyData.aadress && (
+                <div style={{ fontSize: 12, color: "#555", marginTop: kyData.registrikood ? 2 : 4 }}>{kyData.aadress}</div>
               )}
             </div>
           )}
