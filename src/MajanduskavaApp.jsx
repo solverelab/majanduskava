@@ -2009,10 +2009,12 @@ export default function App() {
                             )}
                           </select>
                         </div>
-                        <div style={{ flex: 2 }}>
-                          <div style={fieldLabel}>Nimetus</div>
-                          <input value={r.name} onChange={(e) => updateRow(side, r.id, { name: e.target.value })} placeholder={side === "COST" ? (KULU_NIMETUS_PLACEHOLDERS[r.category] || "Kirjelda kulu") : (TULU_NIMETUS_PLACEHOLDERS[r.category] || "Kirjelda tulu")} style={inputStyle} />
-                        </div>
+                        {(r.category === "Muu" || r.category === "Muu tulu") && (
+                          <div style={{ flex: 2 }}>
+                            <div style={fieldLabel}>Nimetus</div>
+                            <input value={r.name} onChange={(e) => updateRow(side, r.id, { name: e.target.value })} placeholder={side === "COST" ? (KULU_NIMETUS_PLACEHOLDERS[r.category] || "Kirjelda kulu") : (TULU_NIMETUS_PLACEHOLDERS[r.category] || "Kirjelda tulu")} style={inputStyle} />
+                          </div>
+                        )}
 
                         {side === "COST" && KOMMUNAALTEENUSED.includes(r.category) ? (
                           <>
