@@ -518,12 +518,14 @@ export default function App() {
 
   const kopiiriondvaade = useMemo(() => {
     // Map actual field names → Estonian aliases
+    const mEq = derived.period.monthEq || 12;
     const kulud = plan.budget.costRows.map(r => ({
       kategooria: r.category,
       kogus: r.kogus,
-      uhikuHind: r.uhikuHind,
-      summaKuus: r.arvutus === "aastas" ? (parseFloat(r.summaInput) || 0) / 12
-               : r.arvutus === "perioodis" ? (parseFloat(r.summaInput) || 0) / (derived.period.monthEq || 12)
+      summaKuus: KOMMUNAALTEENUSED.includes(r.category)
+               ? (parseFloat(r.summaInput) || 0) / mEq
+               : r.arvutus === "aastas" ? (parseFloat(r.summaInput) || 0) / 12
+               : r.arvutus === "perioodis" ? (parseFloat(r.summaInput) || 0) / mEq
                : parseFloat(r.summaInput) || 0,
     }));
     const tulud = plan.budget.incomeRows.map(r => ({
@@ -541,9 +543,8 @@ export default function App() {
     const kommunaalKokku = kulud
       .filter(k => KOMMUNAALTEENUSED.some(kt => kt === k.kategooria))
       .reduce((sum, k) => {
-        const kogus = parseFloat(String(k.kogus || '0').replace(',', '.')) || 0;
-        const hind = parseFloat(String(k.uhikuHind || '0').replace(',', '.')) || 0;
-        return sum + Math.round(kogus * hind);
+        const perioodiSumma = parseFloat(String(k.summaKuus || '0').replace(',', '.')) || 0;
+        return sum + Math.round(perioodiSumma);
       }, 0);
 
     // Halduskulud kokku (€/kuu)
@@ -1353,7 +1354,7 @@ export default function App() {
     const updated = plan.budget.costRows.map(r => {
       let summa;
       if (KOMMUNAALTEENUSED.includes(r.category)) {
-        summa = (parseFloat(r.kogus) || 0) * (parseFloat(r.uhikuHind) || 0);
+        summa = parseFloat(r.summaInput) || 0;
       } else if (r.arvutus !== undefined) {
         summa = arvutaHaldusSumma(r);
       } else {
@@ -1996,7 +1997,7 @@ export default function App() {
                               <div style={fieldLabel}>Kogus</div>
                               <NumberInput value={r.kogus} onChange={(v) => updateRow(side, r.id, { kogus: v })} placeholder="0" style={numStyle} />
                             </div>
-                            <div style={{ width: 120 }}>
+                            <div style={{ width: 100 }}>
                               <div style={fieldLabel}>Ühik</div>
                               <select value={r.uhik || ""} onChange={(e) => updateRow(side, r.id, { uhik: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
                                 {(KOMMUNAAL_UHIKUD[r.category] || []).map(u => (
@@ -2004,15 +2005,9 @@ export default function App() {
                                 ))}
                               </select>
                             </div>
-                            <div style={{ width: 130 }}>
-                              <div style={fieldLabel}>Ühiku hind €</div>
-                              <NumberInput value={r.uhikuHind} onChange={(v) => updateRow(side, r.id, { uhikuHind: v })} placeholder="0" style={numStyle} />
-                            </div>
-                            <div style={{ width: 130 }}>
-                              <div style={fieldLabel}>Summa €</div>
-                              <div style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 700, paddingTop: 6 }}>
-                                {euro((parseFloat(r.kogus) || 0) * (parseFloat(r.uhikuHind) || 0))}
-                              </div>
+                            <div style={{ width: 140 }}>
+                              <div style={fieldLabel}>Maksumus €/periood</div>
+                              <EuroInput value={r.summaInput || 0} onChange={(v) => updateRow(side, r.id, { summaInput: v })} style={numStyle} />
                             </div>
                           </>
                         ) : r.category ? (
