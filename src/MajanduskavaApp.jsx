@@ -1551,9 +1551,13 @@ export default function App() {
                     onApartmentsLoaded={handleApartmentsLoaded}
                     onAddressSelected={(addr) => {
                       setKyData(prev => {
-                        if (prev.nimi) return prev;
                         const street = addr.split(",")[0].trim();
-                        return { ...prev, nimi: street ? `KÜ ${street}` : prev.nimi };
+                        if (!street) return prev;
+                        const uusNimi = `KÜ ${street}`;
+                        if (!prev.nimi || prev.nimi.startsWith("KÜ ")) {
+                          return { ...prev, nimi: uusNimi };
+                        }
+                        return prev;
                       });
                     }}
                   />
