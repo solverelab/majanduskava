@@ -1837,7 +1837,7 @@ export default function App() {
               }}>
                 <span style={{ fontSize: 15 }}>ℹ</span>
                 <span>
-                  Remondifond, reservkapital ja laenumaksed →{" "}
+                  Remondifond ja reservkapital →{" "}
                   <span
                     onClick={() => setSec(4)}
                     style={{ fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
