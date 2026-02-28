@@ -993,8 +993,8 @@ export default function App() {
         calc: { type: "FIXED_PERIOD", params: { amountEUR: 0 } },
       }),
       ...(side === "COST"
-        ? { category: "Haldus", kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 }
-        : { category: "Halduskulude ettemaks", arvutus: "kuus", summaInput: 0 }),
+        ? { category: "Haldus", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0 }
+        : { category: "Halduskulude ettemaks", arvutus: "aastas", summaInput: 0 }),
     };
     setPlan(p => ({
       ...p,
@@ -1037,7 +1037,7 @@ export default function App() {
       patch.arvutus = undefined;
       patch.summaInput = 0;
     } else {
-      patch.arvutus = "kuus";
+      patch.arvutus = "aastas";
       patch.summaInput = 0;
       patch.kogus = undefined;
       patch.uhik = undefined;
@@ -1331,8 +1331,8 @@ export default function App() {
   // Auto-add one empty row when section is empty (setPlan, not addX — idempotent even if effect fires twice)
   useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [mkApartment({ label: "1" })] } })); }, [plan.building.apartments.length]);
   // Investeeringud algavad tühjana — luuakse ainult "Loo investeering" või "+ Lisa investeering" kaudu
-  useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "Haldus", kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
-  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME", category: "Halduskulude ettemaks" }), arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.incomeRows.length]);
+  useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "Haldus", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
+  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME", category: "Halduskulude ettemaks" }), arvutus: "aastas", summaInput: 0 }] } })); }, [plan.budget.incomeRows.length]);
 
   // Migreeri vanad tulukategooriad
   useEffect(() => {
@@ -2037,28 +2037,8 @@ export default function App() {
                         ) : r.category ? (
                           <>
                             <div style={{ width: 140 }}>
-                              <div style={fieldLabel}>Arvutus</div>
-                              <select
-                                value={r.arvutus || "kuus"}
-                                onChange={(e) => updateRow(side, r.id, { arvutus: e.target.value })}
-                                style={{ ...selectStyle, width: "100%" }}
-                              >
-                                {HALDUS_ARVUTUS_VALIKUD.map(v => (
-                                  <option key={v.value} value={v.value}>{v.label}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div style={{ width: 140 }}>
-                              <div style={fieldLabel}>
-                                {r.arvutus === "aastas" ? "€/aasta" : r.arvutus === "perioodis" ? "Summa €" : "Summa"}
-                              </div>
-                              <EuroInput value={r.summaInput} onChange={(v) => updateRow(side, r.id, { summaInput: v })} style={numStyle} />
-                            </div>
-                            <div style={{ width: 130 }}>
-                              <div style={fieldLabel}>Perioodis</div>
-                              <div style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 700, paddingTop: 6 }}>
-                                {euro(arvutaHaldusSumma(r) || 0)}
-                              </div>
+                              <div style={fieldLabel}>€/aasta</div>
+                              <EuroInput value={r.summaInput} onChange={(v) => updateRow(side, r.id, { summaInput: v, arvutus: "aastas" })} style={numStyle} />
                             </div>
                           </>
                         ) : (
