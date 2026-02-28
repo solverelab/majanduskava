@@ -1549,6 +1549,7 @@ export default function App() {
           const { haldusKokku, kommunaalKokku, tuludKokku, laenumaksedKokku, vaheHaldus } = kopiiriondvaade;
           const naitaKoondribana = haldusKokku > 0 || kommunaalKokku > 0 || tuludKokku > 0 || laenumaksedKokku > 0;
           if (!naitaKoondribana) return null;
+          const mEq = derived.period.monthEq || 12;
           const vaheColor = vaheHaldus > 0 ? "#15803d" : vaheHaldus < 0 ? "#dc2626" : N.dim;
           const kvStyle = { display: "inline-flex", alignItems: "baseline", gap: 6, whiteSpace: "nowrap" };
           const kvNum = { fontFamily: "monospace", fontWeight: 700, fontSize: 15 };
@@ -1560,17 +1561,17 @@ export default function App() {
               padding: "8px 14px", marginBottom: 16, borderRadius: 8,
               background: N.surface, border: `1px solid ${N.border}`, fontSize: 14,
             }}>
-              <span style={kvStyle}><span style={kvLabel}>Haldus</span> <span style={kvNum}>{euro(haldusKokku)}/kuu</span></span>
+              <span style={kvStyle}><span style={kvLabel}>Haldus</span> <span style={kvNum}>{euro(haldusKokku * mEq)}/aasta</span></span>
               <span style={kvSep}>|</span>
-              <span style={{ ...kvStyle, opacity: 0.6 }}><span style={kvLabel}>Kommunaal</span> <span style={kvNum}>{euro(kommunaalKokku)}/kuu</span></span>
+              <span style={{ ...kvStyle, opacity: 0.6 }}><span style={kvLabel}>Kommunaal</span> <span style={kvNum}>{euro(kommunaalKokku * mEq)}/aasta</span></span>
               <span style={kvSep}>|</span>
-              <span style={kvStyle}><span style={kvLabel}>Tulud</span> <span style={kvNum}>{euro(tuludKokku)}/kuu</span></span>
+              <span style={kvStyle}><span style={kvLabel}>Tulud</span> <span style={kvNum}>{euro(tuludKokku * mEq)}/aasta</span></span>
               {laenumaksedKokku > 0 && (<>
                 <span style={kvSep}>|</span>
-                <span style={kvStyle}><span style={kvLabel}>Laenumaksed</span> <span style={kvNum}>{euro(laenumaksedKokku)}/kuu</span></span>
+                <span style={kvStyle}><span style={kvLabel}>Laenumaksed</span> <span style={kvNum}>{euro(laenumaksedKokku * mEq)}/aasta</span></span>
               </>)}
               <span style={kvSep}>|</span>
-              <span style={kvStyle}><span style={kvLabel}>Vahe</span> <span style={{ ...kvNum, color: vaheColor }}>{euro(vaheHaldus)}/kuu</span></span>
+              <span style={kvStyle}><span style={kvLabel}>Vahe</span> <span style={{ ...kvNum, color: vaheColor }}>{euro(vaheHaldus * mEq)}/aasta</span></span>
             </div>
           );
         })()}
@@ -2189,7 +2190,7 @@ export default function App() {
                 <div style={{ width: 260 }}>
                   <div style={fieldLabel}>Nõutav miinimum</div>
                   <div style={{ fontFamily: "monospace", fontSize: 18, fontWeight: 800 }}>
-                    {euro(derived.funds.reserveRequiredEUR)}
+                    {euro(Math.round(derived.totals.costPeriodEUR / 12))}
                   </div>
                   <div style={{ fontSize: 12, color: N.dim, marginTop: 4, fontFamily: "monospace" }}>
                     {euro(derived.totals.costPeriodEUR)} × 1/12
