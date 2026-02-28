@@ -300,9 +300,9 @@ const btnRemove   = { ..._btnBase, background: "transparent", color: N.dim, font
 const btn         = btnSecondary; // legacy alias
 
 // ── CATEGORIES & ENUMS ──
-const KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Prügivedu", "Kütus"];
+const KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus"];
 
-const HALDUSTEENUSED = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Muu"];
+const HALDUSTEENUSED = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Prügivedu", "Muu"];
 
 const KULU_KATEGOORIAD = [...KOMMUNAALTEENUSED, ...HALDUSTEENUSED];
 
@@ -323,7 +323,6 @@ const KOMMUNAAL_UHIKUD = {
   "Soojus": ["MWh", "kWh"],
   "Vesi ja kanalisatsioon": ["m³"],
   "Elekter": ["kWh", "MWh"],
-  "Prügivedu": ["periood", "kuu"],
 };
 
 const KOMMUNAAL_VAIKE_UHIK = {
@@ -331,7 +330,6 @@ const KOMMUNAAL_VAIKE_UHIK = {
   "Soojus": "MWh",
   "Vesi ja kanalisatsioon": "m³",
   "Elekter": "kWh",
-  "Prügivedu": "periood",
 };
 
 const HALDUS_ARVUTUS_VALIKUD = [
