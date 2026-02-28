@@ -1085,6 +1085,9 @@ export default function App() {
       if (field === "eeldatavKulu" && r.investeering) {
         updated.invMaksumus = value || 0;
       }
+      if (field === "invMaksumus") {
+        updated.eeldatavKulu = value || 0;
+      }
       return updated;
     }));
   };
