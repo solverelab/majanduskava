@@ -1086,7 +1086,15 @@ export default function App() {
   };
 
   const uuendaSeisukord = (id, field, value) => {
-    setSeisukord(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+    setSeisukord(prev => prev.map(r => {
+      if (r.id !== id) return r;
+      const updated = { ...r, [field]: value };
+      // Kui eeldatavKulu muutub ja investeering on aktiivne, sünkroniseeri maksumus
+      if (field === "eeldatavKulu" && r.investeering) {
+        updated.invMaksumus = value || 0;
+      }
+      return updated;
+    }));
   };
 
   const eemaldaSeisukordRida = (id) => {
