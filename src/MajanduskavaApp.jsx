@@ -2258,9 +2258,6 @@ export default function App() {
           <div style={tabStack}>
             <div style={card}>
               <div style={{ ...sectionTitle, marginBottom: 12 }}>Korterite kuumaksed (m² järgi)</div>
-              <div style={{ ...helperText, fontFamily: "monospace", marginBottom: 12 }}>
-                Omanike kuuvajadus: {euro(derived.totals.ownersNeedMonthlyEUR)}/kuu
-              </div>
 
               {(() => {
                 const hasLaen = korteriteKuumaksed.some(k => k.laenumakse > 0);
