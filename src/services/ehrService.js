@@ -1,8 +1,8 @@
 // src/services/ehrService.js
-// In-ADS (Maa-amet) + EHR (Ehitisregister) API integration
-// Provides address autocomplete and apartment data fetching
+// In-ADS (Maa-amet) + EHR (Ehitisregister) API liides
+// Aadressi autocomplete ja korterite m² andmete laadimine
 
-/** Natural sort comparison for apartment numbers (1, 2, 3, …, 10, 11) */
+/** Loomulik sortimine korteri numbritele (1, 2, 3, …, 10, 11 — mitte 1, 10, 11, 2) */
 function naturalCompare(a, b) {
   const re = /(\d+)|(\D+)/g;
   const partsA = String(a).match(re) || [];
@@ -23,72 +23,89 @@ function naturalCompare(a, b) {
 }
 
 /**
- * Search for building addresses via In-ADS gazetteer.
- * @param {string} query — user-typed address fragment
- * @returns {Promise<Array<{ address: string, adsOid: string, ehrCode: string }>>}
+ * Aadressi otsing (autocomplete) — In-ADS gazetteer
+ * Filtreerib ainult hooned (liik === "E")
+ * @param {string} query — kasutaja sisestatud aadressifragment
+ * @returns {Promise<Array<{ address: string, adsOid: string, adsCode: string }>>}
  */
 export async function searchAddress(query) {
   const url = `https://inaadress.maaamet.ee/inaadress/gazetteer?address=${encodeURIComponent(query)}&results=10`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-  if (!res.ok) throw new Error(`In-ADS error: ${res.status}`);
-  const data = await res.json();
-  const addresses = data.addresses || [];
-  return addresses
-    .filter((a) => a.liik === "E")
-    .map((a) => ({
-      address: a.iplesnimi || a.pikkaadress || a.aadresstekst || "",
-      adsOid: a.adsobjid || a.ads_oid || "",
-      ehrCode: a.tunnus || "",
-    }));
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`In-ADS viga: ${res.status}`);
+    const data = await res.json();
+    const addresses = data.addresses || [];
+    return addresses
+      .filter((a) => a.liik === "E")
+      .map((a) => ({
+        address: a.ipikkaadress || a.pikkaadress || a.aadresstekst || "",
+        adsOid: a.ads_oid || "",
+        adsCode: a.tunnus || "",
+      }));
+  } catch (err) {
+    throw new Error(`Aadressi otsing ebaõnnestus: ${err.message}`);
+  }
 }
 
 /**
- * Fallback: fetch building EHR code from In-ADS by ADS OID.
- * Used when searchAddress result has no `tunnus` field.
- * @param {string} adsOid
+ * Hoone EHR koodi leidmine — In-ADS tunnus → EHR kood
+ * Fallback juhul kui searchAddress tulemusel puudub tunnus
+ * @param {string} adsOid — ADS objekti ID
  * @returns {Promise<string>} ehrCode
  */
 export async function fetchBuildingCode(adsOid) {
   const url = `https://inaadress.maaamet.ee/inaadress/gazetteer?adsobjid=${encodeURIComponent(adsOid)}&results=1`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-  if (!res.ok) throw new Error(`In-ADS lookup error: ${res.status}`);
-  const data = await res.json();
-  const addresses = data.addresses || [];
-  if (!addresses.length) throw new Error("EHR code not found for ADS OID");
-  return addresses[0].tunnus || "";
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`In-ADS päring ebaõnnestus: ${res.status}`);
+    const data = await res.json();
+    const addresses = data.addresses || [];
+    if (!addresses.length) throw new Error("EHR koodi ei leitud");
+    return addresses[0].tunnus || "";
+  } catch (err) {
+    throw new Error(`EHR koodi päring ebaõnnestus: ${err.message}`);
+  }
 }
 
 /**
- * Fetch apartment data from EHR building registry.
- * @param {string} ehrCode — building EHR code (e.g. "120726980")
+ * Korterite andmed — EHR ehitisregistri buildingData
+ * @param {string} ehrCode — hoone EHR kood (nt "120726980")
  * @returns {Promise<Array<{ number: string, area: number }>>}
+ * Sorteeritud loomuliku sortimise järgi (1, 2, 3, …, 10, 11)
  */
 export async function fetchApartments(ehrCode) {
   const url = `https://livekluster.ehr.ee/api/building/v2/buildingData?ehr_code=${encodeURIComponent(ehrCode)}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-  if (!res.ok) throw new Error(`EHR error: ${res.status}`);
-  const data = await res.json();
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error(`EHR viga: ${res.status}`);
+    const data = await res.json();
 
-  const apartments = [];
-  const ehitis = data?.ehpilesResult?.ehpilesResponse?.ehitis;
-  if (!ehitis) return apartments;
+    const apartments = [];
+    // EHR v2 vastus: ehitis on otse top-level, mitte ehpilesResult sees
+    const ehitis = data?.ehitis;
+    if (!ehitis) return apartments;
 
-  const kehanded = ehitis.ehitiseKehand?.kehand;
-  if (!Array.isArray(kehanded)) return apartments;
+    const kehanded = ehitis.ehitiseKehand?.kehand;
+    if (!Array.isArray(kehanded)) return apartments;
 
-  for (const kehand of kehanded) {
-    const osad = kehand.ehitiseOsad?.ehitiseOsa;
-    if (!Array.isArray(osad)) continue;
-    for (const osa of osad) {
-      if (osa.liik === "K") {
-        apartments.push({
-          number: osa.tahis || "",
-          area: parseFloat(osa.pind) || 0,
-        });
+    for (const kehand of kehanded) {
+      const osad = kehand.ehitiseOsad?.ehitiseOsa;
+      if (!Array.isArray(osad)) continue;
+      for (const osa of osad) {
+        if (osa.liik === "K" && osa.tahis) {
+          // pind asub ehitiseOsaPohiandmed sees
+          const pind = osa.ehitiseOsaPohiandmed?.pind;
+          apartments.push({
+            number: osa.tahis,
+            area: parseFloat(pind) || 0,
+          });
+        }
       }
     }
-  }
 
-  apartments.sort((a, b) => naturalCompare(a.number, b.number));
-  return apartments;
+    apartments.sort((a, b) => naturalCompare(a.number, b.number));
+    return apartments;
+  } catch (err) {
+    throw new Error(`Korterite päring ebaõnnestus: ${err.message}`);
+  }
 }
