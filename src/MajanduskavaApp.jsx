@@ -2052,9 +2052,24 @@ export default function App() {
                           <div style={fieldLabel}>Intress %/a</div>
                           <NumberInput value={ln.annualRatePct} onChange={(v) => updateLoan(ln.id, { annualRatePct: v })} style={numStyle} />
                         </div>
-                        <div style={{ width: 140 }}>
-                          <div style={fieldLabel}>Tähtaeg kuudes</div>
-                          <NumberInput value={ln.termMonths} onChange={(v) => updateLoan(ln.id, { termMonths: v })} style={numStyle} />
+                        <div style={{ width: 200 }}>
+                          <div style={fieldLabel}>Periood</div>
+                          {(() => {
+                            const total = parseInt(ln.termMonths) || 0;
+                            const yy = Math.floor(total / 12);
+                            const mm = total % 12;
+                            return (
+                              <div style={{ display: "flex", gap: 4 }}>
+                                <select value={total > 0 ? yy : ""} onChange={(e) => { const v = e.target.value; updateLoan(ln.id, { termMonths: (v === "" ? 0 : parseInt(v) * 12) + mm }); }} style={{ ...selectStyle, flex: 2 }}>
+                                  <option value="">—</option>
+                                  {Array.from({ length: 31 }, (_, i) => <option key={i} value={i}>{i} a</option>)}
+                                </select>
+                                <select value={mm} onChange={(e) => updateLoan(ln.id, { termMonths: yy * 12 + parseInt(e.target.value) })} style={{ ...selectStyle, flex: 1 }}>
+                                  {Array.from({ length: 12 }, (_, i) => <option key={i} value={i}>{i} k</option>)}
+                                </select>
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div style={{ width: 160 }}>
                           <div style={fieldLabel}>Algus</div>
