@@ -2213,6 +2213,9 @@ export default function App() {
                   <div style={{ fontFamily: "monospace", fontSize: 18, fontWeight: 800 }}>
                     {euro(derived.funds.reserveRequiredEUR)}
                   </div>
+                  <div style={{ fontSize: 12, color: N.dim, marginTop: 4, fontFamily: "monospace" }}>
+                    {euro(derived.totals.costPeriodEUR)} × 1/12
+                  </div>
                 </div>
               </div>
             </div>
