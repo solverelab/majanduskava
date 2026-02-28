@@ -2034,7 +2034,8 @@ export default function App() {
               </div>
 
               {/* ── Planeeritud laenud (investeeringutest + käsitsi) ── */}
-              <div style={{ fontWeight: 600, fontSize: 14, color: N.sub, marginBottom: 8 }}>Planeeritud laenud</div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: N.sub, marginBottom: 4 }}>Planeeritud laenud</div>
+              <div style={{ fontSize: 13, color: N.dim, marginBottom: 12 }}>Summad on indikatiivsed ja sõltuvad laenutingimustest.</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {plan.loans.map(ln => {
                   const d = derived.loans.items.find(x => x.id === ln.id);
@@ -2080,14 +2081,10 @@ export default function App() {
                         <div style={{ width: 160 }}>
                           <div style={fieldLabel}>Algus</div>
                           {(() => {
-                            const lnKv = ln.algusKvartal || "I";
                             const lnAasta = ln.algusAasta || String(plan.period.year || new Date().getFullYear());
                             return (
-                              <div style={{ display: "flex", gap: 4 }}>
-                                <select value={lnKv} onChange={(e) => updateLoan(ln.id, { algusKvartal: e.target.value })} style={{ ...selectStyle, width: 55 }}>
-                                  {["I", "II", "III", "IV"].map(k => <option key={k} value={k}>{k}</option>)}
-                                </select>
-                                <select value={lnAasta} onChange={(e) => updateLoan(ln.id, { algusAasta: e.target.value })} style={{ ...selectStyle, flex: 1 }}>
+                              <div>
+                                <select value={lnAasta} onChange={(e) => updateLoan(ln.id, { algusAasta: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
                                   {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i).map(a => <option key={a} value={String(a)}>{a}</option>)}
                                 </select>
                               </div>
@@ -2103,19 +2100,11 @@ export default function App() {
                         </div>
                       </div>
 
-                      {d && (
-                        <div style={{ marginTop: 12, fontFamily: "monospace" }}>
-                          Teenindus perioodis: {euro(d.servicingPeriodEUR)} · kuumakse: {euro(d.servicingMonthlyEUR)} · laenureserv: {euro(d.reservePeriodEUR)}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
               </div>
 
-              <div style={{ marginTop: 12, fontFamily: "monospace" }}>
-                Laenuteenindus kokku: {euro(derived.loans.servicePeriodEUR)} · laenureserv kokku: {euro(derived.loans.reservePeriodEUR)}
-              </div>
               <div style={{ marginTop: 8 }}>
                 <button style={btnAdd} onClick={addLoan}>+ Lisa planeeritud laen</button>
               </div>
