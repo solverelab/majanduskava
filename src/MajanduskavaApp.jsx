@@ -1546,32 +1546,44 @@ export default function App() {
 
         {/* ── Koondvaade — alati nähtav ── */}
         {(() => {
-          const { haldusKokku, kommunaalKokku, tuludKokku, laenumaksedKokku, vaheHaldus } = kopiiriondvaade;
-          const naitaKoondribana = haldusKokku > 0 || kommunaalKokku > 0 || tuludKokku > 0 || laenumaksedKokku > 0;
-          if (!naitaKoondribana) return null;
+          const { haldusKokku, kommunaalKokku, tuludKokku, laenumaksedKokku } = kopiiriondvaade;
           const mEq = derived.period.monthEq || 12;
-          const vaheColor = vaheHaldus > 0 ? "#15803d" : vaheHaldus < 0 ? "#dc2626" : N.dim;
-          const kvStyle = { display: "inline-flex", alignItems: "baseline", gap: 6, whiteSpace: "nowrap" };
+          const haldusA = haldusKokku * mEq;
+          const kommunaalA = kommunaalKokku * mEq;
+          const kuludKokkuA = haldusA + kommunaalA;
+          const tuludA = tuludKokku * mEq;
+          const laenudA = laenumaksedKokku * mEq;
+          const vaheA = tuludA - haldusA - laenudA;
+          const naitaKoondribana = haldusA > 0 || kommunaalA > 0 || tuludA > 0;
+          if (!naitaKoondribana) return null;
+          const vaheColor = vaheA > 0 ? "#15803d" : vaheA < 0 ? "#dc2626" : N.dim;
+          const vaheLabel = vaheA >= 0 ? "Ülejääk" : "Puudujääk";
           const kvNum = { fontFamily: "monospace", fontWeight: 700, fontSize: 15 };
-          const kvLabel = { fontSize: 12, color: N.dim };
-          const kvSep = { color: N.border, margin: "0 4px", fontSize: 13 };
+          const kvLabel = { fontSize: 12, color: N.dim, minWidth: 70 };
+          const kvSep = { color: N.border, margin: "0 6px", fontSize: 13 };
+          const rowStyle = { display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" };
           return (
             <div style={{
-              display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8,
               padding: "8px 14px", marginBottom: 16, borderRadius: 8,
               background: N.surface, border: `1px solid ${N.border}`, fontSize: 14,
+              display: "flex", flexDirection: "column", gap: 2,
             }}>
-              <span style={kvStyle}><span style={kvLabel}>Haldus</span> <span style={kvNum}>{euro(haldusKokku * mEq)}/aasta</span></span>
-              <span style={kvSep}>|</span>
-              <span style={{ ...kvStyle, opacity: 0.6 }}><span style={kvLabel}>Kommunaal</span> <span style={kvNum}>{euro(kommunaalKokku * mEq)}/aasta</span></span>
-              <span style={kvSep}>|</span>
-              <span style={kvStyle}><span style={kvLabel}>Tulud</span> <span style={kvNum}>{euro(tuludKokku * mEq)}/aasta</span></span>
-              {laenumaksedKokku > 0 && (<>
+              <div style={rowStyle}>
+                <span style={kvLabel}>Haldus</span> <span style={kvNum}>{euro(haldusA)}</span>
                 <span style={kvSep}>|</span>
-                <span style={kvStyle}><span style={kvLabel}>Laenumaksed</span> <span style={kvNum}>{euro(laenumaksedKokku * mEq)}/aasta</span></span>
-              </>)}
-              <span style={kvSep}>|</span>
-              <span style={kvStyle}><span style={kvLabel}>Vahe</span> <span style={{ ...kvNum, color: vaheColor }}>{euro(vaheHaldus * mEq)}/aasta</span></span>
+                <span style={{ ...kvLabel, opacity: 0.6 }}>Kommunaal</span> <span style={{ ...kvNum, opacity: 0.6 }}>{euro(kommunaalA)}</span>
+                <span style={kvSep}>|</span>
+                <span style={kvLabel}>Kulud kokku</span> <span style={kvNum}>{euro(kuludKokkuA + laenudA)}</span>
+              </div>
+              <div style={rowStyle}>
+                <span style={kvLabel}>Tulud</span> <span style={kvNum}>{euro(tuludA)}</span>
+                <span style={kvSep}>|</span>
+                <span style={kvLabel}>{vaheLabel}</span> <span style={{ ...kvNum, color: vaheColor }}>{euro(Math.abs(vaheA))}</span>
+                {laenudA > 0 && (<>
+                  <span style={kvSep}>|</span>
+                  <span style={{ fontSize: 12, color: N.dim }}>sh laenumaksed {euro(laenudA)}</span>
+                </>)}
+              </div>
             </div>
           );
         })()}
