@@ -47,29 +47,71 @@ function kuudeVahe(algusISO, loppISO) {
   return Math.max(0, (ly - ay) * 12 + (lm - am));
 }
 
-// Olemasoleva laenu arvutuslikud väärtused (kuumakse + jääk perioodi alguses)
-function arvutaOlemasolevLaen(ol, periodiAlgusISO) {
-  const s = parseFloat(String(ol.algSumma).replace(",", ".")) || 0;
-  const r = (parseFloat(String(ol.intress).replace(",", ".")) || 0) / 100 / 12;
-  const n = kuudeVahe(ol.algusKuupaev, ol.loppKuupaev);
-  const k = kuudeVahe(ol.algusKuupaev, periodiAlgusISO);
-  if (s <= 0 || n <= 0) return { arvKuumakse: 0, arvJaak: 0 };
+// Olemasoleva laenu arvutused — tagastab { kuumakse, jaak, arvutuskaik }
+function arvutaOlemasolevLaen(laen, periodiAlgusISO) {
+  const algSumma = parseFloat(String(laen.algSumma).replace(",", ".")) || 0;
+  const intress = parseFloat(String(laen.intress).replace(",", ".")) || 0;
+  const algusISO = laen.algusKuupaev || "";
+  const loppISO = laen.loppKuupaev || "";
+  const makseviis = laen.makseviis || "annuiteet";
 
-  if (ol.makseviis === "vordsePohiosaga") {
-    const pohiosa = s / n;
-    const jaak = Math.max(0, s - k * pohiosa);
-    const kuumakse = Math.round(pohiosa + jaak * r);
-    return { arvKuumakse: kuumakse, arvJaak: Math.round(jaak) };
+  if (algSumma <= 0 || !algusISO || !loppISO) {
+    return { kuumakse: 0, jaak: 0, piisavAndmeid: false, arvutuskaik: [] };
   }
-  // Annuiteet (vaikimisi)
-  if (r === 0) {
-    const kuumakse = Math.round(s / n);
-    const jaak = Math.max(0, Math.round(s - k * kuumakse));
-    return { arvKuumakse: kuumakse, arvJaak: jaak };
+
+  const koguKuud = kuudeVahe(algusISO, loppISO);
+  const makstudKuud = kuudeVahe(algusISO, periodiAlgusISO);
+  const r = intress / 100 / 12;
+
+  if (koguKuud <= 0) {
+    return { kuumakse: 0, jaak: 0, piisavAndmeid: false, arvutuskaik: [] };
   }
-  const kuumakse = Math.round(s * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
-  const jaak = k >= n ? 0 : Math.round(s * (Math.pow(1 + r, n) - Math.pow(1 + r, k)) / (Math.pow(1 + r, n) - 1));
-  return { arvKuumakse: kuumakse, arvJaak: jaak };
+
+  let kuumakseNow = 0;
+  let jaak = 0;
+  const arvutuskaik = [];
+
+  if (makseviis === "annuiteet") {
+    const makse = r === 0
+      ? algSumma / koguKuud
+      : algSumma * r * Math.pow(1 + r, koguKuud) / (Math.pow(1 + r, koguKuud) - 1);
+    kuumakseNow = Math.round(makse);
+
+    jaak = algSumma;
+    for (let i = 0; i < Math.min(makstudKuud, koguKuud); i++) {
+      jaak = jaak * (1 + r) - makse;
+    }
+    jaak = Math.max(0, Math.round(jaak));
+
+    arvutuskaik.push(`Annuiteet: ${algSumma} \u20ac \u00d7 ${koguKuud} kuud \u00d7 ${String(intress).replace(".", ",")}%`);
+    arvutuskaik.push(`Kuumakse: ${kuumakseNow} \u20ac`);
+    arvutuskaik.push(`Makstud: ${Math.min(makstudKuud, koguKuud)} kuud \u2192 j\u00e4\u00e4k: ${jaak} \u20ac`);
+
+  } else {
+    const pohiosa = algSumma / koguKuud;
+    jaak = Math.max(0, algSumma - pohiosa * Math.min(makstudKuud, koguKuud));
+    jaak = Math.round(jaak);
+
+    kuumakseNow = Math.round(pohiosa + jaak * r);
+
+    const jaargiKuud = Math.max(0, koguKuud - makstudKuud);
+    const periodiKuud = Math.min(jaargiKuud, 12);
+    if (periodiKuud > 0) {
+      let summa = 0;
+      let tempJaak = jaak;
+      for (let i = 0; i < periodiKuud; i++) {
+        summa += pohiosa + tempJaak * r;
+        tempJaak = Math.max(0, tempJaak - pohiosa);
+      }
+      kuumakseNow = Math.round(summa / periodiKuud);
+    }
+
+    arvutuskaik.push(`V\u00f5rdne p\u00f5hiosa: ${algSumma} \u20ac \u00f7 ${koguKuud} kuud = ${Math.round(pohiosa)} \u20ac/kuu`);
+    arvutuskaik.push(`Keskmine kuumakse perioodi jooksul: ${kuumakseNow} \u20ac`);
+    arvutuskaik.push(`J\u00e4\u00e4k perioodi alguses: ${jaak} \u20ac`);
+  }
+
+  return { kuumakse: kuumakseNow, jaak, piisavAndmeid: true, arvutuskaik };
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -461,7 +503,7 @@ export default function App() {
     const olemasolevaLaenudKokku = olemasolevaLaenud.reduce((sum, l) => {
       const kasitsi = parseFloat(l.kuumakse) || 0;
       if (kasitsi > 0) return sum + kasitsi;
-      return sum + arvutaOlemasolevLaen(l, plan.period.start).arvKuumakse;
+      return sum + arvutaOlemasolevLaen(l, plan.period.start).kuumakse;
     }, 0);
 
     const laenumaksedKokku = planeeritudLaenudKokku + olemasolevaLaenudKokku;
@@ -2049,7 +2091,7 @@ export default function App() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {olemasolevaLaenud.map(ol => {
                       const arv = arvutaOlemasolevLaen(ol, plan.period.start);
-                      const hasArv = arv.arvKuumakse > 0;
+                      const hasArv = arv.piisavAndmeid;
                       return (
                       <div key={ol.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
                         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "start" }}>
@@ -2065,7 +2107,7 @@ export default function App() {
                           </div>
                           <div style={{ width: 128 }}>
                             <div style={fieldLabel}>Laenujääk</div>
-                            <EuroInput value={ol.jaak} onChange={(v) => updateOlemasolevaLaen(ol.id, { jaak: v })} style={numStyle} placeholder={hasArv ? String(arv.arvJaak) : ""} />
+                            <EuroInput value={ol.jaak} onChange={(v) => updateOlemasolevaLaen(ol.id, { jaak: v })} style={numStyle} placeholder={hasArv ? String(arv.jaak) : ""} />
                           </div>
                           <div style={{ width: 96 }}>
                             <div style={fieldLabel}>Intress %</div>
@@ -2088,7 +2130,7 @@ export default function App() {
                           </div>
                           <div style={{ width: 128 }}>
                             <div style={fieldLabel}>Kuumakse</div>
-                            <EuroInput value={ol.kuumakse} onChange={(v) => updateOlemasolevaLaen(ol.id, { kuumakse: v })} style={numStyle} placeholder={hasArv ? String(arv.arvKuumakse) : ""} />
+                            <EuroInput value={ol.kuumakse} onChange={(v) => updateOlemasolevaLaen(ol.id, { kuumakse: v })} style={numStyle} placeholder={hasArv ? String(arv.kuumakse) : ""} />
                           </div>
                           <div style={{ marginTop: 20 }}>
                             <button style={btnRemove} onClick={() => removeOlemasolevaLaen(ol.id)}>Eemalda</button>
@@ -2096,7 +2138,7 @@ export default function App() {
                         </div>
                         {hasArv && (
                           <div style={{ marginTop: 6, fontFamily: "monospace", fontSize: 12, color: N.dim }}>
-                            Arvutuslik: kuumakse {euro(arv.arvKuumakse)} · jääk {euro(arv.arvJaak)} · {kuudeVahe(ol.algusKuupaev, ol.loppKuupaev)} kuud kokku
+                            {arv.arvutuskaik.join(" · ")}
                           </div>
                         )}
                       </div>
@@ -2107,7 +2149,7 @@ export default function App() {
                     <div style={{ marginTop: 8, fontFamily: "monospace", fontSize: 13, color: N.sub }}>
                       Olemasolevad kuumaksed kokku: {euro(olemasolevaLaenud.reduce((s, l) => {
                         const kasitsi = parseFloat(l.kuumakse) || 0;
-                        return s + (kasitsi > 0 ? kasitsi : arvutaOlemasolevLaen(l, plan.period.start).arvKuumakse);
+                        return s + (kasitsi > 0 ? kasitsi : arvutaOlemasolevLaen(l, plan.period.start).kuumakse);
                       }, 0))}/kuu
                     </div>
                   )}
