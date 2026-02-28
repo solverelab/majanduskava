@@ -302,7 +302,7 @@ const btn         = btnSecondary; // legacy alias
 // ── CATEGORIES & ENUMS ──
 const KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus"];
 
-const HALDUSTEENUSED = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Prügivedu", "Muu"];
+const HALDUSTEENUSED = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Prügivedu", "Laenumakse", "Muu"];
 
 const KULU_KATEGOORIAD = [...KOMMUNAALTEENUSED, ...HALDUSTEENUSED];
 
@@ -371,6 +371,7 @@ const KULU_NIMETUS_PLACEHOLDERS = {
   "Koristus": "nt Trepikoja koristus",
   "Kindlustus": "nt Hoone koguriskikindlustus",
   "Hooldus": "nt Lukkude vahetus, kraanide remont",
+  "Laenumakse": "nt Remondilaen, investeerimislaen",
   "Muu": "Kirjelda kulu",
 };
 
