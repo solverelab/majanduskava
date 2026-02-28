@@ -2010,12 +2010,20 @@ export default function App() {
 
                 <div style={{ width: 260 }}>
                   <div style={fieldLabel}>Nõutav miinimum</div>
-                  <div style={{ fontFamily: "monospace", fontSize: 18, fontWeight: 800 }}>
-                    {euro(Math.round(derived.totals.costPeriodEUR / 12))}
-                  </div>
-                  <div style={{ fontSize: 12, color: N.dim, marginTop: 4, fontFamily: "monospace" }}>
-                    {euro(derived.totals.costPeriodEUR)} × 1/12
-                  </div>
+                  {(() => {
+                    const mEq = derived.period.monthEq || 12;
+                    const kuludAastas = (kopiiriondvaade.haldusKokku + kopiiriondvaade.kommunaalKokku) * mEq;
+                    return (
+                      <>
+                        <div style={{ fontFamily: "monospace", fontSize: 18, fontWeight: 800 }}>
+                          {euro(Math.round(kuludAastas / 12))}
+                        </div>
+                        <div style={{ fontSize: 12, color: N.dim, marginTop: 4, fontFamily: "monospace" }}>
+                          {euro(kuludAastas)} × 1/12
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
