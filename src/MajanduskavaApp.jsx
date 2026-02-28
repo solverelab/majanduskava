@@ -540,28 +540,20 @@ export default function App() {
     }));
 
     // Kommunaalkulud kokku (€/kuu)
-    const kommunaalKokku = kulud
+    const kommunaalKokku = Math.round(kulud
       .filter(k => KOMMUNAALTEENUSED.some(kt => kt === k.kategooria))
-      .reduce((sum, k) => {
-        const perioodiSumma = parseFloat(String(k.summaKuus || '0').replace(',', '.')) || 0;
-        return sum + Math.round(perioodiSumma);
-      }, 0);
+      .reduce((sum, k) => sum + (parseFloat(k.summaKuus) || 0), 0));
 
     // Halduskulud kokku (€/kuu)
-    const haldusKokku = kulud
+    const haldusKokku = Math.round(kulud
       .filter(k => HALDUSTEENUSED.some(ht => ht === k.kategooria))
-      .reduce((sum, k) => {
-        const summaKuus = parseFloat(String(k.summaKuus || '0').replace(',', '.')) || 0;
-        return sum + Math.round(summaKuus);
-      }, 0);
+      .reduce((sum, k) => sum + (parseFloat(k.summaKuus) || 0), 0));
 
     const kuludKokku = kommunaalKokku + haldusKokku;
 
     // Tulud kokku (€/kuu)
-    const tuludKokku = tulud.reduce((sum, t) => {
-      const summaKuus = parseFloat(String(t.summaKuus || '0').replace(',', '.')) || 0;
-      return sum + Math.round(summaKuus);
-    }, 0);
+    const tuludKokku = Math.round(tulud
+      .reduce((sum, t) => sum + (parseFloat(t.summaKuus) || 0), 0));
 
     // Planeeritud laenumaksed kokku (€/kuu)
     const planeeritudLaenudKokku = laenud.reduce((sum, l) => {
