@@ -1406,9 +1406,8 @@ export default function App() {
           const mEq = derived.period.monthEq || 12;
           const haldusA = haldusKokku * mEq;
           const kommunaalA = kommunaalKokku * mEq;
-          const kokkuA = haldusA + kommunaalA;
           const tuludA = tuludKokku * mEq;
-          const vaheA = tuludA - kokkuA;
+          const vaheA = tuludA - haldusA;
           const naitaKoondribana = haldusA > 0 || kommunaalA > 0 || tuludA > 0;
           if (!naitaKoondribana) return null;
           const vaheColor = vaheA > 0 ? "#15803d" : vaheA < 0 ? "#dc2626" : N.dim;
@@ -1427,8 +1426,6 @@ export default function App() {
                 <span style={kvLabel}>Haldus</span> <span style={kvNum}>{euro(haldusA)}</span>
                 <span style={kvSep}>|</span>
                 <span style={{ ...kvLabel, opacity: 0.6 }}>Kommunaal</span> <span style={{ ...kvNum, opacity: 0.6 }}>{euro(kommunaalA)}</span>
-                <span style={kvSep}>|</span>
-                <span style={kvLabel}>Kokku</span> <span style={kvNum}>{euro(kokkuA)}</span>
               </div>
               <div style={rowStyle}>
                 <span style={kvLabel}>Tulud</span> <span style={kvNum}>{euro(tuludA)}</span>
