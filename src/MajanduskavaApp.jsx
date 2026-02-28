@@ -2202,11 +2202,11 @@ export default function App() {
                           </div>
                           <div style={{ width: 140 }}>
                             <div style={fieldLabel}>Algus</div>
-                            <input type="date" value={ol.algusKuupaev || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { algusKuupaev: e.target.value })} style={{ ...inputStyle, width: "100%" }} />
+                            <DateInput value={ol.algusKuupaev || ""} onChange={(iso) => updateOlemasolevaLaen(ol.id, { algusKuupaev: iso })} style={{ ...inputStyle, width: "100%" }} />
                           </div>
                           <div style={{ width: 140 }}>
                             <div style={fieldLabel}>Lõpp</div>
-                            <input type="date" value={ol.loppKuupaev || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { loppKuupaev: e.target.value })} style={{ ...inputStyle, width: "100%" }} />
+                            <DateInput value={ol.loppKuupaev || ""} onChange={(iso) => updateOlemasolevaLaen(ol.id, { loppKuupaev: iso })} style={{ ...inputStyle, width: "100%" }} />
                           </div>
                           <div style={{ width: 128 }}>
                             <div style={fieldLabel}>Kuumakse</div>
