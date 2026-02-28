@@ -2100,6 +2100,8 @@ export default function App() {
                     {olemasolevaLaenud.map(ol => {
                       const arv = olLaenArvutused.find(a => a.id === ol.id) || { kuumakse: 0, jaak: 0, piisavAndmeid: false, arvutuskaik: [] };
                       const hasArv = arv.piisavAndmeid;
+                      const effKuumakse = (parseFloat(ol.kuumakse) || 0) > 0 ? parseFloat(ol.kuumakse) : arv.kuumakse;
+                      const effJaak = (parseFloat(ol.jaak) || 0) > 0 ? parseFloat(ol.jaak) : arv.jaak;
                       return (
                       <div key={ol.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
                         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "start" }}>
@@ -2112,10 +2114,6 @@ export default function App() {
                           <div style={{ width: 128 }}>
                             <div style={fieldLabel}>Esialgne summa</div>
                             <EuroInput value={ol.algSumma} onChange={(v) => updateOlemasolevaLaen(ol.id, { algSumma: v })} style={numStyle} />
-                          </div>
-                          <div style={{ width: 128 }}>
-                            <div style={fieldLabel}>Laenujääk</div>
-                            <EuroInput value={ol.jaak} onChange={(v) => updateOlemasolevaLaen(ol.id, { jaak: v })} style={numStyle} placeholder={hasArv ? String(arv.jaak) : ""} />
                           </div>
                           <div style={{ width: 96 }}>
                             <div style={fieldLabel}>Intress %</div>
@@ -2137,16 +2135,23 @@ export default function App() {
                             <input type="date" value={ol.loppKuupaev || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { loppKuupaev: e.target.value })} style={{ ...inputStyle, width: "100%" }} />
                           </div>
                           <div style={{ width: 128 }}>
-                            <div style={fieldLabel}>Kuumakse</div>
+                            <div style={fieldLabel}>Kuumakse {hasArv && !ol.kuumakse && <span style={{ fontWeight: 400, color: N.dim }}>(arv.)</span>}</div>
                             <EuroInput value={ol.kuumakse} onChange={(v) => updateOlemasolevaLaen(ol.id, { kuumakse: v })} style={numStyle} placeholder={hasArv ? String(arv.kuumakse) : ""} />
+                          </div>
+                          <div style={{ width: 128 }}>
+                            <div style={fieldLabel}>Jääk {hasArv && !ol.jaak && <span style={{ fontWeight: 400, color: N.dim }}>(arv.)</span>}</div>
+                            <EuroInput value={ol.jaak} onChange={(v) => updateOlemasolevaLaen(ol.id, { jaak: v })} style={numStyle} placeholder={hasArv ? String(arv.jaak) : ""} />
                           </div>
                           <div style={{ marginTop: 20 }}>
                             <button style={btnRemove} onClick={() => removeOlemasolevaLaen(ol.id)}>Eemalda</button>
                           </div>
                         </div>
                         {hasArv && (
-                          <div style={{ marginTop: 6, fontFamily: "monospace", fontSize: 12, color: N.dim }}>
-                            {arv.arvutuskaik.join(" · ")}
+                          <div style={{ marginTop: 8, padding: "6px 10px", background: N.muted, borderRadius: 4, fontFamily: "monospace", fontSize: 12 }}>
+                            <div style={{ color: N.text, marginBottom: 2 }}>
+                              Kuumakse: <strong>{euro(effKuumakse)}</strong> · Jääk perioodi alguses: <strong>{euro(effJaak)}</strong>
+                            </div>
+                            <div style={{ color: N.dim }}>{arv.arvutuskaik.join(" · ")}</div>
                           </div>
                         )}
                       </div>
