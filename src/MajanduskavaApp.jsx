@@ -503,7 +503,6 @@ export default function App() {
   const [isPrinting, setIsPrinting] = useState(false);
   const [naitaVanuLaene, setNaitaVanuLaene] = useState(false);
   const [avaKorterDetail, setAvaKorterDetail] = useState({});
-  const [periodParts, setPeriodParts] = useState({ sd: "", sm: "", sy: "", ed: "", em: "", ey: "" });
 
   const onPrint = () => {
     setIsPrinting(true);
@@ -788,13 +787,6 @@ export default function App() {
           };
           return { ...ol, algusKuupaev: migKp(ol.algusKuupaev), loppKuupaev: migKp(ol.loppKuupaev), makseviis: ol.makseviis || "annuiteet" };
         }));
-        // Sync period dropdowns
-        const _ps = candidateState.period?.start?.split("-") || [];
-        const _pe = candidateState.period?.end?.split("-") || [];
-        setPeriodParts({
-          sd: Number(_ps[2]) || "", sm: Number(_ps[1]) || "", sy: Number(_ps[0]) || "",
-          ed: Number(_pe[2]) || "", em: Number(_pe[1]) || "", ey: Number(_pe[0]) || "",
-        });
         setSolvereMetrics(dryRunResult.metrics);
         setEvaluation(ev);
         setImportError(null);
@@ -1298,7 +1290,7 @@ export default function App() {
 
   const clearSection = (tabIdx) => {
     if (!window.confirm("Kas soovid selle jaotise andmed kustutada? Seda ei saa tagasi võtta.")) return;
-    if (tabIdx === 0) { setPeriodParts({ sd: "", sm: "", sy: "", ed: "", em: "", ey: "" }); setKyData({ nimi: "", registrikood: "", aadress: "" }); }
+    if (tabIdx === 0) { setKyData({ nimi: "", registrikood: "", aadress: "" }); }
     setPlan(p => {
       if (tabIdx === 0) return { ...p, period: { ...p.period, start: "", end: "" }, building: { ...p.building, apartments: [] } };
       if (tabIdx === 1) { setSeisukord([]); setMuudInvesteeringud([]); return { ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [] } }; }
@@ -1459,153 +1451,67 @@ export default function App() {
               </div>
             </div>
 
-            {(() => {
-              const YEARS = [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035];
-              const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
-              const daysInMonth = (m, y) => (m && y) ? new Date(y, m, 0).getDate() : 31;
-              const toISO = (d, m, y) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-
-              const pp = periodParts;
-
-              const updateStart = (key, val) => {
-                const next = { ...pp, [key]: Number(val) };
-                // Algusaasta muutmisel → lõppaasta kaasa
-                if (key === "sy" && Number(val)) {
-                  next.ey = Number(val);
-                  // Clamp end day if needed
-                  if (next.em && next.ey && next.ed > daysInMonth(next.em, next.ey)) {
-                    next.ed = daysInMonth(next.em, next.ey);
-                  }
-                }
-                // Clamp start day to valid range
-                if (next.sm && next.sy && next.sd > daysInMonth(next.sm, next.sy)) {
-                  next.sd = daysInMonth(next.sm, next.sy);
-                }
-                setPeriodParts(next);
-                if (next.sd && next.sm && next.sy) {
-                  const iso = toISO(next.sd, next.sm, next.sy);
-                  setPlan(p => {
-                    const upd = { ...p, period: { ...p.period, start: iso, year: next.sy } };
-                    if (!p.period.end && !next.ed) {
-                      upd.period.end = `${next.sy}-12-31`;
-                      next.ed = 31; next.em = 12; next.ey = next.sy;
-                      setPeriodParts({ ...next });
-                    }
-                    // Sync end ISO if end parts are complete
-                    if (next.ed && next.em && next.ey) {
-                      upd.period.end = toISO(next.ed, next.em, next.ey);
-                    }
-                    return upd;
-                  });
-                }
-              };
-
-              const updateEnd = (key, val) => {
-                const next = { ...pp, [key]: Number(val) };
-                if (next.em && next.ey && next.ed > daysInMonth(next.em, next.ey)) {
-                  next.ed = daysInMonth(next.em, next.ey);
-                }
-                setPeriodParts(next);
-                if (next.ed && next.em && next.ey) {
-                  setPlan(p => ({ ...p, period: { ...p.period, end: toISO(next.ed, next.em, next.ey) } }));
-                }
-              };
-
-              const sDays = daysInMonth(pp.sm, pp.sy);
-              const eDays = daysInMonth(pp.em, pp.ey);
-              const ddStyle = { ...selectStyle, minWidth: 70, appearance: "auto" };
-
-              // Kas kuupäevad vastavad täisaastale? (01.01.XXXX – 31.12.XXXX)
-              const majandusaasta = (
-                Number(pp.sd) === 1 && Number(pp.sm) === 1 &&
-                Number(pp.ed) === 31 && Number(pp.em) === 12 &&
-                pp.sy && pp.sy === pp.ey
-              ) ? String(pp.sy) : "";
-
-              return (
-                <div style={card}>
-                  <div style={{ ...sectionTitle, marginBottom: 12 }}>Periood</div>
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={fieldLabel}>Majandusaasta</div>
-                    <select
-                      value={majandusaasta}
-                      onChange={(e) => {
-                        const y = Number(e.target.value);
-                        const next = { sd: 1, sm: 1, sy: y, ed: 31, em: 12, ey: y };
-                        setPeriodParts(next);
-                        setPlan(p => ({ ...p, period: { ...p.period, start: toISO(1, 1, y), end: toISO(31, 12, y), year: y } }));
-                      }}
-                      style={{ ...selectStyle, appearance: "auto" }}
-                    >
-                      <option value="" disabled>Vali aasta…</option>
-                      {YEARS.map(y => (
-                        <option key={y} value={String(y)}>{y}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div style={{ ...helperText, marginBottom: 8 }}>Vajadusel muuda kuupäevi käsitsi</div>
-                  <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-                    <div>
-                      <div style={fieldLabel}>Algus</div>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <select value={pp.sd || ""} onChange={(ev) => updateStart("sd", ev.target.value)} style={ddStyle}>
-                          <option value="">PP</option>
-                          {Array.from({ length: sDays }, (_, i) => i + 1).map(d => (
-                            <option key={d} value={d}>{String(d).padStart(2, "0")}</option>
-                          ))}
-                        </select>
-                        <select value={pp.sm || ""} onChange={(ev) => updateStart("sm", ev.target.value)} style={ddStyle}>
-                          <option value="">KK</option>
-                          {MONTHS.map(m => (
-                            <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
-                          ))}
-                        </select>
-                        <select value={pp.sy || ""} onChange={(ev) => updateStart("sy", ev.target.value)} style={{ ...ddStyle, minWidth: 85 }}>
-                          <option value="">AAAA</option>
-                          {YEARS.map(y => (
-                            <option key={y} value={y}>{y}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <div style={fieldLabel}>Lõpp</div>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <select value={pp.ed || ""} onChange={(ev) => updateEnd("ed", ev.target.value)} style={ddStyle}>
-                          <option value="">PP</option>
-                          {Array.from({ length: eDays }, (_, i) => i + 1).map(d => (
-                            <option key={d} value={d}>{String(d).padStart(2, "0")}</option>
-                          ))}
-                        </select>
-                        <select value={pp.em || ""} onChange={(ev) => updateEnd("em", ev.target.value)} style={ddStyle}>
-                          <option value="">KK</option>
-                          {MONTHS.map(m => (
-                            <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
-                          ))}
-                        </select>
-                        <select value={pp.ey || ""} onChange={(ev) => updateEnd("ey", ev.target.value)} style={{ ...ddStyle, minWidth: 85 }}>
-                          <option value="">AAAA</option>
-                          {YEARS.map(y => (
-                            <option key={y} value={y}>{y}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                  {pp.sd && pp.sm && pp.sy && pp.ed && pp.em && pp.ey && (
-                    <div style={{ marginTop: 12, fontSize: 15, fontFamily: "monospace", color: N.text }}>
-                      {String(pp.sd).padStart(2, "0")}.{String(pp.sm).padStart(2, "0")}.{pp.sy} – {String(pp.ed).padStart(2, "0")}.{String(pp.em).padStart(2, "0")}.{pp.ey}
-                    </div>
-                  )}
-                  {pp.sd && pp.sm && pp.sy && pp.ed && pp.em && pp.ey &&
-                    new Date(pp.sy, pp.sm - 1, pp.sd) > new Date(pp.ey, pp.em - 1, pp.ed) && (
-                    <div style={{ marginTop: 6, fontSize: 13, color: "#dc2626" }}>
-                      ⚠ Alguskuupäev on hilisem kui lõppkuupäev
-                    </div>
-                  )}
+            <div style={card}>
+              <div style={{ ...sectionTitle, marginBottom: 12 }}>Periood</div>
+              <div style={{ marginBottom: 12 }}>
+                <div style={fieldLabel}>Majandusaasta</div>
+                <select
+                  value={(() => {
+                    const s = plan.period.start, e = plan.period.end;
+                    if (s && e && s.endsWith("-01-01") && e.endsWith("-12-31") && s.slice(0,4) === e.slice(0,4)) return s.slice(0,4);
+                    return "";
+                  })()}
+                  onChange={(e) => {
+                    const y = e.target.value;
+                    setPlan(p => ({ ...p, period: { ...p.period, start: `${y}-01-01`, end: `${y}-12-31`, year: Number(y) } }));
+                  }}
+                  style={{ ...selectStyle, appearance: "auto" }}
+                >
+                  <option value="" disabled>Vali aasta…</option>
+                  {[2024,2025,2026,2027,2028,2029,2030,2031,2032,2033,2034,2035].map(y => (
+                    <option key={y} value={String(y)}>{y}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ ...helperText, marginBottom: 8 }}>Vajadusel muuda kuupäevi käsitsi</div>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                <div style={{ width: 200 }}>
+                  <div style={fieldLabel}>Algus</div>
+                  <input
+                    type="date"
+                    value={plan.period.start || ""}
+                    onChange={(e) => {
+                      const iso = e.target.value;
+                      const y = iso ? Number(iso.slice(0,4)) : plan.period.year;
+                      setPlan(p => ({ ...p, period: { ...p.period, start: iso, year: y || p.period.year } }));
+                    }}
+                    style={inputStyle}
+                  />
                 </div>
-              );
-            })()}
+                <div style={{ width: 200 }}>
+                  <div style={fieldLabel}>Lõpp</div>
+                  <input
+                    type="date"
+                    value={plan.period.end || ""}
+                    onChange={(e) => {
+                      setPlan(p => ({ ...p, period: { ...p.period, end: e.target.value } }));
+                    }}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+              {plan.period.start && plan.period.end && (
+                <div style={{ ...helperText, marginTop: 8 }}>
+                  {formatDateEE(plan.period.start)} – {formatDateEE(plan.period.end)}
+                </div>
+              )}
+              {plan.period.start && plan.period.end &&
+                plan.period.start > plan.period.end && (
+                <div style={{ marginTop: 6, fontSize: 13, color: "#dc2626" }}>
+                  Alguskuupäev on hilisem kui lõppkuupäev
+                </div>
+              )}
+            </div>
 
             <div style={card}>
               <div style={{ marginBottom: 12 }}>
