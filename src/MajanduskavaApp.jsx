@@ -306,15 +306,15 @@ const HALDUSTEENUSED = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "
 
 const KULU_KATEGOORIAD = [...KOMMUNAALTEENUSED, ...HALDUSTEENUSED];
 
-const TULU_KATEGOORIAD = ["Majandamiskulude ettemaks", "Vahendustasu", "Renditulu", "Muu tulu"];
+const TULU_KATEGOORIAD = ["Halduskulude ettemaks", "Vahendustasu", "Renditulu", "Muu tulu"];
 
 const TULU_KATEGOORIA_MAP = {
-  "Haldus": "Majandamiskulude ettemaks",
-  "Raamatupidamine": "Majandamiskulude ettemaks",
-  "Koristus": "Majandamiskulude ettemaks",
-  "Kindlustus": "Majandamiskulude ettemaks",
-  "Hooldus": "Majandamiskulude ettemaks",
-  "Kommunaalmaksed": "Majandamiskulude ettemaks",
+  "Haldus": "Halduskulude ettemaks",
+  "Raamatupidamine": "Halduskulude ettemaks",
+  "Koristus": "Halduskulude ettemaks",
+  "Kindlustus": "Halduskulude ettemaks",
+  "Hooldus": "Halduskulude ettemaks",
+  "Kommunaalmaksed": "Halduskulude ettemaks",
   "Muu": "Muu tulu",
 };
 
@@ -377,8 +377,8 @@ const KULU_NIMETUS_PLACEHOLDERS = {
 };
 
 const TULU_NIMETUS_PLACEHOLDERS = {
-  "Majandamiskulude ettemaks": "nt Korteriomanike igakuine ettemaks",
-  "Vahendustasu": "nt Kommunaalteenuste vahendustasu",
+  "Halduskulude ettemaks": "nt Korteriomanike igakuine ettemaks",
+  "Vahendustasu": "nt Kommunaalteenuste vahendamise tasu",
   "Renditulu": "nt Ruumide või parkimiskohtade rent",
   "Muu tulu": "nt Reklaamitulu, laekumised, toetused",
 };
@@ -1002,7 +1002,7 @@ export default function App() {
       }),
       ...(side === "COST"
         ? { category: "Haldus", kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 }
-        : { category: "Majandamiskulude ettemaks", arvutus: "kuus", summaInput: 0 }),
+        : { category: "Halduskulude ettemaks", arvutus: "kuus", summaInput: 0 }),
     };
     setPlan(p => ({
       ...p,
@@ -1329,7 +1329,20 @@ export default function App() {
   useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [mkApartment({ label: "1" })] } })); }, [plan.building.apartments.length]);
   // Investeeringud algavad tühjana — luuakse ainult "Loo investeering" või "+ Lisa investeering" kaudu
   useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "Haldus", kogus: "", uhik: "", uhikuHind: "", arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
-  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME", category: "Majandamiskulude ettemaks" }), arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.incomeRows.length]);
+  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME", category: "Halduskulude ettemaks" }), arvutus: "kuus", summaInput: 0 }] } })); }, [plan.budget.incomeRows.length]);
+
+  // Migreeri vana "Majandamiskulude ettemaks" → "Halduskulude ettemaks"
+  useEffect(() => {
+    let changed = false;
+    const updated = plan.budget.incomeRows.map(r => {
+      if (r.category === "Majandamiskulude ettemaks") {
+        changed = true;
+        return { ...r, category: "Halduskulude ettemaks" };
+      }
+      return r;
+    });
+    if (changed) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: updated } }));
+  }, []);
 
   // Kulude summa sünkroonimine engine'ile (→ calc.params.amountEUR)
   useEffect(() => {
