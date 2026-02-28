@@ -258,12 +258,6 @@ const KOMMUNAAL_VAIKE_UHIK = {
   "Elekter": "kWh",
 };
 
-const HALDUS_ARVUTUS_VALIKUD = [
-  { value: "kuus", label: "€/kuu" },
-  { value: "aastas", label: "€/aasta" },
-  { value: "perioodis", label: "Kokku perioodis" },
-];
-
 const LAENU_LIIGID = ["Remondilaen", "Investeerimislaen", "Kapitalirent", "Laen omanikelt", "Muu"];
 
 const ESEMED = [
@@ -1323,7 +1317,7 @@ export default function App() {
       if (tabIdx === 1) { setSeisukord([]); setMuudInvesteeringud([]); return { ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [] } }; }
       if (tabIdx === 2) return { ...p, budget: { ...p.budget, costRows: [] } };
       if (tabIdx === 3) return { ...p, budget: { ...p.budget, incomeRows: [] } };
-      if (tabIdx === 4) { setRepairFundSaldo(""); setRemondifond({ saldoAlgus: "", maarKuusM2: "" }); setOlemasolevaLaenud([]); setNaitaVanuLaene(false); return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, loans: [] }; }
+      if (tabIdx === 4) { setRepairFundSaldo(""); setRemondifond({ saldoAlgus: "", maarKuusM2: "" }); return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, loans: [] }; }
       return p;
     });
   };
