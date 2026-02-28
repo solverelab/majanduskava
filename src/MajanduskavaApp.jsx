@@ -506,12 +506,10 @@ export default function App() {
       return sum + arvutaKuumakse(l.summa, l.intpiiri, l.tahtaeg);
     }, 0);
 
-    // Olemasolevate laenude kuumaksed kokku (käsitsi sisestatud või arvutuslik)
+    // Olemasolevate laenude kuumaksed kokku (automaatne arvutus või käsitsi fallback)
     const olemasolevaLaenudKokku = olemasolevaLaenud.reduce((sum, l) => {
-      const kasitsi = parseFloat(l.kuumakse) || 0;
-      if (kasitsi > 0) return sum + kasitsi;
       const arv = olLaenArvutused.find(a => a.id === l.id);
-      return sum + (arv ? arv.kuumakse : 0);
+      return sum + (arv?.piisavAndmeid ? arv.kuumakse : (parseFloat(l.kuumakse) || 0));
     }, 0);
 
     const laenumaksedKokku = planeeritudLaenudKokku + olemasolevaLaenudKokku;
@@ -2099,9 +2097,6 @@ export default function App() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {olemasolevaLaenud.map(ol => {
                       const arv = olLaenArvutused.find(a => a.id === ol.id) || { kuumakse: 0, jaak: 0, piisavAndmeid: false, arvutuskaik: [] };
-                      const hasArv = arv.piisavAndmeid;
-                      const effKuumakse = (parseFloat(ol.kuumakse) || 0) > 0 ? parseFloat(ol.kuumakse) : arv.kuumakse;
-                      const effJaak = (parseFloat(ol.jaak) || 0) > 0 ? parseFloat(ol.jaak) : arv.jaak;
                       return (
                       <div key={ol.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
                         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "start" }}>
@@ -2135,23 +2130,34 @@ export default function App() {
                             <input type="date" value={ol.loppKuupaev || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { loppKuupaev: e.target.value })} style={{ ...inputStyle, width: "100%" }} />
                           </div>
                           <div style={{ width: 128 }}>
-                            <div style={fieldLabel}>Kuumakse {hasArv && !ol.kuumakse && <span style={{ fontWeight: 400, color: N.dim }}>(arv.)</span>}</div>
-                            <EuroInput value={ol.kuumakse} onChange={(v) => updateOlemasolevaLaen(ol.id, { kuumakse: v })} style={numStyle} placeholder={hasArv ? String(arv.kuumakse) : ""} />
+                            <div style={fieldLabel}>Kuumakse</div>
+                            {arv.piisavAndmeid ? (
+                              <div style={{ fontFamily: "monospace", fontSize: 15, fontWeight: 700, padding: "8px 10px", background: N.muted, borderRadius: 6, textAlign: "right" }}>
+                                {euroEE(arv.kuumakse)}
+                              </div>
+                            ) : (
+                              <EuroInput value={ol.kuumakse} onChange={(v) => updateOlemasolevaLaen(ol.id, { kuumakse: v })} style={numStyle} />
+                            )}
                           </div>
                           <div style={{ width: 128 }}>
-                            <div style={fieldLabel}>Jääk {hasArv && !ol.jaak && <span style={{ fontWeight: 400, color: N.dim }}>(arv.)</span>}</div>
-                            <EuroInput value={ol.jaak} onChange={(v) => updateOlemasolevaLaen(ol.id, { jaak: v })} style={numStyle} placeholder={hasArv ? String(arv.jaak) : ""} />
+                            <div style={fieldLabel}>Laenujääk</div>
+                            {arv.piisavAndmeid ? (
+                              <div style={{ fontFamily: "monospace", fontSize: 15, fontWeight: 700, padding: "8px 10px", background: N.muted, borderRadius: 6, textAlign: "right" }}>
+                                {euroEE(arv.jaak)}
+                              </div>
+                            ) : (
+                              <EuroInput value={ol.jaak} onChange={(v) => updateOlemasolevaLaen(ol.id, { jaak: v })} style={numStyle} />
+                            )}
                           </div>
                           <div style={{ marginTop: 20 }}>
                             <button style={btnRemove} onClick={() => removeOlemasolevaLaen(ol.id)}>Eemalda</button>
                           </div>
                         </div>
-                        {hasArv && (
-                          <div style={{ marginTop: 8, padding: "6px 10px", background: N.muted, borderRadius: 4, fontFamily: "monospace", fontSize: 12 }}>
-                            <div style={{ color: N.text, marginBottom: 2 }}>
-                              Kuumakse: <strong>{euro(effKuumakse)}</strong> · Jääk perioodi alguses: <strong>{euro(effJaak)}</strong>
-                            </div>
-                            <div style={{ color: N.dim }}>{arv.arvutuskaik.join(" · ")}</div>
+                        {arv.piisavAndmeid && arv.arvutuskaik.length > 0 && (
+                          <div style={{ marginTop: 8, padding: "8px 12px", background: N.muted, borderRadius: 6, fontSize: 12, color: N.sub, fontFamily: "monospace", lineHeight: 1.6 }}>
+                            {arv.arvutuskaik.map((rida, i) => (
+                              <div key={i}>{rida}</div>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -2160,12 +2166,11 @@ export default function App() {
                   </div>
                   {olemasolevaLaenud.length > 0 && (
                     <div style={{ marginTop: 8, fontFamily: "monospace", fontSize: 13, color: N.sub }}>
-                      Olemasolevad kuumaksed kokku: {euro(olemasolevaLaenud.reduce((s, l) => {
-                        const kasitsi = parseFloat(l.kuumakse) || 0;
-                        if (kasitsi > 0) return s + kasitsi;
-                        const arv = olLaenArvutused.find(a => a.id === l.id);
-                        return s + (arv ? arv.kuumakse : 0);
-                      }, 0))}/kuu
+                      {(() => {
+                        const autoKokku = olLaenArvutused.filter(a => a.piisavAndmeid).reduce((s, a) => s + a.kuumakse, 0);
+                        const kasiKokku = olemasolevaLaenud.filter(l => !olLaenArvutused.find(a => a.id === l.id)?.piisavAndmeid).reduce((s, l) => s + (parseFloat(l.kuumakse) || 0), 0);
+                        return `Olemasolevad kuumaksed kokku: ${euroEE(autoKokku + kasiKokku)}/kuu`;
+                      })()}
                     </div>
                   )}
                   <div style={{ marginTop: 8 }}>
