@@ -78,40 +78,68 @@ Projekti seis: 2026-02-28
 - `fetchApartments(ehrCode)` — EHR buildingData v2, korterite m² (ehitiseOsaPohiandmed.pind), loomulik sortimine
 - API-d testitud reaalsete andmetega (nt Tartu mnt 18, Tallinn → 29 korterit, 1716 m²)
 
-`AddressSearch.jsx` (183 rida) — Aadressi autocomplete komponent:
+`AddressSearch.jsx` (~227 rida) — Aadressi autocomplete komponent:
 - Debounce 300ms, min 3 tähemärki, dropdown kuni 10 tulemust
+- Klaviatuurinavigatsioon: ↑↓ nooled, PgUp/PgDn (5 rida), Enter valik, Esc sulgemine
+- Hiire hover ja keyboard highlight sünkroonis, scrollIntoView
 - Click-outside sulgemine (useRef + useEffect)
 - Aadressi valikul laadib automaatselt korterite m² andmed EHR-ist
+- KÜ nime automaatne uuendamine (kui tühi või algab "KÜ ")
 - Laadimisindikaator ("Laadin korterite andmeid...") ja veateade
 - Inline styles N paletiga (sama muster nagu TracePanel.jsx)
 
-### UI (src/MajanduskavaApp.jsx, ~2900 rida)
+### UI (src/MajanduskavaApp.jsx, ~2950 rida)
+
+#### DateInput komponent (inline)
+
+- PP.KK.AAAA tekstisisend → ISO (YYYY-MM-DD) formaat
+- Automaatne punkti-eraldaja: numbrite sisestamisel lisab automaatselt punktid (15062027 → 15.06.2027)
+- inputMode="numeric" mobiilile numpad'i kuvamiseks
+- select-all fookuse saamisel mugavaks ülekirjutamiseks
+- onBlur valideerimine ja fallback eelmisele väärtusele
+
+#### Olemasolevate laenude arvutusfunktsioonid (inline)
+
+- `kuudeVahe(algusISO, loppISO)` — kuude arv kahe ISO kuupäeva vahel
+- `arvutaOlemasolevLaen(laen, periodiAlgusISO)` — koondarvutusfunktsioon:
+  - Annuiteet: iteratiivne jäägiarvestus (`jaak = jaak * (1+r) - makse`)
+  - Võrdse põhiosaga: perioodi keskmine kuumakse
+  - Tagastab `{ kuumakse, jaak, piisavAndmeid, arvutuskaik[] }`
+  - `arvutuskaik[]` — loetavad arvutussammud kasutajale kuvamiseks
+- `olLaenArvutused` useMemo — kõigi laenude arvutuste cache
 
 #### 7 tabi:
 
 | Tab | Nimetus | Sisu |
 |-----|---------|------|
-| 0 | Periood & korterid | KÜ andmed (nimi, registrikood, **aadress autocomplete + EHR**), perioodi PP/KK/AAAA dropdown'id, majandusaasta kiirvalik, korterite tabel (Nr, m²) koos kokkuvõttega |
+| 0 | Periood & korterid | KÜ andmed (nimi, registrikood, **aadress autocomplete + EHR**), perioodi DateInput (PP.KK.AAAA), majandusaasta kiirvalik, korterite tabel (Nr, m²) koos kokkuvõttega |
 | 1 | Esemed ja investeeringud | Kaasomandi esemed (seisukord, prioriteet, eeldatav kulu, tegevus), seisukord→investeering link, muud investeeringud (nimi, maksumus), rahastusplaan (allikas + summa) |
 | 2 | Kulud | Kategooriasüsteem (kommunaalteenused ühikupõhiselt, haldusteenused 3 arvutusviisiga), 4 calc-tüüpi, koondread |
-| 3 | Tulud | Kategooriad (Majandamiskulude ettemaks, Vahendustasu, Renditulu, Muu tulu), koondread |
-| 4 | Fondid & laen | Remondifond (saldo + määr, arvutuslik kokkuvõte tabel), olemasolevad laenud (kuupäeva-dropdown'id), planeeritud laenud (liigid, kvartal+aasta algus) |
+| 3 | Tulud | Kategooriad (Halduskulude ettemaks, Renditulu, Muu tulu), koondread |
+| 4 | Fondid & laen | Remondifond (saldo + määr, arvutuslik kokkuvõte tabel), olemasolevad laenud (DateInput kuupäevad, makseviisi valik, automaatne arvutus + arvutuskäik), planeeritud laenud (liigid, kvartal+aasta algus) |
 | 5 | Korterite maksed | Kuumaksete lahtikirjutus per korter (kommunaal, haldus, remondifond, laenumakse), laiendatavad detailread valemitega |
 | 6 | Kontroll & kokkuvõte | Solvere findings + risk badge, "Lahenda kõik" nupp, JSON eksport/import, printimise kokkuvõte, tehniline info (TracePanel) |
 
 #### Olulised UI-funktsioonid:
 
-- **Aadressi autocomplete** — AddressSearch komponent Tab 0-s, In-ADS → EHR ahel laadib korterite m² andmed automaatselt
+- **Aadressi autocomplete** — AddressSearch komponent Tab 0-s, In-ADS → EHR ahel laadib korterite m² andmed automaatselt, klaviatuurinavigatsioon
 - **Korterite tabel** — lihtsustatud: ainult Nr ja m² veerud + kustuta nupp, kokkuvõtterida "Kortereid: N | Kogupind: X m²"
 - **Koondvaade riba** — kõigil tabilehekülgedel, näitab: Kulud | Tulud | Laenumaksed | Vahe (roheline/hall/punane)
-- **Koondvaade kaart** (sec 6) — kommunaal/haldus kulud, laenumaksed, väljaminekud/tulud/vahe + aastane kokkuvõte
+- **Koondvaade kaardid** (Tab 6) — eraldi halduskulud ja kommunaalkulud (läbivool, opacity 0.7), tulud, laenumaksed, vahe (haldus) + aastane kokkuvõte
 - **Automaatne laenurida rahastusplaanist** — "Laen" allika valimisel investeeringu rahastusplaanis tekib automaatselt laenurida Fondid & laen tabi
-- **Olemasolevad laenud** — eraldi `olemasolevaLaenud` state, kuupäevad {d,m,y} dropdown'iga, peidetavad toggle
+- **Olemasolevad laenud** — eraldi `olemasolevaLaenud` state, DateInput kuupäevad, makseviisi valik (annuiteet/võrdse põhiosaga), automaatne kuumakse ja jäägi arvutus, arvutuskäik read-only kastis
 - **Remondifondi arvutus** — saldo alguses + laekumine − investeeringud = saldo lõpus, negatiivse saldo hoiatus
 - **Korterite kuumaksed** — per korter kommunaal/haldus/remondifond/laenumakse jaotus, laiendatavad valemid
+- **DateInput** — PP.KK.AAAA formaat automaatse punkti-eraldajaga, select-all fookuses
 - **NumberInput** (Eesti koma) ja **EuroInput** (täisarv, tuhandete eraldaja)
-- **JSON eksport/import** dry-run valideerimisega, migratsioonidega
+- **JSON eksport/import** dry-run valideerimisega, migratsioonidega (sh "Majandamiskulude ettemaks" → "Halduskulude ettemaks", "Vahendustasu" → "Muu tulu")
 - **Prindi kokkuvõte** — täislehekülje layout (lihtsustatud korterite tabel Nr + m²)
+
+#### Tulukategooriate terminoloogia:
+
+- "Majandamiskulude ettemaks" → **"Halduskulude ettemaks"** (selgem terminoloogia)
+- "Vahendustasu" **eemaldatud** eraldi kategooriana (seadusega piiratud, vajadusel kasutab "Muu tulu")
+- JSON import migratsioon tagab tagasiühilduvuse vanade failidega
 
 ---
 
@@ -227,7 +255,7 @@ solvere-modules/majanduskava/src/
   policyLoader.ts             — 3 preset'i hardcoded remedies'ega
 
 src/
-  MajanduskavaApp.jsx         — Monoliitne React UI (~2900 rida, 7 tabi)
+  MajanduskavaApp.jsx         — Monoliitne React UI (~2950 rida, 7 tabi)
   App.jsx                     — Root wrapper
   main.jsx                    — Entry point
   engine/computePlan.js       — Puhas finantsmootor (~500 rida)
@@ -238,7 +266,7 @@ src/
   policy/__tests__/           — 4 testifaili, 33 testi
   services/ehrService.js      — In-ADS + EHR API liides (112 rida)
   components/TracePanel.jsx   — Solvere trace visualiseerimine
-  components/AddressSearch.jsx — Aadressi autocomplete + EHR korterite laadimine
+  components/AddressSearch.jsx — Aadressi autocomplete + EHR korterite laadimine (~227 rida)
 ```
 
 ---
@@ -246,12 +274,23 @@ src/
 ## 5. Commit'ide ajalugu (viimased)
 
 ```
-3739f76 feat: integreeri AddressSearch Tab 1-sse + korterite tabel
-eaa1b5d feat: lisa AddressSearch komponent (autocomplete + EHR)
-843cff3 feat: lisa ehrService — In-ADS + EHR API teenus
-159916d feat: integreeri AddressSearch Tab 1-sse + korterite laadimine
-a71eefe feat: lisa AddressSearch komponent (autocomplete + EHR)
-597b042 feat: lisa ehrService — In-ADS + EHR API teenus
+88a5fee remove: Vahendustasu tulukategooriast (seadusega piiratud, kasutab Muu tulu)
+ca9f12c refactor: Majandamiskulude ettemaks → Halduskulude ettemaks (selgem terminoloogia)
+9542b3b feat: koondvaade kaardid eraldavad haldus vs kommunaal
+9afa5ee fix: DateInput selects all on focus for clean overwrite
+643a76c feat: DateInput auto-dot mask (PP.KK.AAAA)
+3b7cdb9 feat: keyboard navigation for address autocomplete (↑↓ PgUp PgDn Enter Esc)
+78b2f32 fix: KÜ nimi uueneb uue aadressi valikul (kui automaatne)
+13d59c4 refactor: period dates use DateInput (DD.MM.YYYY)
+b487cf4 feat: DateInput component (DD.MM.YYYY text input → ISO)
+19e0c35 fix: eemalda segane "Omanike kuuvajadus" rida Tab 5-st
+eca6044 feat: olemasolevad laenud — automaatne arvutus UI + arvutuskäik
+ac98266 feat: näita arvutuslik kuumakse ja jääk olemasoleva laenu real
+a6df107 feat: olemasolevate laenude automaatne arvutus (annuiteet + võrdne põhiosa)
+8b012d2 refactor: arvutaOlemasolevLaen koondarvutusfunktsioon
+8f540ad feat: olemasolevate laenude automaatsed arvutusfunktsioonid
+1e3cc4c refactor: perioodi kuupäevad — date picker, eemalda periodParts state
+498f25d refactor: olemasolevad laenud — date picker + makseviis dropdown
 aaaaf1e feat: remondifondi arvutus, korterite kuumaksete lahtikirjutus, laenu algusAasta sync
 289764a fix: olemasolevaLaenud useState deklaratsioon enne useMemo kasutust
 757a502 feat: olemasolevad laenud sektsioon, laenude peitmine, koondvaade + aastane kokkuvõte
