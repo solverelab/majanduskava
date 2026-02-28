@@ -2053,7 +2053,7 @@ export default function App() {
                           <NumberInput value={ln.annualRatePct} onChange={(v) => updateLoan(ln.id, { annualRatePct: v })} style={numStyle} />
                         </div>
                         <div style={{ width: 140 }}>
-                          <div style={fieldLabel}>Tähtaeg kuud</div>
+                          <div style={fieldLabel}>Tähtaeg kuudes</div>
                           <NumberInput value={ln.termMonths} onChange={(v) => updateLoan(ln.id, { termMonths: v })} style={numStyle} />
                         </div>
                         <div style={{ width: 160 }}>
