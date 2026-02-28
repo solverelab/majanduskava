@@ -2056,7 +2056,7 @@ export default function App() {
 
             <div style={card}>
               <div style={{ ...sectionTitle, marginBottom: 4 }}>Reservkapital</div>
-              <div style={{ fontSize: 13, color: N.sub, marginBottom: 12 }}>Seadusega nõutav reserv ettenägematute kulude katteks (1/12 aasta kuludest).</div>
+              <div style={{ fontSize: 13, color: N.sub, marginBottom: 12 }}>Minimaalselt 1/12 aasta kuludest</div>
 
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ width: 220 }}>
