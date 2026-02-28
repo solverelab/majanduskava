@@ -9,11 +9,10 @@ import { AddressSearch } from "./components/AddressSearch";
 
 // ── Euro formatting (Estonian: 1 235 €, täisarvuna) ──
 function euroEE(n) {
-  if (n == null || isNaN(n)) return "—";
-  const rounded = Math.round(n);
+  const rounded = Math.round(Number(n) || 0);
   const abs = Math.abs(rounded);
   const grouped = String(abs).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  return (rounded < 0 ? "−" : "") + grouped + " \u20ac";
+  return (rounded < 0 ? "−" : "") + grouped + " €";
 }
 
 // ── Date formatting (DD.MM.YYYY, deterministic, no locale) ──
