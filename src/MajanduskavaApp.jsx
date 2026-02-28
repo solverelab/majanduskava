@@ -238,11 +238,11 @@ function DateInput({ value, onChange, ...props }) {
   };
   const eeToISO = (ee) => {
     if (!ee) return "";
-    const p = ee.replace(/\//g, ".").replace(/-/g, ".").split(".");
-    if (p.length !== 3) return "";
-    const d = p[0].padStart(2, "0");
-    const m = p[1].padStart(2, "0");
-    const y = p[2].length === 2 ? "20" + p[2] : p[2];
+    const digits = ee.replace(/\D/g, "");
+    if (digits.length < 8) return "";
+    const d = digits.slice(0, 2);
+    const m = digits.slice(2, 4);
+    const y = digits.slice(4, 8);
     if (!y || !m || !d || isNaN(Date.parse(y + "-" + m + "-" + d))) return "";
     return y + "-" + m + "-" + d;
   };
@@ -254,12 +254,27 @@ function DateInput({ value, onChange, ...props }) {
     if (!editing) setDisplay(isoToEE(value));
   }, [value, editing]);
 
+  const handleChange = (e) => {
+    const raw = e.target.value;
+    const cleaned = raw.replace(/[^\d.]/g, "");
+    const digits = cleaned.replace(/\./g, "");
+    const limited = digits.slice(0, 8);
+
+    let masked = "";
+    for (let i = 0; i < limited.length; i++) {
+      if (i === 2 || i === 4) masked += ".";
+      masked += limited[i];
+    }
+    setDisplay(masked);
+  };
+
   return (
     <input
       type="text"
+      inputMode="numeric"
       placeholder="PP.KK.AAAA"
       value={display}
-      onChange={(e) => { setDisplay(e.target.value); }}
+      onChange={handleChange}
       onFocus={() => { setEditing(true); }}
       onBlur={() => {
         setEditing(false);
