@@ -37,9 +37,11 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded, onAddressSe
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [highlightIdx, setHighlightIdx] = useState(-1);
 
   const containerRef = useRef(null);
   const debounceRef = useRef(null);
+  const listRef = useRef(null);
 
   // Väljaspool klõps sulgeb dropdown'i
   useEffect(() => {
@@ -52,6 +54,14 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded, onAddressSe
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // Scroll aktiivne rida vaatevälja
+  useEffect(() => {
+    if (highlightIdx >= 0 && listRef.current) {
+      const el = listRef.current.children[highlightIdx];
+      if (el) el.scrollIntoView({ block: "nearest" });
+    }
+  }, [highlightIdx]);
+
   const handleInput = useCallback(
     (e) => {
       const val = e.target.value;
@@ -63,6 +73,7 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded, onAddressSe
       if (val.trim().length < 3) {
         setResults([]);
         setOpen(false);
+        setHighlightIdx(-1);
         return;
       }
 
@@ -71,9 +82,11 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded, onAddressSe
           const hits = await searchAddress(val.trim());
           setResults(hits);
           setOpen(hits.length > 0);
+          setHighlightIdx(-1);
         } catch {
           setResults([]);
           setOpen(false);
+          setHighlightIdx(-1);
         }
       }, 300);
     },
@@ -86,6 +99,7 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded, onAddressSe
       if (onAddressSelected) onAddressSelected(item.address);
       setOpen(false);
       setResults([]);
+      setHighlightIdx(-1);
       setLoading(true);
       setError("");
 
@@ -115,6 +129,32 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded, onAddressSe
     [onChange, onApartmentsLoaded, onAddressSelected],
   );
 
+  const handleKeyDown = (e) => {
+    if (!open || results.length === 0) return;
+    const last = results.length - 1;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightIdx(prev => (prev < last ? prev + 1 : 0));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightIdx(prev => (prev > 0 ? prev - 1 : last));
+    } else if (e.key === "PageDown") {
+      e.preventDefault();
+      setHighlightIdx(prev => Math.min(prev + 5, last));
+    } else if (e.key === "PageUp") {
+      e.preventDefault();
+      setHighlightIdx(prev => Math.max(prev - 5, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (highlightIdx >= 0 && highlightIdx <= last) {
+        handleSelect(results[highlightIdx]);
+      }
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setHighlightIdx(-1);
+    }
+  };
+
   return (
     <div ref={containerRef} style={{ position: "relative" }}>
       <div style={fieldLabel}>Hoone aadress</div>
@@ -123,6 +163,7 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded, onAddressSe
         placeholder="nt Tamme 5, Tartu"
         value={value}
         onChange={handleInput}
+        onKeyDown={handleKeyDown}
         onFocus={() => { if (results.length > 0) setOpen(true); }}
         style={inputStyle}
       />
@@ -130,6 +171,7 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded, onAddressSe
       {/* Autocomplete valikud */}
       {open && results.length > 0 && (
         <div
+          ref={listRef}
           style={{
             position: "absolute",
             top: "100%",
@@ -154,10 +196,11 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded, onAddressSe
                 cursor: "pointer",
                 fontSize: 14,
                 color: N.text,
+                background: i === highlightIdx ? N.muted : "transparent",
                 borderBottom: i < results.length - 1 ? `1px solid ${N.muted}` : "none",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = N.muted; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = N.muted; setHighlightIdx(i); }}
+              onMouseLeave={(e) => { if (i !== highlightIdx) e.currentTarget.style.background = "transparent"; }}
             >
               {item.address}
             </div>
