@@ -117,7 +117,7 @@ Projekti seis: 2026-02-28
 | 1 | Esemed ja investeeringud | Kaasomandi esemed (seisukord, prioriteet, eeldatav kulu, tegevus), seisukord→investeering link (bidirectional sync eeldatavKulu ↔ invMaksumus), muud investeeringud (nimi, maksumus), rahastusplaan (allikas + summa) |
 | 2 | Kulud | Kommunaalteenused (kogus + ühik + maksumus €/periood), haldusteenused (€/aasta), inforibana viitega Tab 4-le |
 | 3 | Tulud | Kategooriad (Halduskulude ettemaks, Renditulu, Muu tulu), €/aasta sisestus, inforibana viitega Tab 4-le |
-| 4 | Fondid & laen | Remondifond (saldo + määr, arvutuslik kokkuvõte, reservkapitali nõutav miinimum arvutuskäiguga), planeeritud laenud (liigid, kvartal+aasta algus) |
+| 4 | Fondid & laen | Remondifond (saldo + määr, arvutuslik kokkuvõte, reservkapitali nõutav miinimum arvutuskäiguga), planeeritud laenud (liigid, aasta algus, indikatiivsete summade märge) |
 | 5 | Korterite maksed | Kuumaksete lahtikirjutus per korter (kommunaal, haldus, remondifond, laenumakse), laiendatavad detailread valemitega |
 | 6 | Kontroll & kokkuvõte | Solvere findings + risk badge, "Lahenda kõik" nupp, JSON eksport/import, printimise kokkuvõte, tehniline info (TracePanel) |
 
@@ -125,11 +125,11 @@ Projekti seis: 2026-02-28
 
 - **Aadressi autocomplete** — AddressSearch komponent Tab 0-s, In-ADS → EHR ahel laadib korterite m² andmed automaatselt, klaviatuurinavigatsioon
 - **Korterite tabel** — lihtsustatud: ainult Nr ja m² veerud + kustuta nupp, kokkuvõtterida "Kortereid: N | Kogupind: X m²"
-- **Koondribana** — nähtav alates Tab 2, kahel real: Haldus | Kommunaal (tuhmim) | Kokku || Tulud | Ülejääk/Puudujääk (roheline/punane)
+- **Koondribana** — nähtav alates Tab 2, kahel real: Haldus | Kommunaal (tuhmim) || Tulud | Ülejääk/Puudujääk (roheline/punane). Ülejääk = Tulud − Haldus (kommunaal on läbivool, ei mõjuta)
 - **Koondvaade kaardid** (Tab 6) — eraldi halduskulud ja kommunaalkulud (läbivool, opacity 0.7), tulud, laenumaksed, vahe (haldus) + aastane kokkuvõte
 - **Automaatne laenurida rahastusplaanist** — "Laen" allika valimisel investeeringu rahastusplaanis tekib automaatselt laenurida Fondid & laen tabi
 - **Remondifondi arvutus** — saldo alguses + laekumine − investeeringud = saldo lõpus, negatiivse saldo hoiatus
-- **Reservkapital** — nõutav miinimum arvutatakse UI-s (kõik väljaminekud sh laenumaksed aastas / 12), arvutuskäik nähtav
+- **Reservkapital** — nõutav miinimum = (haldus + kommunaal) aastas / 12 (likviidsuspuhver kõigile arvetele), arvutuskäik nähtav
 - **Esemete seisukord ↔ investeering** — bidirectional sync eeldatavKulu ↔ invMaksumus
 - **Korterite kuumaksed** — per korter kommunaal/haldus/remondifond/laenumakse jaotus, laiendatavad valemid
 - **DateInput** — PP.KK.AAAA formaat automaatse punkti-eraldajaga, select-all fookuses
@@ -146,8 +146,13 @@ Projekti seis: 2026-02-28
 - Arvutusviisi dropdown eemaldatud — ainult €/aasta sisestus haldus- ja tuluridadel
 - **Olemasolev laenumakse on halduskulu** — kategooria "Laenumakse" (€/aasta nagu teised haldusteenused). Eraldi kalkulaatorit ei vaja — summa on KÜ-l teada.
 - **Olemasolevad laenud sektsioon eemaldatud** Tab 4-st (koos state, arvutusfunktsioonide, import/export käsitlusega)
-- **Reservkapitali nõutav miinimum** — kõik väljaminekud (sh laenumaksed) aastas / 12
+- **Koondribana Ülejääk/Puudujääk** = Tulud − Haldus (kommunaal on läbivool, ei mõjuta)
+- **Reservkapitali nõutav miinimum** = (Haldus + Kommunaal) aastas / 12 (likviidsuspuhver kõigile arvetele)
+- **Planeeritud laenude reserv** arvutatakse engine'is eraldi (Laenumakse reserv %)
+- **Planeeritud laenu algus** — ainult aasta (mitte kvartal), sünkroonis investeeringu tegevusajaga
+- **Planeeritud laenude summad indikatiivsed** — sõltuvad laenutingimustest
 - **Koondribana** peidetud Tab 0-1, nähtav alates Tab 2
+- **Vaikimisi kategooria** — uus rida algab "Vali..." (tühi), mitte eelvalitud kategooriaga
 - JSON import migratsioon tagab tagasiühilduvuse vanade failidega
 
 ---
@@ -170,6 +175,7 @@ Hetkel ei ole pooleliolevaid muudatusi — kõik committitud.
 | **Laenu graafik UI-s** | computePlan arvutab laenugraafiku, aga UI ei kuva detailselt igakuiseid makseid | Madal |
 | **Undo/redo** | Immutable state võimaldaks, aga pole implementeeritud | Madal |
 | **Validatsioonihoiatused inline** | computePlan genereerib controls.issues, aga neid näidatakse ainult Solvere findings'ina, mitte vormivigadena | Madal |
+| **Panga laenunõuete valideerimine** | Mõned pangad nõuavad remondifondi miinimumi €/m² kuus (sh laenumakse + reserv). Informatiivne valideerija, ei seo rakendust ühe panga reeglitega | Madal |
 
 ---
 
@@ -283,6 +289,13 @@ src/
 ## 5. Commit'ide ajalugu (viimased)
 
 ```
+89f6a9c laenu algus: ainult aasta; debug tekstid eemaldatud; indikatiivsete summade märge
+1bd4a0e reservkapital: miinimum = (haldus + kommunaal) aastas / 12
+91b0bf1 koondribana: kokku eemaldatud, ülejääk = tulud - haldus
+dbfddee vaikimisi kategooria Vali... kuludes ja tuludes
+a1943e5 laenu periood: aastad + kuud dropdownid
+a342abe fix: tähtaeg kuudes, mitte kuud
+7d65d1f inforibana: laenumaksed eemaldatud tekstist
 89c06b4 cleanup: surnud kood ja olemasolevate laenude jäägid
 f1107a5 koondribana: 2 rida, peidetud tab 0-1
 c48111c eemalda olemasolevad laenud sektsioon tab 4-st
