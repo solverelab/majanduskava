@@ -39,6 +39,39 @@ function arvutaKuumakse(summa, aastaneIntress, tahtaegKuudes) {
   return Math.round(s * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
 }
 
+// Kuude arv kahe kuupäeva vahel (ISO stringid)
+function kuudeVahe(algusISO, loppISO) {
+  if (!algusISO || !loppISO) return 0;
+  const [ay, am] = algusISO.split("-").map(Number);
+  const [ly, lm] = loppISO.split("-").map(Number);
+  return Math.max(0, (ly - ay) * 12 + (lm - am));
+}
+
+// Olemasoleva laenu arvutuslikud väärtused (kuumakse + jääk perioodi alguses)
+function arvutaOlemasolevLaen(ol, periodiAlgusISO) {
+  const s = parseFloat(String(ol.algSumma).replace(",", ".")) || 0;
+  const r = (parseFloat(String(ol.intress).replace(",", ".")) || 0) / 100 / 12;
+  const n = kuudeVahe(ol.algusKuupaev, ol.loppKuupaev);
+  const k = kuudeVahe(ol.algusKuupaev, periodiAlgusISO);
+  if (s <= 0 || n <= 0) return { arvKuumakse: 0, arvJaak: 0 };
+
+  if (ol.makseviis === "vordsePohiosaga") {
+    const pohiosa = s / n;
+    const jaak = Math.max(0, s - k * pohiosa);
+    const kuumakse = Math.round(pohiosa + jaak * r);
+    return { arvKuumakse: kuumakse, arvJaak: Math.round(jaak) };
+  }
+  // Annuiteet (vaikimisi)
+  if (r === 0) {
+    const kuumakse = Math.round(s / n);
+    const jaak = Math.max(0, Math.round(s - k * kuumakse));
+    return { arvKuumakse: kuumakse, arvJaak: jaak };
+  }
+  const kuumakse = Math.round(s * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
+  const jaak = k >= n ? 0 : Math.round(s * (Math.pow(1 + r, n) - Math.pow(1 + r, k)) / (Math.pow(1 + r, n) - 1));
+  return { arvKuumakse: kuumakse, arvJaak: jaak };
+}
+
 // ════════════════════════════════════════════════════════════════════════
 // Design tokens — single source of truth for the entire UI
 // ════════════════════════════════════════════════════════════════════════
@@ -424,9 +457,11 @@ export default function App() {
       return sum + arvutaKuumakse(l.summa, l.intpiiri, l.tahtaeg);
     }, 0);
 
-    // Olemasolevate laenude kuumaksed kokku
+    // Olemasolevate laenude kuumaksed kokku (käsitsi sisestatud või arvutuslik)
     const olemasolevaLaenudKokku = olemasolevaLaenud.reduce((sum, l) => {
-      return sum + (parseFloat(l.kuumakse) || 0);
+      const kasitsi = parseFloat(l.kuumakse) || 0;
+      if (kasitsi > 0) return sum + kasitsi;
+      return sum + arvutaOlemasolevLaen(l, plan.period.start).arvKuumakse;
     }, 0);
 
     const laenumaksedKokku = planeeritudLaenudKokku + olemasolevaLaenudKokku;
@@ -2012,7 +2047,10 @@ export default function App() {
                   <div style={{ fontWeight: 600, fontSize: 14, color: N.sub, marginBottom: 8 }}>Olemasolevad laenud</div>
                   <div style={{ ...helperText, marginBottom: 8 }}>Eelneval perioodil võetud laenud, mille teenindus jätkub.</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    {olemasolevaLaenud.map(ol => (
+                    {olemasolevaLaenud.map(ol => {
+                      const arv = arvutaOlemasolevLaen(ol, plan.period.start);
+                      const hasArv = arv.arvKuumakse > 0;
+                      return (
                       <div key={ol.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
                         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "start" }}>
                           <div style={{ width: 176 }}>
@@ -2027,7 +2065,7 @@ export default function App() {
                           </div>
                           <div style={{ width: 128 }}>
                             <div style={fieldLabel}>Laenujääk</div>
-                            <EuroInput value={ol.jaak} onChange={(v) => updateOlemasolevaLaen(ol.id, { jaak: v })} style={numStyle} />
+                            <EuroInput value={ol.jaak} onChange={(v) => updateOlemasolevaLaen(ol.id, { jaak: v })} style={numStyle} placeholder={hasArv ? String(arv.arvJaak) : ""} />
                           </div>
                           <div style={{ width: 96 }}>
                             <div style={fieldLabel}>Intress %</div>
@@ -2050,18 +2088,27 @@ export default function App() {
                           </div>
                           <div style={{ width: 128 }}>
                             <div style={fieldLabel}>Kuumakse</div>
-                            <EuroInput value={ol.kuumakse} onChange={(v) => updateOlemasolevaLaen(ol.id, { kuumakse: v })} style={numStyle} />
+                            <EuroInput value={ol.kuumakse} onChange={(v) => updateOlemasolevaLaen(ol.id, { kuumakse: v })} style={numStyle} placeholder={hasArv ? String(arv.arvKuumakse) : ""} />
                           </div>
                           <div style={{ marginTop: 20 }}>
                             <button style={btnRemove} onClick={() => removeOlemasolevaLaen(ol.id)}>Eemalda</button>
                           </div>
                         </div>
+                        {hasArv && (
+                          <div style={{ marginTop: 6, fontFamily: "monospace", fontSize: 12, color: N.dim }}>
+                            Arvutuslik: kuumakse {euro(arv.arvKuumakse)} · jääk {euro(arv.arvJaak)} · {kuudeVahe(ol.algusKuupaev, ol.loppKuupaev)} kuud kokku
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   {olemasolevaLaenud.length > 0 && (
                     <div style={{ marginTop: 8, fontFamily: "monospace", fontSize: 13, color: N.sub }}>
-                      Olemasolevad kuumaksed kokku: {euro(olemasolevaLaenud.reduce((s, l) => s + (parseFloat(l.kuumakse) || 0), 0))}/kuu
+                      Olemasolevad kuumaksed kokku: {euro(olemasolevaLaenud.reduce((s, l) => {
+                        const kasitsi = parseFloat(l.kuumakse) || 0;
+                        return s + (kasitsi > 0 ? kasitsi : arvutaOlemasolevLaen(l, plan.period.start).arvKuumakse);
+                      }, 0))}/kuu
                     </div>
                   )}
                   <div style={{ marginTop: 8 }}>
