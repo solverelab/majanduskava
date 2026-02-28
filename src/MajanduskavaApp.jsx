@@ -578,6 +578,7 @@ export default function App() {
 
     const valjaminekudKokku = kuludKokku + laenumaksedKokku;
     const vahe = tuludKokku - valjaminekudKokku;
+    const vaheHaldus = tuludKokku - haldusKokku - laenumaksedKokku;
 
     return {
       kommunaalKokku,
@@ -589,6 +590,7 @@ export default function App() {
       laenumaksedKokku,
       valjaminekudKokku,
       vahe,
+      vaheHaldus,
     };
   }, [plan.budget.costRows, plan.budget.incomeRows, plan.loans, olemasolevaLaenud, olLaenArvutused, derived.period.monthEq]);
 
@@ -2458,30 +2460,36 @@ export default function App() {
 
             {/* ── Kokkuvõte ── */}
             {(() => {
-              const netState = derived.totals.netOperationalPeriodEUR >= 0 ? STATE.OK : STATE.ERROR;
+              const mEq = derived.period.monthEq || 12;
+              const vaheHaldusState = kopiiriondvaade.vaheHaldus >= 0 ? STATE.OK : STATE.ERROR;
               return (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
                   <div style={summaryCard}>
-                    <div style={summaryNum}>{euro(derived.totals.costPeriodEUR)}</div>
-                    <div style={summaryLabel}>Kulud perioodis</div>
-                    <div style={summarySub}>{euro(derived.totals.costMonthlyEUR)}/kuu</div>
+                    <div style={summaryNum}>{euro(kopiiriondvaade.haldusKokku * mEq)}</div>
+                    <div style={summaryLabel}>Halduskulud perioodis</div>
+                    <div style={summarySub}>{euro(kopiiriondvaade.haldusKokku)}/kuu</div>
+                  </div>
+                  <div style={{ ...summaryCard, opacity: 0.7 }}>
+                    <div style={summaryNum}>{euro(kopiiriondvaade.kommunaalKokku * mEq)}</div>
+                    <div style={summaryLabel}>Kommunaalkulud (läbivool)</div>
+                    <div style={summarySub}>{euro(kopiiriondvaade.kommunaalKokku)}/kuu</div>
                   </div>
                   <div style={summaryCard}>
-                    <div style={summaryNum}>{euro(derived.totals.incomePeriodEUR)}</div>
+                    <div style={summaryNum}>{euro(kopiiriondvaade.tuludKokku * mEq)}</div>
                     <div style={summaryLabel}>Tulud perioodis</div>
-                    <div style={summarySub}>{euro(derived.totals.incomeMonthlyEUR)}/kuu</div>
+                    <div style={summarySub}>{euro(kopiiriondvaade.tuludKokku)}/kuu</div>
                   </div>
                   <div style={summaryCard}>
-                    <div style={summaryNum}>{euro(derived.loans.servicePeriodEUR)}</div>
+                    <div style={summaryNum}>{euro(kopiiriondvaade.laenumaksedKokku * mEq)}</div>
                     <div style={summaryLabel}>Laenumaksed perioodis</div>
-                    <div style={summarySub}>{euro(derived.loans.serviceMonthlyEUR)}/kuu</div>
+                    <div style={summarySub}>{euro(kopiiriondvaade.laenumaksedKokku)}/kuu</div>
                   </div>
-                  <div style={{ ...summaryCard, borderColor: netState.border, background: netState.bg }}>
-                    <div style={{ ...summaryNum, color: netState.color }}>
-                      {euro(derived.totals.netOperationalPeriodEUR)}
+                  <div style={{ ...summaryCard, borderColor: vaheHaldusState.border, background: vaheHaldusState.bg }}>
+                    <div style={{ ...summaryNum, color: vaheHaldusState.color }}>
+                      {euro(kopiiriondvaade.vaheHaldus * mEq)}
                     </div>
-                    <div style={{ ...summaryLabel, color: netState.color }}>Vahe</div>
-                    <div style={summarySub}>{euro(derived.totals.netOperationalMonthlyEUR)}/kuu</div>
+                    <div style={{ ...summaryLabel, color: vaheHaldusState.color }}>Vahe (haldus)</div>
+                    <div style={summarySub}>{euro(kopiiriondvaade.vaheHaldus)}/kuu</div>
                   </div>
                   <div style={summaryCard}>
                     <div style={summaryNum}>{euro(derived.totals.ownersNeedMonthlyEUR)}/kuu</div>
