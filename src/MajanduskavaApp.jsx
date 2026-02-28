@@ -771,14 +771,22 @@ export default function App() {
         setMuudInvesteeringud([...newFormatMuud, ...importedMuudInv]);
         setOlemasolevaLaenud((Array.isArray(data.olemasolevaLaenud) ? data.olemasolevaLaenud : []).map(ol => {
           const migKp = (v) => {
-            if (v && typeof v === "object" && "d" in v) return v;
+            // Uus ISO formaat "YYYY-MM-DD" — tagasta otse
+            if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+            // Vana {d,m,y} objekt → ISO string
+            if (v && typeof v === "object" && "d" in v) {
+              if (v.y && v.m && v.d) return `${v.y}-${String(v.m).padStart(2, "0")}-${String(v.d).padStart(2, "0")}`;
+              return "";
+            }
+            // Vana "DD.MM.YYYY" string → ISO
             if (typeof v === "string" && v.includes(".")) {
               const p = v.split(".");
-              return { d: Number(p[0]) || "", m: Number(p[1]) || "", y: Number(p[2]) || "" };
+              if (p[2] && p[1] && p[0]) return `${p[2]}-${p[1].padStart(2, "0")}-${p[0].padStart(2, "0")}`;
+              return "";
             }
-            return { d: "", m: "", y: "" };
+            return "";
           };
-          return { ...ol, algusKuupaev: migKp(ol.algusKuupaev), loppKuupaev: migKp(ol.loppKuupaev) };
+          return { ...ol, algusKuupaev: migKp(ol.algusKuupaev), loppKuupaev: migKp(ol.loppKuupaev), makseviis: ol.makseviis || "annuiteet" };
         }));
         // Sync period dropdowns
         const _ps = candidateState.period?.start?.split("-") || [];
@@ -1155,8 +1163,9 @@ export default function App() {
     algSumma: "",
     jaak: "",
     intress: "",
-    algusKuupaev: { d: "", m: "", y: "" },
-    loppKuupaev: { d: "", m: "", y: "" },
+    makseviis: "annuiteet",
+    algusKuupaev: "",
+    loppKuupaev: "",
     kuumakse: "",
   });
 
@@ -2118,50 +2127,21 @@ export default function App() {
                             <div style={fieldLabel}>Intress %</div>
                             <NumberInput value={ol.intress} onChange={(v) => updateOlemasolevaLaen(ol.id, { intress: v })} style={numStyle} />
                           </div>
-                          {(() => {
-                            const kpDdStyle = { ...selectStyle, minWidth: 52, appearance: "auto" };
-                            const kpYears = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035];
-                            const kpMonths = Array.from({ length: 12 }, (_, i) => i + 1);
-                            const kpDays = (m, y) => (m && y) ? new Date(y, m, 0).getDate() : 31;
-                            const algKp = ol.algusKuupaev || {};
-                            const lopKp = ol.loppKuupaev || {};
-                            return (<>
-                              <div>
-                                <div style={fieldLabel}>Algus</div>
-                                <div style={{ display: "flex", gap: 4 }}>
-                                  <select value={algKp.d || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { algusKuupaev: { ...algKp, d: Number(e.target.value) || "" } })} style={kpDdStyle}>
-                                    <option value="">PP</option>
-                                    {Array.from({ length: kpDays(algKp.m, algKp.y) }, (_, i) => i + 1).map(d => <option key={d} value={d}>{String(d).padStart(2, "0")}</option>)}
-                                  </select>
-                                  <select value={algKp.m || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { algusKuupaev: { ...algKp, m: Number(e.target.value) || "" } })} style={kpDdStyle}>
-                                    <option value="">KK</option>
-                                    {kpMonths.map(m => <option key={m} value={m}>{String(m).padStart(2, "0")}</option>)}
-                                  </select>
-                                  <select value={algKp.y || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { algusKuupaev: { ...algKp, y: Number(e.target.value) || "" } })} style={{ ...kpDdStyle, minWidth: 70 }}>
-                                    <option value="">AAAA</option>
-                                    {kpYears.map(y => <option key={y} value={y}>{y}</option>)}
-                                  </select>
-                                </div>
-                              </div>
-                              <div>
-                                <div style={fieldLabel}>Lõpp</div>
-                                <div style={{ display: "flex", gap: 4 }}>
-                                  <select value={lopKp.d || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { loppKuupaev: { ...lopKp, d: Number(e.target.value) || "" } })} style={kpDdStyle}>
-                                    <option value="">PP</option>
-                                    {Array.from({ length: kpDays(lopKp.m, lopKp.y) }, (_, i) => i + 1).map(d => <option key={d} value={d}>{String(d).padStart(2, "0")}</option>)}
-                                  </select>
-                                  <select value={lopKp.m || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { loppKuupaev: { ...lopKp, m: Number(e.target.value) || "" } })} style={kpDdStyle}>
-                                    <option value="">KK</option>
-                                    {kpMonths.map(m => <option key={m} value={m}>{String(m).padStart(2, "0")}</option>)}
-                                  </select>
-                                  <select value={lopKp.y || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { loppKuupaev: { ...lopKp, y: Number(e.target.value) || "" } })} style={{ ...kpDdStyle, minWidth: 70 }}>
-                                    <option value="">AAAA</option>
-                                    {kpYears.map(y => <option key={y} value={y}>{y}</option>)}
-                                  </select>
-                                </div>
-                              </div>
-                            </>);
-                          })()}
+                          <div style={{ width: 160 }}>
+                            <div style={fieldLabel}>Makseviis</div>
+                            <select value={ol.makseviis || "annuiteet"} onChange={(e) => updateOlemasolevaLaen(ol.id, { makseviis: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
+                              <option value="annuiteet">Annuiteet</option>
+                              <option value="vordsePohiosaga">Võrdse põhiosaga</option>
+                            </select>
+                          </div>
+                          <div style={{ width: 140 }}>
+                            <div style={fieldLabel}>Algus</div>
+                            <input type="date" value={ol.algusKuupaev || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { algusKuupaev: e.target.value })} style={{ ...inputStyle, width: "100%" }} />
+                          </div>
+                          <div style={{ width: 140 }}>
+                            <div style={fieldLabel}>Lõpp</div>
+                            <input type="date" value={ol.loppKuupaev || ""} onChange={(e) => updateOlemasolevaLaen(ol.id, { loppKuupaev: e.target.value })} style={{ ...inputStyle, width: "100%" }} />
+                          </div>
                           <div style={{ width: 128 }}>
                             <div style={fieldLabel}>Kuumakse</div>
                             <EuroInput value={ol.kuumakse} onChange={(v) => updateOlemasolevaLaen(ol.id, { kuumakse: v })} style={numStyle} />
