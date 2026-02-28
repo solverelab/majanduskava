@@ -2425,7 +2425,7 @@ export default function App() {
                     <div style={{ ...summaryNum, color: netState.color }}>
                       {euro(derived.totals.netOperationalPeriodEUR)}
                     </div>
-                    <div style={{ ...summaryLabel, color: netState.color }}>Neto tegevus</div>
+                    <div style={{ ...summaryLabel, color: netState.color }}>Vahe</div>
                     <div style={summarySub}>{euro(derived.totals.netOperationalMonthlyEUR)}/kuu</div>
                   </div>
                   <div style={summaryCard}>
@@ -3000,7 +3000,7 @@ export default function App() {
                 {[
                   ["Kulud perioodis", euroEE(derived.totals.costPeriodEUR)],
                   ["Tulud perioodis", euroEE(derived.totals.incomePeriodEUR)],
-                  ["Neto tegevus", euroEE(derived.totals.netOperationalPeriodEUR)],
+                  ["Vahe", euroEE(derived.totals.netOperationalPeriodEUR)],
                   ["Omanike kuumakse", euroEE(derived.totals.ownersNeedMonthlyEUR) + "/kuu"],
                 ].map(([label, value]) => (
                   <tr key={label} style={{ borderBottom: "1px solid #ccc" }}>
