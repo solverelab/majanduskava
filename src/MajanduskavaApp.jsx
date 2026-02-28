@@ -5,6 +5,7 @@ import { computePlan, euro } from "./engine/computePlan";
 import { runPlan, applyActionAndRun, applyOnly, setPreset as setHostPreset, runAutoResolve, SOLVERE_CORE_CONTRACT_VERSION } from "./solvereBridge/majanduskavaHost";
 import { buildStateSignature } from "../packages/solvere-core/src/moduleHost.ts";
 import { TracePanel } from "./components/TracePanel";
+import { AddressSearch } from "./components/AddressSearch";
 
 // ── Euro formatting (Estonian: 1 235 €, täisarvuna) ──
 function euroEE(n) {
@@ -825,6 +826,23 @@ export default function App() {
     }));
   };
 
+  const handleApartmentsLoaded = (apartmentsFromEHR) => {
+    setPlan(p => {
+      const existing = p.building.apartments;
+      const hasReal = existing.some(a => a.areaM2 > 0 || (a.label && a.label !== "1"));
+      if (hasReal && existing.length > 0) {
+        const ok = window.confirm(
+          `Hoones leiti ${apartmentsFromEHR.length} korterit. Kas asendada olemasolevad ${existing.length} korterit?`
+        );
+        if (!ok) return p;
+      }
+      const newApts = apartmentsFromEHR.map(a =>
+        ({ ...mkApartment({ label: a.number, areaM2: a.area }), omanikud: "" })
+      );
+      return { ...p, building: { ...p.building, apartments: newApts } };
+    });
+  };
+
   const addRow = (side) => {
     const row = {
       ...mkCashflowRow({
@@ -1364,7 +1382,9 @@ export default function App() {
         {/* ── Koondvaade — alati nähtav ── */}
         {(() => {
           const { kuludKokku, tuludKokku, laenumaksedKokku, vahe } = kopiiriondvaade;
-          const netoColor = vahe >= 0 ? "#15803d" : "#dc2626";
+          const naitaKoondribana = kuludKokku > 0 || tuludKokku > 0 || laenumaksedKokku > 0;
+          if (!naitaKoondribana) return null;
+          const vaheColor = vahe > 0 ? "#15803d" : vahe < 0 ? "#dc2626" : N.dim;
           const kvStyle = { display: "inline-flex", alignItems: "baseline", gap: 6, whiteSpace: "nowrap" };
           const kvNum = { fontFamily: "monospace", fontWeight: 700, fontSize: 15 };
           const kvLabel = { fontSize: 12, color: N.dim };
@@ -1381,7 +1401,7 @@ export default function App() {
               <span style={kvSep}>|</span>
               <span style={kvStyle}><span style={kvLabel}>Laenumaksed</span> <span style={kvNum}>{euro(laenumaksedKokku)}/kuu</span></span>
               <span style={kvSep}>|</span>
-              <span style={kvStyle}><span style={kvLabel}>Neto</span> <span style={{ ...kvNum, color: netoColor }}>{euro(vahe)}/kuu</span></span>
+              <span style={kvStyle}><span style={kvLabel}>Vahe</span> <span style={{ ...kvNum, color: vaheColor }}>{euro(vahe)}/kuu</span></span>
             </div>
           );
         })()}
@@ -1415,13 +1435,10 @@ export default function App() {
                   />
                 </div>
                 <div style={{ flex: "1 1 240px" }}>
-                  <div style={fieldLabel}>Aadress</div>
-                  <input
-                    type="text"
-                    placeholder="nt Tamme 5, 51008 Tartu"
+                  <AddressSearch
                     value={kyData.aadress}
-                    onChange={(e) => setKyData(prev => ({ ...prev, aadress: e.target.value }))}
-                    style={inputStyle}
+                    onChange={(addr) => setKyData(prev => ({ ...prev, aadress: addr }))}
+                    onApartmentsLoaded={handleApartmentsLoaded}
                   />
                 </div>
               </div>
