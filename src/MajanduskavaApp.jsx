@@ -877,8 +877,8 @@ export default function App() {
         calc: { type: "FIXED_PERIOD", params: { amountEUR: 0 } },
       }),
       ...(side === "COST"
-        ? { category: "Haldus", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0 }
-        : { category: "Halduskulude ettemaks", arvutus: "aastas", summaInput: 0 }),
+        ? { category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0 }
+        : { category: "", arvutus: "aastas", summaInput: 0 }),
     };
     setPlan(p => ({
       ...p,
@@ -1185,8 +1185,8 @@ export default function App() {
   // Auto-add one empty row when section is empty (setPlan, not addX — idempotent even if effect fires twice)
   useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [mkApartment({ label: "1" })] } })); }, [plan.building.apartments.length]);
   // Investeeringud algavad tühjana — luuakse ainult "Loo investeering" või "+ Lisa investeering" kaudu
-  useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "Haldus", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
-  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME", category: "Halduskulude ettemaks" }), arvutus: "aastas", summaInput: 0 }] } })); }, [plan.budget.incomeRows.length]);
+  useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
+  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME" }), category: "", arvutus: "aastas", summaInput: 0 }] } })); }, [plan.budget.incomeRows.length]);
 
   // Migreeri vanad tulukategooriad
   useEffect(() => {
@@ -1858,6 +1858,7 @@ export default function App() {
                         <div style={{ width: side === "INCOME" ? 220 : 180 }}>
                           <div style={fieldLabel}>Kategooria</div>
                           <select value={r.category || ""} onChange={(e) => side === "COST" ? handleKuluKategooriaChange(r.id, e.target.value) : updateRow(side, r.id, { category: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
+                            <option value="" disabled>Vali...</option>
                             {side === "COST" ? (
                               <>
                                 <optgroup label="Kommunaalteenused">
