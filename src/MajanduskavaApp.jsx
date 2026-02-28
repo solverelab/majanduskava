@@ -161,11 +161,11 @@ const numFocus   = (e) => e.target.select();
 
 // ── Universal number input with Estonian comma-decimal support ──
 function NumberInput({ value, onChange, ...props }) {
-  const [display, setDisplay] = useState(String(value ?? "").replace(".", ","));
+  const [display, setDisplay] = useState(value === 0 || value === "" || value == null ? "" : String(value).replace(".", ","));
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
-    if (!editing) setDisplay(String(value ?? "").replace(".", ","));
+    if (!editing) setDisplay(value === 0 || value === "" || value == null ? "" : String(value).replace(".", ","));
   }, [value, editing]);
 
   return (
@@ -1043,7 +1043,7 @@ export default function App() {
       patch.kogus = "";
       patch.uhikuHind = "";
       patch.arvutus = undefined;
-      patch.summaInput = undefined;
+      patch.summaInput = 0;
     } else {
       patch.arvutus = "kuus";
       patch.summaInput = 0;
