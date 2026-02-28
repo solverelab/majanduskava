@@ -275,7 +275,7 @@ function DateInput({ value, onChange, ...props }) {
       placeholder="PP.KK.AAAA"
       value={display}
       onChange={handleChange}
-      onFocus={() => { setEditing(true); }}
+      onFocus={(e) => { setEditing(true); e.target.select(); }}
       onBlur={() => {
         setEditing(false);
         const iso = eeToISO(display.trim());
