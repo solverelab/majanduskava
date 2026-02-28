@@ -448,6 +448,13 @@ export default function App() {
 
   const derived = useMemo(() => computePlan(plan), [plan]);
 
+  const olLaenArvutused = useMemo(() => {
+    return olemasolevaLaenud.map(l => ({
+      id: l.id,
+      ...arvutaOlemasolevLaen(l, plan.period.start),
+    }));
+  }, [olemasolevaLaenud, plan.period.start]);
+
   const kopiiriondvaade = useMemo(() => {
     // Map actual field names → Estonian aliases
     const kulud = plan.budget.costRows.map(r => ({
@@ -503,7 +510,8 @@ export default function App() {
     const olemasolevaLaenudKokku = olemasolevaLaenud.reduce((sum, l) => {
       const kasitsi = parseFloat(l.kuumakse) || 0;
       if (kasitsi > 0) return sum + kasitsi;
-      return sum + arvutaOlemasolevLaen(l, plan.period.start).kuumakse;
+      const arv = olLaenArvutused.find(a => a.id === l.id);
+      return sum + (arv ? arv.kuumakse : 0);
     }, 0);
 
     const laenumaksedKokku = planeeritudLaenudKokku + olemasolevaLaenudKokku;
@@ -522,7 +530,7 @@ export default function App() {
       valjaminekudKokku,
       vahe,
     };
-  }, [plan.budget.costRows, plan.budget.incomeRows, plan.loans, olemasolevaLaenud, derived.period.monthEq]);
+  }, [plan.budget.costRows, plan.budget.incomeRows, plan.loans, olemasolevaLaenud, olLaenArvutused, derived.period.monthEq]);
 
   const remondifondiArvutus = useMemo(() => {
     const saldoAlgus = Math.round(parseFloat(String(remondifond.saldoAlgus).replace(",", ".")) || 0);
@@ -2090,7 +2098,7 @@ export default function App() {
                   <div style={{ ...helperText, marginBottom: 8 }}>Eelneval perioodil võetud laenud, mille teenindus jätkub.</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {olemasolevaLaenud.map(ol => {
-                      const arv = arvutaOlemasolevLaen(ol, plan.period.start);
+                      const arv = olLaenArvutused.find(a => a.id === ol.id) || { kuumakse: 0, jaak: 0, piisavAndmeid: false, arvutuskaik: [] };
                       const hasArv = arv.piisavAndmeid;
                       return (
                       <div key={ol.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
@@ -2149,7 +2157,9 @@ export default function App() {
                     <div style={{ marginTop: 8, fontFamily: "monospace", fontSize: 13, color: N.sub }}>
                       Olemasolevad kuumaksed kokku: {euro(olemasolevaLaenud.reduce((s, l) => {
                         const kasitsi = parseFloat(l.kuumakse) || 0;
-                        return s + (kasitsi > 0 ? kasitsi : arvutaOlemasolevLaen(l, plan.period.start).kuumakse);
+                        if (kasitsi > 0) return s + kasitsi;
+                        const arv = olLaenArvutused.find(a => a.id === l.id);
+                        return s + (arv ? arv.kuumakse : 0);
                       }, 0))}/kuu
                     </div>
                   )}
