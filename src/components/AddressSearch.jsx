@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { searchAddress, fetchBuildingCode, fetchApartments } from "../services/ehrService";
 
-// Palette duplicated from N tokens (same as TracePanel pattern)
+// Paleti väärtused (sama muster nagu TracePanel.jsx)
 const N = {
   surface: "#ffffff",
   border: "#e0ddd8",
@@ -25,12 +25,12 @@ const inputStyle = {
 };
 
 /**
- * Address autocomplete component with EHR apartment loading.
+ * Aadressi autocomplete komponent koos EHR korterite laadimisega.
  *
  * Props:
- *   value        — current address string
- *   onChange(addr) — sync parent state on typing / selection
- *   onApartmentsLoaded([{number, area}]) — called after EHR fetch
+ *   value        — praegune aadressi string
+ *   onChange(addr) — sünkroniseerib vanema state'i
+ *   onApartmentsLoaded([{number, area}]) — callback korterite laadimise järel
  */
 export function AddressSearch({ value, onChange, onApartmentsLoaded }) {
   const [results, setResults] = useState([]);
@@ -41,7 +41,7 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded }) {
   const containerRef = useRef(null);
   const debounceRef = useRef(null);
 
-  // Click-outside closes dropdown
+  // Väljaspool klõps sulgeb dropdown'i
   useEffect(() => {
     const handler = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
@@ -89,7 +89,7 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded }) {
       setError("");
 
       try {
-        let code = item.ehrCode;
+        let code = item.adsCode;
         if (!code && item.adsOid) {
           code = await fetchBuildingCode(item.adsOid);
         }
@@ -126,7 +126,7 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded }) {
         style={inputStyle}
       />
 
-      {/* Autocomplete dropdown */}
+      {/* Autocomplete valikud */}
       {open && results.length > 0 && (
         <div
           style={{
@@ -164,14 +164,14 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded }) {
         </div>
       )}
 
-      {/* Loading indicator */}
+      {/* Laadimisindikaator */}
       {loading && (
         <div style={{ fontSize: 13, color: N.dim, marginTop: 4 }}>
           Laadin korterite andmeid...
         </div>
       )}
 
-      {/* Error message */}
+      {/* Veateade */}
       {error && (
         <div style={{ fontSize: 13, color: "#991b1b", marginTop: 4 }}>
           {error}
