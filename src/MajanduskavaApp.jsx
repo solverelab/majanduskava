@@ -1967,6 +1967,23 @@ export default function App() {
           return (
             <div style={tabStack}>
               <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(sec)}</div>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "10px 14px", borderRadius: 8,
+                background: "#f0f5ff", border: "1px solid #c7d7f5",
+                fontSize: 13, color: "#3b5998",
+              }}>
+                <span style={{ fontSize: 15 }}>ℹ</span>
+                <span>
+                  Remondifond, reservkapital ja laenumaksed →{" "}
+                  <span
+                    onClick={() => setSec(4)}
+                    style={{ fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
+                  >
+                    Fondid ja laenud
+                  </span>
+                </span>
+              </div>
               <div style={card}>
                 <div style={{ marginBottom: 12 }}>
                   <div style={sectionTitle}>{side === "COST" ? "Kulud" : "Tulud"}</div>
@@ -2069,6 +2086,49 @@ export default function App() {
                 <div style={{ marginTop: 8 }}>
                   <button style={btnAdd} onClick={() => addRow(side)}>+ Lisa rida</button>
                 </div>
+
+                {side === "COST" && (kopiiriondvaade.haldusKokku > 0 || kopiiriondvaade.kommunaalKokku > 0) && (
+                  <div style={{
+                    marginTop: 20, paddingTop: 16, borderTop: `1px solid ${N.rule}`,
+                  }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: N.sub, marginBottom: 10 }}>
+                      Väljaminekud kokku
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>Halduskulud</span>
+                        <span style={{ fontFamily: "monospace", fontWeight: 600 }}>{euro(kopiiriondvaade.haldusKokku)}/kuu</span>
+                      </div>
+                      {kopiiriondvaade.kommunaalKokku > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", color: N.dim }}>
+                          <span>Kommunaal (läbivool)</span>
+                          <span style={{ fontFamily: "monospace" }}>{euro(kopiiriondvaade.kommunaalKokku)}/kuu</span>
+                        </div>
+                      )}
+                      <div style={{ borderTop: `1px solid ${N.rule}`, marginTop: 4, paddingTop: 4 }}>
+                        {[
+                          remondifondiArvutus.kuuLaekumine > 0 && { label: "Remondifond", value: remondifondiArvutus.kuuLaekumine },
+                          kopiiriondvaade.laenumaksedKokku > 0 && { label: "Laenumaksed", value: kopiiriondvaade.laenumaksedKokku },
+                        ].filter(Boolean).map(item => (
+                          <div key={item.label} style={{ display: "flex", justifyContent: "space-between", color: N.dim, cursor: "pointer" }} onClick={() => setSec(4)}>
+                            <span>{item.label} <span style={{ fontSize: 11 }}>→ Fondid ja laenud</span></span>
+                            <span style={{ fontFamily: "monospace" }}>{euro(item.value)}/kuu</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{
+                        display: "flex", justifyContent: "space-between",
+                        borderTop: `2px solid ${N.text}`, marginTop: 6, paddingTop: 6,
+                        fontWeight: 700,
+                      }}>
+                        <span>Väljaminekud kokku</span>
+                        <span style={{ fontFamily: "monospace" }}>
+                          {euro(kopiiriondvaade.haldusKokku + kopiiriondvaade.kommunaalKokku + remondifondiArvutus.kuuLaekumine + kopiiriondvaade.laenumaksedKokku)}/kuu
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           );
