@@ -2000,50 +2000,75 @@ export default function App() {
           <div style={tabStack}>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(4)}</div>
             <div style={card}>
-              <div style={{ ...sectionTitle, marginBottom: 12 }}>Remondifond</div>
+              <div style={{ ...sectionTitle, marginBottom: 4 }}>Remondifondi tehtavad maksed</div>
+              <div style={{ fontSize: 13, color: N.sub, marginBottom: 12 }}>Arvutatud investeeringute järgi</div>
 
-              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "start", marginBottom: 16 }}>
-                <div style={{ width: 176 }}>
-                  <div style={fieldLabel}>Saldo perioodi alguses</div>
-                  <EuroInput value={remondifond.saldoAlgus} onChange={(v) => { setRemondifond(p => ({ ...p, saldoAlgus: v })); setRepairFundSaldo(v); }} placeholder="Fondi jääk" style={numStyle} />
-                </div>
-                <div style={{ width: 144 }}>
-                  <div style={fieldLabel}>Määr (€/m² aastas)</div>
-                  <NumberInput
-                    value={remondifond.maarAastasM2}
-                    onChange={(v) => { setRemondifond(p => ({ ...p, maarAastasM2: v })); const kuus = (parseFloat(String(v).replace(",", ".")) || 0) / 12; setPlan(p => ({ ...p, funds: { ...p.funds, repairFund: { monthlyRateEurPerM2: kuus } } })); }}
-                    placeholder="nt 3,60"
-                    style={numStyle}
-                  />
-                </div>
-              </div>
-
-              {/* Arvutatud kokkuvõte */}
               {(() => {
                 const ra = remondifondiArvutus;
-                const rvRow = { display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 14 };
-                const kuudeArv = derived.period.monthEq || 12;
+                const rvRow = { display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 14 };
+                const rvCalc = { fontSize: 12, color: N.dim, fontFamily: "monospace", marginTop: 2 };
                 return (
-                  <div style={{ background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8, padding: 12, fontSize: 14 }}>
-                    <div style={rvRow}>
+                  <div style={{ background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8, padding: 12 }}>
+                    {/* Saldo perioodi alguses */}
+                    <div style={{ ...rvRow, alignItems: "center" }}>
                       <span style={{ color: N.sub }}>Saldo perioodi alguses</span>
-                      <span style={{ fontFamily: "monospace" }}>{euro(ra.saldoAlgus)}</span>
+                      <div style={{ width: 160 }}>
+                        <EuroInput
+                          value={remondifond.saldoAlgus}
+                          onChange={(v) => { setRemondifond(p => ({ ...p, saldoAlgus: v })); setRepairFundSaldo(v); }}
+                          placeholder="Fondi jääk"
+                          style={numStyle}
+                        />
+                      </div>
                     </div>
+
+                    {/* Planeeritud investeeringud remondifondist */}
                     <div style={rvRow}>
-                      <span style={{ color: N.sub }}>
-                        Laekumine ({ra.maarAastasM2 ? `${String(ra.maarAastasM2).replace(".", ",")} €/m² aastas` : "0 €/m² aastas"} {"\u00D7"} {ra.koguPind.toFixed(1).replace(".", ",")} m² {"\u00D7"} {kuudeArv}/{12})
+                      <span style={{ color: N.sub }}>Planeeritud investeeringud remondifondist</span>
+                      <span style={{ fontFamily: "monospace", color: ra.investRemondifondist > 0 ? "#dc2626" : N.text }}>
+                        {ra.investRemondifondist > 0 ? "\u2212 " : ""}{euro(ra.investRemondifondist)}
                       </span>
+                    </div>
+
+                    {/* Remondifondi määr */}
+                    <div style={{ ...rvRow, alignItems: "center" }}>
+                      <span style={{ color: N.sub }}>Remondifondi määr</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ width: 100 }}>
+                          <NumberInput
+                            value={remondifond.maarAastasM2}
+                            onChange={(v) => {
+                              setRemondifond(p => ({ ...p, maarAastasM2: v }));
+                              setPlan(p => ({ ...p, funds: { ...p.funds, repairFund: { monthlyRateEurPerM2: (parseFloat(String(v).replace(",", ".")) || 0) / 12 } } }));
+                            }}
+                            placeholder="nt 3,60"
+                            style={numStyle}
+                          />
+                        </div>
+                        <span style={{ fontSize: 13, color: N.dim }}>€/m² aastas</span>
+                      </div>
+                    </div>
+
+                    {/* Laekumine perioodis */}
+                    <div style={rvRow}>
+                      <span style={{ color: N.sub }}>Laekumine perioodis</span>
                       <span style={{ fontFamily: "monospace" }}>+ {euro(ra.laekuminePerioodis)}</span>
                     </div>
-                    {ra.investRemondifondist > 0 && (
-                      <div style={rvRow}>
-                        <span style={{ color: N.sub }}>Planeeritud investeeringud remondifondist</span>
-                        <span style={{ fontFamily: "monospace", color: "#dc2626" }}>{"\u2212"} {euro(ra.investRemondifondist)}</span>
-                      </div>
-                    )}
-                    <div style={{ ...rvRow, fontWeight: 700, borderTop: `1px solid ${N.border}`, marginTop: 4, paddingTop: 8, color: ra.saldoLopp >= 0 ? N.text : "#dc2626" }}>
+                    <div style={rvCalc}>
+                      {String(ra.maarAastasM2 || 0).replace(".", ",")} €/m² × {ra.koguPind.toFixed(1).replace(".", ",")} m²{(derived.period.monthEq || 12) !== 12 ? ` × ${derived.period.monthEq}/12` : ""}
+                    </div>
+
+                    {/* Saldo perioodi lõpus */}
+                    <div style={{
+                      ...rvRow, fontWeight: 700,
+                      borderTop: `1px solid ${N.border}`, marginTop: 8, paddingTop: 10,
+                      color: ra.saldoLopp >= 0 ? N.text : "#dc2626",
+                    }}>
                       <span>Saldo perioodi lõpus</span>
                       <span style={{ fontFamily: "monospace" }}>{euro(ra.saldoLopp)}</span>
+                    </div>
+                    <div style={rvCalc}>
+                      {euro(ra.saldoAlgus)} + {euro(ra.laekuminePerioodis)} − {euro(ra.investRemondifondist)} = {euro(ra.saldoLopp)}
                     </div>
                   </div>
                 );
