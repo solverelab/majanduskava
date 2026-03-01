@@ -1205,15 +1205,22 @@ export default function App() {
   useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
   useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME" }), category: "Muu tulu", arvutus: "aastas", summaInput: "" }] } })); }, [plan.budget.incomeRows.length]);
 
-  // Migreeri vanad tulukategooriad + eemalda "Haldustasu" (nüüd automaatne readonly)
+  // Migreeri vanad tulukategooriad → Muu tulu või eemalda
   useEffect(() => {
     let changed = false;
     const filtered = plan.budget.incomeRows.map(r => {
-      if (r.category === "Majandamiskulude ettemaks" || r.category === "Halduskulude ettemaks" || r.category === "Haldustasu") {
+      // Kõik vanad kategooriad → eemalda (Haldustasu on nüüd automaatne)
+      if (r.category === "Halduskulude ettemaks" || r.category === "Majandamiskulude ettemaks" || r.category === "Vahendustasu") {
         changed = true;
-        return null; // eemaldatakse, kuna nüüd automaatne
+        return null;
       }
-      if (r.category === "Vahendustasu") {
+      // "Renditulu" → "Muu tulu" (Renditulu on nüüd lihtsalt nimetus "Muu tulu" all)
+      if (r.category === "Renditulu") {
+        changed = true;
+        return { ...r, category: "Muu tulu", name: r.name || "Renditulu" };
+      }
+      // Kõik ülejäänud tundmatud → "Muu tulu"
+      if (r.category && r.category !== "Muu tulu") {
         changed = true;
         return { ...r, category: "Muu tulu" };
       }
