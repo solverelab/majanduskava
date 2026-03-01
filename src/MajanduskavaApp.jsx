@@ -546,13 +546,17 @@ export default function App() {
       });
     });
 
-    const fondNeededA = Math.max(0, sumKulu - sumToetus - sumSiht);
+    // A: ilma laenuta — laen ja sihtmakse ei kasutata, kõik fondist
+    const fondNeededA = Math.max(0, sumKulu - sumToetus);
+    // B: laenuga — laen ja sihtmakse maha
     const fondNeededB = Math.max(0, sumKulu - sumToetus - sumLaen - sumSiht);
-    const fondNeededC = fondNeededB;
-
-    const sihtmakseKoguC = sumSiht + sumLaen;
+    // C: sihtmaksega — laenu ei kasutata, sihtmakse maha
+    const fondNeededC = Math.max(0, sumKulu - sumToetus - sumSiht);
 
     const laenumaksedKuus = kopiiriondvaade.laenumaksedKokku;
+
+    // Sihtmakse ühekordne kogusumma (C stsenaariumis)
+    const sihtmakseKoguC = sumSiht;
 
     return {
       fondNeededA, fondNeededB, fondNeededC,
@@ -2346,10 +2350,20 @@ export default function App() {
                       <span>Halduskulud perioodis</span>
                       <span style={{ fontFamily: "monospace" }}>{euroEE(kopiiriondvaade.haldusKokku * (derived.period.monthEq || 12))} → {euro(kopiiriondvaade.haldusKokku)}/kuu</span>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>Remondifond ({stsenaarium === "A" ? "kulu − toetus − sihtmaksed" : "kulu − toetus − laen − sihtmaksed"})</span>
-                      <span style={{ fontFamily: "monospace" }}>{euroEE(stsenaarium === "A" ? stsenaariumArvutus.fondNeededA : stsenaariumArvutus.fondNeededB)} → {euro(Math.round((stsenaarium === "A" ? stsenaariumArvutus.fondNeededA : stsenaariumArvutus.fondNeededB) / 12))}/kuu</span>
-                    </div>
+                    {(() => {
+                      const fn = stsenaarium === "A" ? stsenaariumArvutus.fondNeededA
+                               : stsenaarium === "B" ? stsenaariumArvutus.fondNeededB
+                               : stsenaariumArvutus.fondNeededC;
+                      const label = stsenaarium === "A" ? "Remondifond (kulu \u2013 toetus)"
+                                  : stsenaarium === "B" ? "Remondifond (kulu \u2013 toetus \u2013 laen)"
+                                  : "Remondifond (kulu \u2013 toetus \u2013 sihtmakse)";
+                      return (
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span>{label}</span>
+                          <span style={{ fontFamily: "monospace" }}>{euroEE(fn)} → {euro(Math.round(fn / 12))}/kuu</span>
+                        </div>
+                      );
+                    })()}
                     {stsenaarium === "B" && kopiiriondvaade.laenumaksedKokku > 0 && (
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
                         <span>Laenumaksed</span>
@@ -2358,7 +2372,7 @@ export default function App() {
                     )}
                     {stsenaarium === "C" && stsenaariumArvutus.sihtmakseKoguC > 0 && (
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span>Sihtmakse (ühekordne, laenu asemel)</span>
+                        <span>Sihtmakse (ühekordne)</span>
                         <span style={{ fontFamily: "monospace" }}>{euroEE(stsenaariumArvutus.sihtmakseKoguC)}</span>
                       </div>
                     )}
