@@ -1144,6 +1144,7 @@ export default function App() {
         algusAasta: y,
         sepiiriostudInvId: investeeringId,
         principalEUR: laenSumma,
+        termMonths: 12,
       }]};
     });
   };
@@ -1165,7 +1166,7 @@ export default function App() {
 
   const addLoan = () => {
     const y = String(plan.period.year || new Date().getFullYear());
-    setPlan(p => ({ ...p, loans: [...p.loans, { ...mkLoan({ startYM: `${y}-01` }), liik: "Remondilaen", algusAasta: y, sepiiriostudInvId: null }] }));
+    setPlan(p => ({ ...p, loans: [...p.loans, { ...mkLoan({ startYM: `${y}-01` }), liik: "Remondilaen", algusAasta: y, sepiiriostudInvId: null, termMonths: 12 }] }));
   };
 
   const updateLoan = (id, patch) => {
@@ -2171,29 +2172,49 @@ export default function App() {
                 <div style={sectionTitle}>Laenud</div>
               </div>
 
-              {/* ── Planeeritud laenud (investeeringutest + käsitsi) ── */}
-              <div style={{ fontWeight: 600, fontSize: 14, color: N.sub, marginBottom: 4 }}>Planeeritud laenud</div>
               <div style={{ fontSize: 13, color: N.dim, marginBottom: 12 }}>Summad on indikatiivsed ja sõltuvad laenutingimustest.</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {plan.loans.map(ln => {
                   const d = derived.loans.items.find(x => x.id === ln.id);
                   return (
-                    <div key={ln.id} id={`laen-${ln.id}`} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
-                      {ln.sepiiriostudInvId && (
-                        <div style={{ fontSize: 12, color: "#6366f1", marginBottom: 4 }}>(seotud investeeringuga)</div>
-                      )}
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <div key={ln.id} id={`laen-${ln.id}`} style={{ background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8, padding: 12 }}>
+
+                      {/* Laenusumma */}
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ ...fieldLabel, display: "flex", alignItems: "center" }}>
+                          Laenusumma
+                          <span title="Investeeringu rahastusplaanist või käsitsi sisestatud" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", border: `1px solid ${N.border}`, fontSize: 11, color: N.dim, cursor: "help", marginLeft: 6 }}>?</span>
+                        </div>
+                        {ln.sepiiriostudInvId ? (
+                          <>
+                            <EuroInput value={ln.principalEUR} onChange={() => {}} style={{ ...numStyle, background: N.muted, color: N.sub, pointerEvents: "none" }} />
+                            {(() => {
+                              const inv = [...seisukord, ...muudInvesteeringud].find(e => e.id === ln.sepiiriostudInvId);
+                              const nimi = inv?.nimetus || inv?.invNimetus || inv?.ese || "Investeering";
+                              return (
+                                <button
+                                  onClick={() => { setSec(1); setTimeout(() => document.getElementById(`inv-${ln.sepiiriostudInvId}`)?.scrollIntoView({ behavior: "smooth" }), 100); }}
+                                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#6366f1", marginTop: 4, padding: 0 }}
+                                >
+                                  {"\u2197"} {nimi} {"\u00B7"} rahastusplaanist
+                                </button>
+                              );
+                            })()}
+                          </>
+                        ) : (
+                          <EuroInput value={ln.principalEUR} onChange={(v) => updateLoan(ln.id, { principalEUR: v })} style={numStyle} />
+                        )}
+                      </div>
+
+                      {/* Tingimused — horisontaalne rida */}
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
                         <div style={{ width: 180 }}>
                           <div style={fieldLabel}>Liik</div>
                           <select value={ln.liik || "Remondilaen"} onChange={(e) => updateLoan(ln.id, { liik: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
                             {LAENU_LIIGID.map(l => <option key={l} value={l}>{l}</option>)}
                           </select>
                         </div>
-                        <div style={{ width: 160 }}>
-                          <div style={fieldLabel}>Summa €</div>
-                          <EuroInput value={ln.principalEUR} onChange={(v) => updateLoan(ln.id, { principalEUR: v })} style={numStyle} />
-                        </div>
-                        <div style={{ width: 140 }}>
+                        <div style={{ width: 120 }}>
                           <div style={fieldLabel}>Intress %/a</div>
                           <NumberInput value={ln.annualRatePct} onChange={(v) => updateLoan(ln.id, { annualRatePct: v })} style={numStyle} />
                         </div>
@@ -2216,28 +2237,26 @@ export default function App() {
                             );
                           })()}
                         </div>
-                        <div style={{ width: 160 }}>
+                        <div style={{ width: 120 }}>
                           <div style={fieldLabel}>Algus</div>
-                          {(() => {
-                            const lnAasta = ln.algusAasta || String(plan.period.year || new Date().getFullYear());
-                            return (
-                              <div>
-                                <select value={lnAasta} onChange={(e) => updateLoan(ln.id, { algusAasta: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
-                                  {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i).map(a => <option key={a} value={String(a)}>{a}</option>)}
-                                </select>
-                              </div>
-                            );
-                          })()}
+                          <select value={ln.algusAasta || String(plan.period.year || new Date().getFullYear())} onChange={(e) => updateLoan(ln.id, { algusAasta: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
+                            {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i).map(a => <option key={a} value={String(a)}>{a}</option>)}
+                          </select>
                         </div>
                         <div style={{ width: 140 }}>
                           <div style={fieldLabel}>Laenumakse reserv %</div>
                           <NumberInput value={ln.reservePct} onChange={(v) => updateLoan(ln.id, { reservePct: v })} style={numStyle} />
                         </div>
-                        <div style={{ width: 120, alignSelf: "end" }}>
-                          <button style={btnRemove} onClick={() => removeLoan(ln.id)}>Eemalda</button>
-                        </div>
                       </div>
 
+                      {/* Arvutatud kuumakse */}
+                      {d && d.servicingMonthlyEUR > 0 && (
+                        <div style={{ fontSize: 13, color: N.sub, marginBottom: 12, fontFamily: "monospace" }}>
+                          Kuumakse: {euro(d.servicingMonthlyEUR)}
+                        </div>
+                      )}
+
+                      <button style={btnRemove} onClick={() => removeLoan(ln.id)}>Eemalda</button>
                     </div>
                   );
                 })}
