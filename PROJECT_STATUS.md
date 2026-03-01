@@ -88,7 +88,7 @@ Projekti seis: 2026-03-01
 - Laadimisindikaator ("Laadin korterite andmeid...") ja veateade
 - Inline styles N paletiga (sama muster nagu TracePanel.jsx)
 
-### UI (src/MajanduskavaApp.jsx, ~3100 rida)
+### UI (src/MajanduskavaApp.jsx, ~3200 rida)
 
 #### Input-komponendid (inline):
 
@@ -105,7 +105,7 @@ HALDUSTEENUSED    = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hoo
 LAENUMAKSED       = ["Laenumakse"]
 ```
 
-- Tab 2 kulude dropdown: 3 optgroup'i (Kommunaalteenused, Haldusteenused, Laenumaksed)
+- Tab 2 kulude dropdown: 3 optgroup'i (Kommunaalteenused, Haldusteenused, Laenumaksed) + hinnatõusu soovitus
 - Tab 3 tulud: fikseeritud struktuur, dropdown puudub — Haldustasu ja Laenumakse readonly, Muu tulu muudetav
 
 #### 7 tabi:
@@ -113,11 +113,11 @@ LAENUMAKSED       = ["Laenumakse"]
 | Tab | Nimetus | Sisu |
 |-----|---------|------|
 | 0 | Periood & korterid | KÜ andmed (nimi, registrikood, **aadress autocomplete + EHR**), perioodi DateInput (PP.KK.AAAA), majandusaasta kiirvalik, korterite tabel (Nr, m²) koos kokkuvõttega |
-| 1 | Esemed ja investeeringud | Kaasomandi esemed (seisukord, prioriteet, eeldatav kulu, tegevus), seisukord→investeering link (bidirectional sync eeldatavKulu ↔ invMaksumus), muud investeeringud (nimetus, maksumus — readonly), rahastusplaan (Remondifond/Laen/Toetus/Sihtmakse + summa) |
-| 2 | Kulud | 3 visuaalset gruppi (Kommunaalteenused, Haldusteenused, Laenumaksed), `+ Lisa rida` nupp, kokkuvõte (kommunaal/haldus/laenu/kokku) |
+| 1 | Esemed ja investeeringud | Kaasomandi esemed (seisukord, prioriteet, eeldatav kulu, tegevus), seisukord→investeering link (bidirectional sync eeldatavKulu ↔ invMaksumus), muud investeeringud (nimetus, maksumus — readonly), rahastusplaan (Vali allikas/Remondifond/Laen/Toetus/Sihtmakse + summa) |
+| 2 | Kulud | 3 visuaalset gruppi (Kommunaalteenused, Haldusteenused, Laenumaksed), hinnatõusu soovitus, `+ Lisa rida` nupp, kokkuvõte (kommunaal/haldus/laenu/kokku) |
 | 3 | Tulud | Haldustasu (readonly, arvutatud kuludest), Laenumakse (readonly, kui > 0), Muu tulu read (muudetav nimetus + summa), `+ Lisa tulu` nupp, kokkuvõte (Haldustasu €/m², Laenumakse €/m², Muu tulu, Tulud kokku) |
 | 4 | Fondid & laen | Remondifond (saldo + auto määr €/m² aastas, arvutuskäik), reservkapitali card, laenud (automaatsed rahastusplaanist, indikatiivsed arvutused), koondribana (Haldusteenused &#124; Kommunaalteenused &#124; Laenumaksed &#124; Kokku) |
-| 5 | Korterite maksed | **3 stsenaariumit** (A: Ilma laenuta, B: Laenuga, C: Sihtmaksega), jaotamise aluste kokkuvõte, kuumaksete tabel per korter (kommunaal, haldus, remondifond, laenumakse/sihtmakse), laiendatavad detailread |
+| 5 | Korterite maksed | **2 stsenaariumit** (A: Ilma laenuta, B: Laenuga), jaotamise aluste kokkuvõte, kuumaksete tabel per korter (kommunaal, haldus, remondifond, reservkapital, laenumakse), laiendatavad detailread |
 | 6 | Kontroll & kokkuvõte | Solvere findings + risk badge, "Lahenda kõik" nupp, JSON eksport/import, printimise kokkuvõte, tehniline info (TracePanel) |
 
 #### Olulised UI-funktsioonid:
@@ -128,8 +128,9 @@ LAENUMAKSED       = ["Laenumakse"]
 - **Remondifond** — saldo alguses + auto laekumine (määr = (investeeringud − algsaldo) / m²) − investeeringud = saldo lõpus, negatiivne saldo punasena
 - **Reservkapital** — nõutav miinimum = kõik perioodikulud / 12 (likviidsuspuhver), hoiatus kui planeeritud < nõutav
 - **Automaatne laenurida** — "Laen" allika valimisel investeeringu rahastusplaanis tekib automaatselt laenurida; "Lisa laen" nupp eemaldatud
-- **Korterite maksed stsenaariumid** — A: laenu osa fondimaksesse, B: laenumaksed eraldi, C: laenu osa sihtmakseks; jaotamise alused kuvatud enne tabelit
+- **Korterite maksed stsenaariumid** — A: fond = kulu − toetus − sihtmakse, B: fond = kulu − toetus − laen + laenumaksed eraldi; reservkapital eraldi veerg (kui > 0); jaotamise alused kuvatud enne tabelit (täpsed perioodisummad)
 - **Tulude arvutus** — tuludKokku = Haldustasu + Laenumakse + Muu tulu (Tab 3, Tab 6 ja print kõik ühtlustatud)
+- **Rahastusplaani dropdown** — vaikimisi "Vali allikas…" (disabled placeholder), valikud: Remondifond, Laen, Toetus, Sihtmakse
 - **JSON eksport/import** — dry-run valideerimine, migratsioonid tagasiühilduvuseks
 
 #### Laenude kaart (Tab 4):
@@ -138,6 +139,7 @@ LAENUMAKSED       = ["Laenumakse"]
 - Iga laen vertikaalne kaart: Laenusumma (readonly kui seotud, muudetav kui manuaalne), Periood (aastad + kuud dropdown), Intress (% suffix), Laenumakse perioodis (readonly, arvutatud), Eemalda
 - Kui laene pole: selgitav tekst "Laenud tekivad investeeringute rahastusplaanist"
 - Indikatiivsete arvutuste märge alapealkiri all
+- confirm() dialoogid väljas setPlan-ist (ei tekita topelt-dialoogi StrictMode-is)
 
 #### Migratsioonid:
 
@@ -213,7 +215,7 @@ solvere-modules/majanduskava/src/
   policyLoader.ts             — 3 preset'i hardcoded remedies'ega
 
 src/
-  MajanduskavaApp.jsx         — Monoliitne React UI (~3100 rida, 7 tabi)
+  MajanduskavaApp.jsx         — Monoliitne React UI (~3200 rida, 7 tabi)
   App.jsx                     — Root wrapper
   main.jsx                    — Entry point
   engine/computePlan.js       — Puhas finantsmootor (~500 rida)
@@ -232,11 +234,17 @@ src/
 ## 5. Commit'ide ajalugu (viimased)
 
 ```
+f32652a UX: kulude hinnatõusu soovitus Tab 2
+6d09eb5 feat: reservkapital eraldi veeruna korterite kuumaksetes
+f844420 fix: jaotamise aluste perioodisummad täpsed, mitte ümardatud kuumakse × 12
+a2aeffa UX: rahastusplaani dropdown vaikimisi Vali allikas
+5cdcb1c refactor: eemalda C stsenaarium, paranda A/B fondivalemid
+c8222d6 Tab 5: stsenaariumipõhine fondNeeded — A: kulu−toetus, B: kulu−toetus−laen
+db2e019 Fix: topelt-confirm eemaldaSeostudLaen ja removeLoan — confirm() enne setPlan'i
 9f50f7e Tab 5: lisa arvutusaluste kokkuvõte, eemalda Kokku aastas veerg
 eb1e11d Tab 4: eemalda Lisa laen nupp, lisa selgitav tekst kui laene pole
 6c1a9d8 Fix: Tab 6 ja print tulude summa — lisa Haldustasu + Laenumakse automaatsed tulud
 0cb177c Tulud kokku = haldustasu + laenumaksed + muu tulu; prindi vaade Haldustasu/Laenumakse ridadega
-042af82 Tab 5: lisa Kokku €/aastas veerg korterite kuumaksete tabelisse
 3b77eb8 Tab 5 korterite maksed — kolm stsenaariumit (A: ilma laenuta, B: laenuga, C: sihtmaksega)
 34acdbb Laenud: lisa alapealkiri indikatiivsete arvutuste märkega
 b1c6975 Eemalda remondifondi puudujäägi hoiatus — negatiivne saldo juba punane
@@ -246,10 +254,4 @@ b4baa9f Laenud: intress % suffix, laenumakse perioodis readonly, eemalda paremal
 0976807 Laenud: vertikaalne kaart, termMonths: 12 vaikimisi, seotud investeeringu viide
 d061381 Eemalda kvartal: UI, state, eksport/import, laenud, investeeringud
 de6cee3 Eemalda kvartal kogu UI-st ja andmestruktuurist
-8e461b3 Remondifond: määr automaatne = (investeeringud - algsaldo) / m²
-95fcc67 Reservkapital: alus = kõik perioodikulud, nõutav = kulud/12, hoiatus
-800d059 Koondribana: laenumaksed eraldi element + kokku summas
-dbc5928 Tab 3 kokkuvõte: sõnastus ühtlustatud Tab 2-ga
-63d83fb Eseme kaart: Puudused → Planeeritud tegevus → Eeldatav kulu järjekord
-da09d9b Enter-klahv commitab väärtuse NumberInput/EuroInput/DateInput komponentides
 ```

@@ -2497,189 +2497,208 @@ export default function App() {
                 const kvRow = { display: "flex", justifyContent: "space-between", fontSize: 14, color: N.sub, padding: "4px 0" };
                 const kvBold = { display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 600, color: N.text, padding: "6px 0", borderTop: `1px solid ${N.border}`, marginTop: 4 };
                 const kvHr = { display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 700, padding: "8px 0", borderTop: `2px solid ${N.border}`, marginTop: 8 };
+                const mono = { fontFamily: "monospace" };
+                const mEq = derived.period.monthEq || 12;
+
+                // Perioodi summad otse sisendist (täpsed, mitte ümardatud kuumakse × mEq)
+                const kommunaalPeriood = kopiiriondvaade.kommunaalPeriood || Math.round(kopiiriondvaade.kommunaalKokku * mEq);
+                const haldusPeriood = kopiiriondvaade.haldusPeriood || Math.round(kopiiriondvaade.haldusKokku * mEq);
+                const laenumaksedPeriood = Math.round(kopiiriondvaade.laenumaksedKokku * mEq);
+                const reservPeriood = plan.funds.reserve.plannedEUR || 0;
+
+                const kuludPeriood = kommunaalPeriood + haldusPeriood;
+                const valjaminekudPeriood = kuludPeriood + laenumaksedPeriood;
+
+                // Tulud lahti
+                const haldustasuPeriood = haldusPeriood;
+                const laenumakseTuluPeriood = laenumaksedPeriood;
+                const muudTuludPeriood = Math.round(kopiiriondvaade.muudTuludKokku * mEq);
+                const tuludPeriood = haldustasuPeriood + laenumakseTuluPeriood + muudTuludPeriood;
+
+                const vahePeriood = tuludPeriood - valjaminekudPeriood;
+
+                // Remondifond
+                const rf = remondifondiArvutus;
+
                 return (
                   <div style={{ display: "flex", flexDirection: "column" }}>
-                    <div style={kvRow}><span>Kommunaalkulud</span><span style={{ fontFamily: "monospace" }}>{euro(kopiiriondvaade.kommunaalKokku)}/kuu</span></div>
-                    <div style={kvRow}><span>Halduskulud</span><span style={{ fontFamily: "monospace" }}>{euro(kopiiriondvaade.haldusKokku)}/kuu</span></div>
-                    <div style={kvBold}><span>Kulud kokku</span><span style={{ fontFamily: "monospace" }}>{euro(kopiiriondvaade.kuludKokku)}/kuu</span></div>
 
-                    {kopiiriondvaade.laenumaksedKokku > 0 && (
-                      <div style={kvRow}><span>Laenumaksed</span><span style={{ fontFamily: "monospace" }}>{euro(kopiiriondvaade.laenumaksedKokku)}/kuu</span></div>
+                    {/* ── KULUD ── */}
+                    <div style={{ fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Kulud</div>
+                    <div style={kvRow}>
+                      <span>Kommunaalkulud</span>
+                      <span style={mono}>{euroEE(kommunaalPeriood)}<span style={{ color: N.dim }}> · {euro(kopiiriondvaade.kommunaalKokku)}/kuu</span></span>
+                    </div>
+                    <div style={kvRow}>
+                      <span>Halduskulud</span>
+                      <span style={mono}>{euroEE(haldusPeriood)}<span style={{ color: N.dim }}> · {euro(kopiiriondvaade.haldusKokku)}/kuu</span></span>
+                    </div>
+                    {laenumaksedPeriood > 0 && (
+                      <div style={kvRow}>
+                        <span>Laenumaksed</span>
+                        <span style={mono}>{euroEE(laenumaksedPeriood)}<span style={{ color: N.dim }}> · {euro(kopiiriondvaade.laenumaksedKokku)}/kuu</span></span>
+                      </div>
                     )}
+                    <div style={kvBold}>
+                      <span>Väljaminekud kokku</span>
+                      <span style={mono}>{euroEE(valjaminekudPeriood)}<span style={{ color: N.dim }}> · {euro(Math.round(valjaminekudPeriood / mEq))}/kuu</span></span>
+                    </div>
 
-                    <div style={{ ...kvBold, borderTopColor: N.text }}><span>Väljaminekud kokku</span><span style={{ fontFamily: "monospace" }}>{euro(kopiiriondvaade.valjaminekudKokku)}/kuu</span></div>
+                    {/* ── TULUD ── */}
+                    <div style={{ fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 16, marginBottom: 4 }}>Tulud</div>
+                    <div style={kvRow}>
+                      <span>Haldustasu</span>
+                      <span style={mono}>{euroEE(haldustasuPeriood)}<span style={{ color: N.dim }}> · {euro(kopiiriondvaade.haldusKokku)}/kuu</span></span>
+                    </div>
+                    {laenumakseTuluPeriood > 0 && (
+                      <div style={kvRow}>
+                        <span>Laenumakse</span>
+                        <span style={mono}>{euroEE(laenumakseTuluPeriood)}<span style={{ color: N.dim }}> · {euro(kopiiriondvaade.laenumaksedKokku)}/kuu</span></span>
+                      </div>
+                    )}
+                    {muudTuludPeriood > 0 && (
+                      <div style={kvRow}>
+                        <span>Muu tulu</span>
+                        <span style={mono}>{euroEE(muudTuludPeriood)}<span style={{ color: N.dim }}> · {euro(kopiiriondvaade.muudTuludKokku)}/kuu</span></span>
+                      </div>
+                    )}
+                    <div style={kvBold}>
+                      <span>Tulud kokku</span>
+                      <span style={mono}>{euroEE(tuludPeriood)}<span style={{ color: N.dim }}> · {euro(Math.round(tuludPeriood / mEq))}/kuu</span></span>
+                    </div>
 
-                    <div style={{ ...kvBold, marginTop: 12 }}><span>Tulud kokku</span><span style={{ fontFamily: "monospace" }}>{euro(kopiiriondvaade.tuludKokku)}/kuu</span></div>
-
-                    <div style={{ ...kvHr, color: kopiiriondvaade.vahe >= 0 ? "#15803d" : "#dc2626" }}>
-                      <span>Vahe</span>
-                      <span style={{ fontFamily: "monospace" }}>
-                        {kopiiriondvaade.vahe >= 0 ? "+" : ""}{euro(kopiiriondvaade.vahe)}/kuu
-                        {kopiiriondvaade.vahe >= 0 ? " \u2713" : " \u26A0"}
+                    {/* ── VAHE ── */}
+                    <div style={{ ...kvHr, color: vahePeriood >= 0 ? "#15803d" : "#dc2626" }}>
+                      <span>{vahePeriood >= 0 ? "Ülejääk" : "Puudujääk"}</span>
+                      <span style={mono}>
+                        {vahePeriood >= 0 ? "+" : ""}{euroEE(vahePeriood)}
+                        <span style={{ fontSize: 13 }}> · {vahePeriood >= 0 ? "+" : ""}{euro(Math.round(vahePeriood / mEq))}/kuu</span>
+                        {vahePeriood >= 0 ? " ✓" : " ⚠"}
                       </span>
                     </div>
 
-                    {kopiiriondvaade.vahe < 0 && (
+                    {vahePeriood < 0 && (
                       <div style={{ marginTop: 8, padding: 12, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, fontSize: 13, color: "#991b1b" }}>
-                        Tulud ei kata väljaminekuid. Puudujääk {euro(Math.abs(kopiiriondvaade.vahe))}/kuu.
+                        Tulud ei kata väljaminekuid. Puudujääk {euroEE(Math.abs(vahePeriood))} perioodis.
                       </div>
                     )}
 
-                    {/* Aastane kokkuvõte */}
-                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${N.border}` }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: N.dim, marginBottom: 8 }}>Aastane kokkuvõte</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, textAlign: "center" }}>
-                        <div style={{ background: N.surface, borderRadius: 8, padding: 12, border: `1px solid ${N.border}` }}>
-                          <div style={{ fontSize: 12, color: N.dim }}>Väljaminekud</div>
-                          <div style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 15, color: N.text }}>{euro(kopiiriondvaade.valjaminekudKokku * 12)}/a</div>
-                        </div>
-                        <div style={{ background: N.surface, borderRadius: 8, padding: 12, border: `1px solid ${N.border}` }}>
-                          <div style={{ fontSize: 12, color: N.dim }}>Tulud</div>
-                          <div style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 15, color: N.text }}>{euro(kopiiriondvaade.tuludKokku * 12)}/a</div>
-                        </div>
-                        <div style={{ background: kopiiriondvaade.vahe >= 0 ? "#f0fdf4" : "#fef2f2", borderRadius: 8, padding: 12, border: `1px solid ${kopiiriondvaade.vahe >= 0 ? "#bbf7d0" : "#fecaca"}` }}>
-                          <div style={{ fontSize: 12, color: N.dim }}>Vahe</div>
-                          <div style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 15, color: kopiiriondvaade.vahe >= 0 ? "#15803d" : "#dc2626" }}>
-                            {kopiiriondvaade.vahe >= 0 ? "+" : ""}{euro(kopiiriondvaade.vahe * 12)}/a
-                          </div>
-                        </div>
-                      </div>
+                    {/* ── REMONDIFOND ── */}
+                    <div style={{ fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 16, marginBottom: 4 }}>Remondifond</div>
+                    <div style={kvRow}><span>Saldo perioodi alguses</span><span style={mono}>{euroEE(rf.saldoAlgus)}</span></div>
+                    <div style={kvRow}><span>Laekumine perioodis</span><span style={mono}>{euroEE(rf.laekuminePerioodis)}</span></div>
+                    <div style={kvRow}><span>Investeeringud perioodis</span><span style={mono}>{rf.investRemondifondist > 0 ? "−" : ""}{euroEE(rf.investRemondifondist)}</span></div>
+                    <div style={{ ...kvBold, color: rf.saldoLopp < 0 ? "#dc2626" : N.text }}>
+                      <span>Saldo perioodi lõpus</span>
+                      <span style={mono}>{euroEE(rf.saldoLopp)}</span>
                     </div>
+
+                    {/* ── RESERVKAPITAL ── */}
+                    {reservPeriood > 0 && (
+                      <>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 16, marginBottom: 4 }}>Reservkapital</div>
+                        <div style={kvRow}><span>Kavandatud reserv</span><span style={mono}>{euroEE(reservPeriood)}</span></div>
+                        <div style={kvRow}><span>Kuumakse</span><span style={mono}>{euro(Math.round(reservPeriood / 12))}/kuu</span></div>
+                      </>
+                    )}
+
                   </div>
                 );
               })()}
             </div>
 
-            {/* ── Kokkuvõte ── */}
-            {(() => {
-              const mEq = derived.period.monthEq || 12;
-              const vaheHaldusState = kopiiriondvaade.vaheHaldus >= 0 ? STATE.OK : STATE.ERROR;
-              return (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-                  <div style={summaryCard}>
-                    <div style={summaryNum}>{euro(kopiiriondvaade.haldusKokku * mEq)}</div>
-                    <div style={summaryLabel}>Halduskulud perioodis</div>
-                    <div style={summarySub}>{euro(kopiiriondvaade.haldusKokku)}/kuu</div>
+            {showTechnicalInfo && (
+              <>
+                {/* ── Poliitika & soovitused ── */}
+                <div style={{ ...card, padding: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    <div style={sectionTitle}>Poliitika & soovitused</div>
+                    <span style={{ ...helperText, fontFamily: "monospace" }}>{preset}</span>
                   </div>
-                  <div style={{ ...summaryCard, opacity: 0.7 }}>
-                    <div style={summaryNum}>{euro(kopiiriondvaade.kommunaalKokku * mEq)}</div>
-                    <div style={summaryLabel}>Kommunaalkulud (läbivool)</div>
-                    <div style={summarySub}>{euro(kopiiriondvaade.kommunaalKokku)}/kuu</div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                    <div style={fieldLabel}>Preset</div>
+                    <select
+                      value={preset}
+                      onChange={(e) => setPreset(e.target.value)}
+                      style={selectStyle}
+                    >
+                      <option value="BALANCED">BALANCED</option>
+                      <option value="CONSERVATIVE">CONSERVATIVE</option>
+                      <option value="LOAN_FRIENDLY">LOAN_FRIENDLY</option>
+                    </select>
                   </div>
-                  <div style={summaryCard}>
-                    <div style={summaryNum}>{euro(kopiiriondvaade.tuludKokku * mEq)}</div>
-                    <div style={summaryLabel}>Tulud perioodis</div>
-                    <div style={summarySub}>{euro(kopiiriondvaade.tuludKokku)}/kuu</div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <button
+                      onClick={onSolveAll}
+                      disabled={isSolving || !allActions.length}
+                      style={{ ...btnPrimary, opacity: (isSolving || !allActions.length) ? 0.5 : 1 }}
+                    >
+                      {isSolving ? "Rakendan…" : "Rakenda soovitused"}
+                    </button>
+                    {solveStatus ? (
+                      <span style={{ fontSize: 12, opacity: 0.75 }}>{solveStatus}</span>
+                    ) : null}
                   </div>
-                  <div style={summaryCard}>
-                    <div style={summaryNum}>{euro(kopiiriondvaade.laenumaksedKokku * mEq)}</div>
-                    <div style={summaryLabel}>Laenumaksed perioodis</div>
-                    <div style={summarySub}>{euro(kopiiriondvaade.laenumaksedKokku)}/kuu</div>
-                  </div>
-                  <div style={{ ...summaryCard, borderColor: vaheHaldusState.border, background: vaheHaldusState.bg }}>
-                    <div style={{ ...summaryNum, color: vaheHaldusState.color }}>
-                      {euro(kopiiriondvaade.vaheHaldus * mEq)}
+                </div>
+
+                {/* ── Riskitase (band + reason only) ── */}
+                {evaluation?.risk && (
+                  <div style={{ ...card, padding: 20 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={sectionTitle}>Riskitase</div>
+                      <span style={stateBadge(evaluation.risk.level === "low" ? STATE.OK : evaluation.risk.level === "medium" ? STATE.WARN : STATE.ERROR)}>
+                        {evaluation.risk.level.toUpperCase()}
+                      </span>
                     </div>
-                    <div style={{ ...summaryLabel, color: vaheHaldusState.color }}>Vahe (haldus)</div>
-                    <div style={summarySub}>{euro(kopiiriondvaade.vaheHaldus)}/kuu</div>
-                  </div>
-                  <div style={summaryCard}>
-                    <div style={summaryNum}>{euro(derived.totals.ownersNeedMonthlyEUR)}/kuu</div>
-                    <div style={summaryLabel}>Omanike kuumakse</div>
-                    <div style={summarySub}>= tegevus + laen + laenureserv</div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* ── Poliitika & soovitused ── */}
-            <div style={{ ...card, padding: 20 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={sectionTitle}>Poliitika & soovitused</div>
-                <span style={{ ...helperText, fontFamily: "monospace" }}>{preset}</span>
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                <div style={fieldLabel}>Preset</div>
-                <select
-                  value={preset}
-                  onChange={(e) => setPreset(e.target.value)}
-                  style={selectStyle}
-                >
-                  <option value="BALANCED">BALANCED</option>
-                  <option value="CONSERVATIVE">CONSERVATIVE</option>
-                  <option value="LOAN_FRIENDLY">LOAN_FRIENDLY</option>
-                </select>
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <button
-                  onClick={onSolveAll}
-                  disabled={isSolving || !allActions.length}
-                  style={{ ...btnPrimary, opacity: (isSolving || !allActions.length) ? 0.5 : 1 }}
-                >
-                  {isSolving ? "Rakendan…" : "Rakenda soovitused"}
-                </button>
-                {solveStatus ? (
-                  <span style={{ fontSize: 12, opacity: 0.75 }}>{solveStatus}</span>
-                ) : null}
-              </div>
-            </div>
-
-            {/* ── Riskitase (band + reason only) ── */}
-            {evaluation?.risk && (
-              <div style={{ ...card, padding: 20 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={sectionTitle}>Riskitase</div>
-                  <span style={stateBadge(evaluation.risk.level === "low" ? STATE.OK : evaluation.risk.level === "medium" ? STATE.WARN : STATE.ERROR)}>
-                    {evaluation.risk.level.toUpperCase()}
-                  </span>
-                </div>
-                {evaluation.risk.reason && (
-                  <div style={{ ...helperText, marginTop: 8 }}>
-                    {evaluation.risk.reason}
+                    {evaluation.risk.reason && (
+                      <div style={{ ...helperText, marginTop: 8 }}>
+                        {evaluation.risk.reason}
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* ── UI error ── */}
-            {uiError && (
-              <div style={{ border: `1px solid ${STATE.ERROR.border}`, borderRadius: 12, padding: 20, background: STATE.ERROR.bg }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                  <div style={{ ...sectionTitle, color: STATE.ERROR.color }}>Viga</div>
-                  <span style={stateBadge(STATE.ERROR)}>ERROR</span>
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: STATE.ERROR.color }}>Ei saanud muudatust rakendada</div>
-                <div style={{ marginTop: 4, fontSize: 12, color: STATE.ERROR.color }}>{uiError}</div>
-                <button
-                  style={{ marginTop: 8, fontSize: 12, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", color: STATE.ERROR.color }}
-                  onClick={() => setUiError(null)}
-                >
-                  Sulge
-                </button>
-              </div>
-            )}
+                {/* ── UI error ── */}
+                {uiError && (
+                  <div style={{ border: `1px solid ${STATE.ERROR.border}`, borderRadius: 12, padding: 20, background: STATE.ERROR.bg }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <div style={{ ...sectionTitle, color: STATE.ERROR.color }}>Viga</div>
+                      <span style={stateBadge(STATE.ERROR)}>ERROR</span>
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: STATE.ERROR.color }}>Ei saanud muudatust rakendada</div>
+                    <div style={{ marginTop: 4, fontSize: 12, color: STATE.ERROR.color }}>{uiError}</div>
+                    <button
+                      style={{ marginTop: 8, fontSize: 12, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", color: STATE.ERROR.color }}
+                      onClick={() => setUiError(null)}
+                    >
+                      Sulge
+                    </button>
+                  </div>
+                )}
 
-            {/* ── Findings ── */}
-            {(() => {
-              const errors = evaluation?.findings.filter(f => f.severity === "error") ?? [];
-              const warnings = evaluation?.findings.filter(f => f.severity === "warning") ?? [];
-              const infos = evaluation?.findings.filter(f => f.severity === "info") ?? [];
-              return (
-                <>
-                  {errors.length > 0 && (
-                    <Section title="Vead" items={errors} onApplyAction={onApplyAction} showTechnicalInfo={showTechnicalInfo} />
-                  )}
-                  {warnings.length > 0 && (
-                    <Section title="Hoiatused" items={warnings} onApplyAction={onApplyAction} showTechnicalInfo={showTechnicalInfo} />
-                  )}
-                  {infos.length > 0 && (
-                    <Section title="Info" items={infos} onApplyAction={onApplyAction} showTechnicalInfo={showTechnicalInfo} />
-                  )}
-                </>
-              );
-            })()}
+                {/* ── Findings ── */}
+                {(() => {
+                  const errors = evaluation?.findings.filter(f => f.severity === "error") ?? [];
+                  const warnings = evaluation?.findings.filter(f => f.severity === "warning") ?? [];
+                  const infos = evaluation?.findings.filter(f => f.severity === "info") ?? [];
+                  return (
+                    <>
+                      {errors.length > 0 && (
+                        <Section title="Vead" items={errors} onApplyAction={onApplyAction} showTechnicalInfo={showTechnicalInfo} />
+                      )}
+                      {warnings.length > 0 && (
+                        <Section title="Hoiatused" items={warnings} onApplyAction={onApplyAction} showTechnicalInfo={showTechnicalInfo} />
+                      )}
+                      {infos.length > 0 && (
+                        <Section title="Info" items={infos} onApplyAction={onApplyAction} showTechnicalInfo={showTechnicalInfo} />
+                      )}
+                    </>
+                  );
+                })()}
+              </>
+            )}
 
             {/* ── Prindi + Ekspordi nupud (always visible) ── */}
             <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
