@@ -1990,7 +1990,18 @@ export default function App() {
                         const halSum = plan.budget.costRows
                           .filter(r => HALDUSTEENUSED.includes(r.category))
                           .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                        return <>Kommunaalteenused perioodis: {euro(komSum)} · Haldusteenused perioodis: {euro(halSum)} · Kulud kokku perioodis: {euro(komSum + halSum)}</>;
+                        const laenuSum = plan.budget.costRows
+                          .filter(r => LAENUMAKSED.includes(r.category))
+                          .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+                        const kokku = komSum + halSum + laenuSum;
+                        return (
+                          <>
+                            <div>Kommunaalteenused perioodis: {euro(komSum)}</div>
+                            <div>Haldusteenused perioodis: {euro(halSum)}</div>
+                            <div>Laenumaksed perioodis: {euro(laenuSum)}</div>
+                            <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 4, marginTop: 4 }}>Kulud kokku perioodis: {euro(kokku)}</div>
+                          </>
+                        );
                       })()
                     : (() => {
                         const haldusSum = plan.budget.costRows
