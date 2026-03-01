@@ -784,7 +784,7 @@ export default function App() {
           oldItems.forEach(inv => {
             const kvMap = { "1": "I", "2": "II", "3": "III", "4": "IV" };
             const seotud = inv.seisukordId ? importedSeisukord.find(e => e.id === inv.seisukordId) : null;
-            const rahpiiri = (inv.fundingPlan || []).map(fp => ({ allikas: ({ REPAIR_FUND: "Remondifond", RESERVE: "Reservkapital", LOAN: "Laen", GRANT: "Toetus", ONE_OFF: "Erakorraline makse" })[fp.source] || fp.source, summa: fp.amountEUR || 0 }));
+            const rahpiiri = (inv.fundingPlan || []).map(fp => ({ allikas: ({ REPAIR_FUND: "Remondifond", RESERVE: "Remondifond", LOAN: "Laen", GRANT: "Toetus", ONE_OFF: "Sihtmakse" })[fp.source] || fp.source, summa: fp.amountEUR || 0 }));
             if (seotud) {
               seotud.investeering = true;
               seotud.invNimetus = inv.name || "";
@@ -817,9 +817,14 @@ export default function App() {
           }
           return r.ese !== "Muu"; // drop non-investment "Muu" items too
         });
+        // Migreeri vanad rahastusallika nimed
+        const migreeriAllikas = (a) => a === "Erakorraline makse" ? "Sihtmakse" : a === "Reservkapital" ? "Remondifond" : a;
+        importedSeisukord.forEach(e => { if (e.rahpiiri) e.rahpiiri = e.rahpiiri.map(rp => ({ ...rp, allikas: migreeriAllikas(rp.allikas) })); });
+        importedMuudInv.forEach(e => { if (e.rahpiiri) e.rahpiiri = e.rahpiiri.map(rp => ({ ...rp, allikas: migreeriAllikas(rp.allikas) })); });
         setSeisukord(importedSeisukord);
         // Merge: new-format muudInvesteeringud + migrated old items
         const newFormatMuud = Array.isArray(data.muudInvesteeringud) ? data.muudInvesteeringud : [];
+        newFormatMuud.forEach(e => { if (e.rahpiiri) e.rahpiiri = e.rahpiiri.map(rp => ({ ...rp, allikas: migreeriAllikas(rp.allikas) })); });
         setMuudInvesteeringud([...newFormatMuud, ...importedMuudInv]);
         setSolvereMetrics(dryRunResult.metrics);
         setEvaluation(ev);
@@ -1686,10 +1691,9 @@ export default function App() {
                           <div key={ri} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
                             <select value={rp.allikas} onChange={(e) => uuendaRahpiiriRida(rida.id, ri, { allikas: e.target.value })} style={{ ...selectStyle, width: 150 }}>
                               <option value="Remondifond">Remondifond</option>
-                              <option value="Reservkapital">Reservkapital</option>
                               <option value="Laen">Laen</option>
                               <option value="Toetus">Toetus</option>
-                              <option value="Erakorraline makse">Erakorraline makse</option>
+                              <option value="Sihtmakse">Sihtmakse</option>
                             </select>
                             <div style={{ width: 120 }}>
                               <EuroInput value={rp.summa} onChange={(v) => uuendaRahpiiriRida(rida.id, ri, { summa: v })} style={numStyle} />
@@ -1774,10 +1778,9 @@ export default function App() {
                       <div key={ri} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
                         <select value={rp.allikas} onChange={(e) => handleMuuRahpiiriChange(idx, ri, "allikas", e.target.value)} style={{ ...selectStyle, width: 150 }}>
                           <option value="Remondifond">Remondifond</option>
-                          <option value="Reservkapital">Reservkapital</option>
                           <option value="Laen">Laen</option>
                           <option value="Toetus">Toetus</option>
-                          <option value="Erakorraline makse">Erakorraline makse</option>
+                          <option value="Sihtmakse">Sihtmakse</option>
                         </select>
                         <div style={{ width: 120 }}>
                           <EuroInput value={rp.summa} onChange={(v) => handleMuuRahpiiriChange(idx, ri, "summa", v)} style={numStyle} />
