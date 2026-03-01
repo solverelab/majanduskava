@@ -2016,15 +2016,20 @@ export default function App() {
                         const haldusSum = plan.budget.costRows
                           .filter(r => HALDUSTEENUSED.includes(r.category))
                           .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+                        const laenuSum = plan.budget.costRows
+                          .filter(r => LAENUMAKSED.includes(r.category))
+                          .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
                         const muudTuludSum = plan.budget.incomeRows
                           .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                        const tuludKokku = haldusSum + muudTuludSum;
+                        const tuludKokku = haldusSum + laenuSum + muudTuludSum;
                         const koguPind = derived.building.totAreaM2;
-                        const m2 = koguPind > 0 ? (haldusSum / koguPind).toFixed(2).replace(".", ",") : "\u2014";
+                        const haldusM2 = koguPind > 0 ? (haldusSum / koguPind).toFixed(2).replace(".", ",") : "\u2014";
+                        const laenuM2 = koguPind > 0 ? (laenuSum / koguPind).toFixed(2).replace(".", ",") : "\u2014";
                         return (
                           <>
-                            <div>Halduskulude ettemaks perioodis: {euro(haldusSum)} → {m2} €/m²</div>
-                            <div>Tulud perioodis kokku: {euro(tuludKokku)}</div>
+                            <div>Haldustasu perioodis: {euro(haldusSum)} → {haldusM2} €/m²</div>
+                            {laenuSum > 0 && <div>Laenumakse perioodis: {euro(laenuSum)} → {laenuM2} €/m²</div>}
+                            <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 4, marginTop: 4 }}>Tulud perioodis kokku: {euro(tuludKokku)}</div>
                           </>
                         );
                       })()
