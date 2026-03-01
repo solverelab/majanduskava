@@ -895,7 +895,7 @@ export default function App() {
       }),
       ...(side === "COST"
         ? { category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0 }
-        : { category: "", arvutus: "aastas", summaInput: 0 }),
+        : { category: "Muu tulu", arvutus: "aastas", summaInput: "" }),
     };
     setPlan(p => ({
       ...p,
@@ -1203,7 +1203,7 @@ export default function App() {
   useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [mkApartment({ label: "1" })] } })); }, [plan.building.apartments.length]);
   // Investeeringud algavad tühjana — luuakse ainult "Loo investeering" või "+ Lisa investeering" kaudu
   useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
-  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME" }), category: "", arvutus: "aastas", summaInput: "" }] } })); }, [plan.budget.incomeRows.length]);
+  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME" }), category: "Muu tulu", arvutus: "aastas", summaInput: "" }] } })); }, [plan.budget.incomeRows.length]);
 
   // Migreeri vanad tulukategooriad + eemalda "Haldustasu" (nüüd automaatne readonly)
   useEffect(() => {
