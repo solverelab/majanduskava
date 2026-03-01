@@ -1959,6 +1959,10 @@ export default function App() {
                   <div style={sectionTitle}>Kulud</div>
                 </div>
 
+                <div style={{ padding: 12, background: N.muted, borderRadius: 8, fontSize: 13, color: N.sub, marginBottom: 12 }}>
+                  💡 Soovitus: Eesti tarbijahinnaindeks on viimastel aastatel tõusnud 4–10% aastas. Arvestage kulude sisestamisel võimaliku hinnatõusuga.
+                </div>
+
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {kommunaalRead.length > 0 && (
                     <>
