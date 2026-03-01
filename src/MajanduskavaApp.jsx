@@ -1987,13 +1987,11 @@ export default function App() {
                         const muudTuludSum = plan.budget.incomeRows
                           .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
                         const tuludKokku = haldusSum + muudTuludSum;
-                        const mEq = derived.period.monthEq || 12;
                         const koguPind = derived.building.totAreaM2;
-                        const haldusAastas = mEq === 12 ? haldusSum : haldusSum * (12 / mEq);
-                        const m2Aastas = koguPind > 0 ? (haldusAastas / koguPind).toFixed(2).replace(".", ",") : "\u2014";
+                        const m2 = koguPind > 0 ? (haldusSum / koguPind).toFixed(2).replace(".", ",") : "\u2014";
                         return (
                           <>
-                            <div>Halduskulude ettemaks perioodis: {euro(haldusSum)} → {m2Aastas} €/m² aastas</div>
+                            <div>Halduskulude ettemaks perioodis: {euro(haldusSum)} → {m2} €/m²</div>
                             <div>Tulud perioodis kokku: {euro(tuludKokku)}</div>
                           </>
                         );
