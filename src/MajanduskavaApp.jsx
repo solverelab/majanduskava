@@ -1985,6 +1985,9 @@ export default function App() {
                   })()}
                 </div>
 
+                <div style={{ marginTop: 8 }}>
+                  <button style={btnAdd} onClick={() => addRow(side)}>+ Lisa rida</button>
+                </div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginTop: 12, fontFamily: "monospace" }}>
                   {side === "COST"
                     ? (() => {
@@ -2029,9 +2032,6 @@ export default function App() {
                         );
                       })()
                   }
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  <button style={btnAdd} onClick={() => addRow(side)}>+ Lisa rida</button>
                 </div>
 
               </div>
