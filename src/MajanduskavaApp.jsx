@@ -2214,9 +2214,15 @@ export default function App() {
                             {LAENU_LIIGID.map(l => <option key={l} value={l}>{l}</option>)}
                           </select>
                         </div>
-                        <div style={{ width: 120 }}>
-                          <div style={fieldLabel}>Intress %/a</div>
-                          <NumberInput value={ln.annualRatePct} onChange={(v) => updateLoan(ln.id, { annualRatePct: v })} style={numStyle} />
+                        <div style={{ width: 140 }}>
+                          <div style={{ ...fieldLabel, display: "flex", alignItems: "center" }}>
+                            Intress
+                            <span title="Aastane intressimäär" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", border: `1px solid ${N.border}`, fontSize: 11, color: N.dim, cursor: "help", marginLeft: 6 }}>?</span>
+                          </div>
+                          <div style={{ position: "relative" }}>
+                            <NumberInput value={ln.annualRatePct} onChange={(v) => updateLoan(ln.id, { annualRatePct: v })} style={{ ...numStyle, paddingRight: 32 }} />
+                            <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", fontSize: 15, color: N.dim, pointerEvents: "none" }}>%</span>
+                          </div>
                         </div>
                         <div style={{ width: 260 }}>
                           <div style={{ ...fieldLabel, display: "flex", alignItems: "center" }}>
@@ -2251,14 +2257,17 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Arvutatud kuumakse */}
-                      {d && d.servicingMonthlyEUR > 0 && (
-                        <div style={{ fontSize: 13, color: N.sub, marginBottom: 12, fontFamily: "monospace" }}>
-                          Kuumakse: {euro(d.servicingMonthlyEUR)}
+                      {/* Laenumakse perioodis — readonly, arvutatud */}
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={fieldLabel}>Laenumakse perioodis</div>
+                        <div style={{ ...numStyle, padding: "10px 12px", background: N.muted, color: N.text, fontWeight: 700 }}>
+                          {euroEE(arvutaKuumakse(ln.principalEUR, ln.annualRatePct, parseInt(ln.termMonths) || 0) * (derived.period.monthEq || 12))}
                         </div>
-                      )}
+                      </div>
 
-                      <button style={btnRemove} onClick={() => removeLoan(ln.id)}>Eemalda</button>
+                      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+                        <button style={btnRemove} onClick={() => removeLoan(ln.id)}>Eemalda</button>
+                      </div>
                     </div>
                   );
                 })}
