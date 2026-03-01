@@ -749,22 +749,20 @@ export default function App() {
               : { arvutus: "perioodis", summaInput: r.calc?.params?.amountEUR || 0, ...r };
           });
         }
-        // Migrate loan startYM → algusKvartal + algusAasta
+        // Migrate loan → algusAasta
         if (candidateState.loans) {
-          const monthToKv = { "01": "I", "02": "I", "03": "I", "04": "II", "05": "II", "06": "II", "07": "III", "08": "III", "09": "III", "10": "IV", "11": "IV", "12": "IV" };
           const fallbackY = String(plan.period.year || new Date().getFullYear());
           candidateState.loans = candidateState.loans.map(ln => {
             const base = { sepiiriostudInvId: ln.sepiiriostudInvId || null };
-            if (ln.algusKvartal && ln.algusAasta) return { ...ln, ...base, liik: ln.liik || "Remondilaen" };
+            if (ln.algusAasta) return { ...ln, ...base, liik: ln.liik || "Remondilaen" };
             // Vana "KK.AAAA" formaat (algus väli)
-            if (ln.algus && !ln.algusKvartal) {
+            if (ln.algus) {
               const ap = ln.algus.split(".");
-              const kuu = parseInt(ap[0]) || 1;
-              return { ...ln, ...base, algusKvartal: kuu <= 3 ? "I" : kuu <= 6 ? "II" : kuu <= 9 ? "III" : "IV", algusAasta: ap[1] || fallbackY, liik: ln.liik || "Remondilaen" };
+              return { ...ln, ...base, algusAasta: ap[1] || fallbackY, liik: ln.liik || "Remondilaen" };
             }
             // startYM "AAAA-KK" formaat
             const parts = (ln.startYM || "").split("-");
-            return { ...ln, ...base, algusKvartal: monthToKv[parts[1]] || "I", algusAasta: parts[0] || fallbackY, liik: ln.liik || "Remondilaen" };
+            return { ...ln, ...base, algusAasta: parts[0] || fallbackY, liik: ln.liik || "Remondilaen" };
           });
         }
         setPlan(candidateState);
@@ -781,10 +779,8 @@ export default function App() {
         if (data.seisukord) {
           if (typeof data.seisukord === "string") importedSeisukord = [];
           else importedSeisukord = data.seisukord.map(r => {
-            const kvMap = { "1": "I", "2": "II", "3": "III", "4": "IV" };
-            const kv = r.tegevusKvartal ? (kvMap[r.tegevusKvartal] || r.tegevusKvartal) : "";
             const { tegevusKvartal: _ignored, ...rest } = r;
-            return { tegevusAasta: "", investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [], id: crypto.randomUUID(), ...rest, tegevusKvartal: kv };
+            return { tegevusAasta: "", investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [], id: crypto.randomUUID(), ...rest };
           });
         }
         // Migrate old separate investments into seisukord items or muudInvesteeringud
@@ -792,7 +788,6 @@ export default function App() {
         const importedMuudInv = [];
         if (oldItems.length > 0 && !importedSeisukord.some(r => r.investeering)) {
           oldItems.forEach(inv => {
-            const kvMap = { "1": "I", "2": "II", "3": "III", "4": "IV" };
             const seotud = inv.seisukordId ? importedSeisukord.find(e => e.id === inv.seisukordId) : null;
             const rahpiiri = (inv.fundingPlan || []).map(fp => ({ allikas: ({ REPAIR_FUND: "Remondifond", RESERVE: "Remondifond", LOAN: "Laen", GRANT: "Toetus", ONE_OFF: "Sihtmakse" })[fp.source] || fp.source, summa: fp.amountEUR || 0 }));
             if (seotud) {
@@ -805,7 +800,6 @@ export default function App() {
                 id: crypto.randomUUID(),
                 nimetus: inv.name || "",
                 aasta: String(inv.plannedYear || ""),
-                kvartal: kvMap[String(inv.quarter)] || inv.quarter || "I",
                 maksumus: inv.totalCostEUR || 0,
                 rahpiiri,
               });
@@ -819,7 +813,6 @@ export default function App() {
               id: crypto.randomUUID(),
               nimetus: r.invNimetus || r.muuNimetus || "",
               aasta: r.tegevusAasta || "",
-              kvartal: r.tegevusKvartal || "I",
               maksumus: r.invMaksumus || 0,
               rahpiiri: r.rahpiiri || [],
             });
@@ -979,7 +972,6 @@ export default function App() {
       eeldatavKulu: 0,
       tegevus: "",
       tegevusAasta: String(y),
-      tegevusKvartal: "I",
       investeering: false,
       invNimetus: "",
       invMaksumus: 0,
@@ -1076,7 +1068,6 @@ export default function App() {
       id: Date.now().toString(),
       nimetus: "",
       aasta: String(plan.period.year || new Date().getFullYear()),
-      kvartal: "I",
       maksumus: "",
       rahpiiri: [],
     }]);
@@ -1154,7 +1145,6 @@ export default function App() {
       return { ...p, loans: [...p.loans, {
         ...mkLoan({ startYM: `${y}-01` }),
         liik: "Investeerimislaen",
-        algusKvartal: "I",
         algusAasta: y,
         sepiiriostudInvId: investeeringId,
         principalEUR: laenSumma,
@@ -1177,20 +1167,17 @@ export default function App() {
     });
   };
 
-  const kvToMonth = { I: "01", II: "04", III: "07", IV: "10" };
-
   const addLoan = () => {
     const y = String(plan.period.year || new Date().getFullYear());
-    setPlan(p => ({ ...p, loans: [...p.loans, { ...mkLoan({ startYM: `${y}-01` }), liik: "Remondilaen", algusKvartal: "I", algusAasta: y, sepiiriostudInvId: null }] }));
+    setPlan(p => ({ ...p, loans: [...p.loans, { ...mkLoan({ startYM: `${y}-01` }), liik: "Remondilaen", algusAasta: y, sepiiriostudInvId: null }] }));
   };
 
   const updateLoan = (id, patch) => {
     setPlan(p => ({ ...p, loans: p.loans.map(ln => {
       if (ln.id !== id) return ln;
       const updated = { ...ln, ...patch };
-      if (patch.algusKvartal || patch.algusAasta) {
-        const fallbackY = String(p.period.year || new Date().getFullYear());
-        updated.startYM = `${updated.algusAasta || fallbackY}-${kvToMonth[updated.algusKvartal] || "01"}`;
+      if (patch.algusAasta) {
+        updated.startYM = `${updated.algusAasta}-01`;
       }
       return updated;
     }) }));
@@ -1280,7 +1267,6 @@ export default function App() {
       id: e.id,
       nimetus: e.invNimetus,
       aasta: e.tegevusAasta,
-      kvartal: e.tegevusKvartal,
       maksumus: e.invMaksumus,
       rahpiiri: e.rahpiiri || [],
       _src: "ese",
@@ -1289,7 +1275,6 @@ export default function App() {
       id: inv.id,
       nimetus: inv.nimetus,
       aasta: inv.aasta,
-      kvartal: inv.kvartal,
       maksumus: inv.maksumus,
       rahpiiri: inv.rahpiiri || [],
       _src: "muu",
@@ -1302,7 +1287,6 @@ export default function App() {
       ...mkInvestmentItem({
         name: inv.nimetus,
         plannedYear: inv.aasta ? Number(inv.aasta) : (plan.period.year || new Date().getFullYear()),
-        quarter: inv.kvartal || "I",
         totalCostEUR: inv.maksumus || 0,
       }),
       id: inv.id + (inv._src === "ese" ? "::inv" : "::muuInv"),
@@ -1319,7 +1303,7 @@ export default function App() {
   }, [seisukord, muudInvesteeringud]);
 
   // Laenud algavad tühjana — luuakse ainult "+ Lisa laen" kaudu või rahastusplaanist automaatselt
-  useEffect(() => { if (seisukord.length === 0) { const y = String(plan.period.year || new Date().getFullYear()); setSeisukord([{ id: crypto.randomUUID(), ese: "", seisukordVal: "", puudused: "", prioriteet: "", eeldatavKulu: 0, tegevus: "", tegevusAasta: y, tegevusKvartal: "I", investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [] }]); } }, [seisukord.length]);
+  useEffect(() => { if (seisukord.length === 0) { const y = String(plan.period.year || new Date().getFullYear()); setSeisukord([{ id: crypto.randomUUID(), ese: "", seisukordVal: "", puudused: "", prioriteet: "", eeldatavKulu: 0, tegevus: "", tegevusAasta: y, investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [] }]); } }, [seisukord.length]);
 
   // Perioodi aasta muutumisel: uuenda tühjad aasta väljad
   useEffect(() => {
@@ -1666,16 +1650,6 @@ export default function App() {
                         {(() => { const y = plan.period.year || new Date().getFullYear(); return [y, y + 1, y + 2, y + 3].map(v => <option key={v} value={String(v)}>{v}</option>); })()}
                       </select>
                     </div>
-                    <div style={{ width: 70 }}>
-                      <div style={fieldLabel}>Kvartal</div>
-                      <select value={rida.tegevusKvartal || ""} onChange={(e) => uuendaSeisukord(rida.id, "tegevusKvartal", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
-                        <option value="">—</option>
-                        <option value="I">I</option>
-                        <option value="II">II</option>
-                        <option value="III">III</option>
-                        <option value="IV">IV</option>
-                      </select>
-                    </div>
                   </div>
                   <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <button style={btnRemove} onClick={() => eemaldaSeisukordRida(rida.id)}>Eemalda</button>
@@ -1773,12 +1747,6 @@ export default function App() {
                       <div style={fieldLabel}>Aasta</div>
                       <select value={inv.aasta || String(plan.period.year || new Date().getFullYear())} onChange={(e) => handleMuuInvChange(idx, "aasta", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
                         {(() => { const y = plan.period.year || new Date().getFullYear(); return [y, y + 1, y + 2, y + 3].map(v => <option key={v} value={String(v)}>{v}</option>); })()}
-                      </select>
-                    </div>
-                    <div style={{ width: 80 }}>
-                      <div style={fieldLabel}>Kvartal</div>
-                      <select value={inv.kvartal} onChange={(e) => handleMuuInvChange(idx, "kvartal", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
-                        <option value="I">I</option><option value="II">II</option><option value="III">III</option><option value="IV">IV</option>
                       </select>
                     </div>
                   </div>
@@ -2877,7 +2845,7 @@ export default function App() {
                       <td style={{ padding: "4px 8px" }}>{s.puudused || ""}</td>
                       <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{s.eeldatavKulu ? euroEE(s.eeldatavKulu) : ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.tegevus || ""}</td>
-                      <td style={{ padding: "4px 8px" }}>{s.tegevusAasta ? `${s.tegevusKvartal ? s.tegevusKvartal + " kv " : ""}${s.tegevusAasta}` : ""}</td>
+                      <td style={{ padding: "4px 8px" }}>{s.tegevusAasta || ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.investeering ? <>{s.invNimetus || "—"} · {euroEE(s.invMaksumus)}{(s.rahpiiri || []).length > 0 && <> ({s.rahpiiri.map(rp => `${rp.allikas}: ${euroEE(rp.summa)}`).join(", ")})</>}</> : ""}</td>
                     </tr>
                   ))}
@@ -2895,7 +2863,6 @@ export default function App() {
                   <tr style={{ textAlign: "left", fontSize: 12, borderBottom: "2px solid #000" }}>
                     <th style={{ padding: "4px 8px" }}>Nimetus</th>
                     <th style={{ padding: "4px 8px" }}>Aasta</th>
-                    <th style={{ padding: "4px 8px" }}>Kvartal</th>
                     <th style={{ padding: "4px 8px", textAlign: "right" }}>Maksumus</th>
                     <th style={{ padding: "4px 8px" }}>Rahastusplaan</th>
                   </tr>
@@ -2905,7 +2872,6 @@ export default function App() {
                     <tr key={inv.id} style={{ borderBottom: "1px solid #ccc" }}>
                       <td style={{ padding: "4px 8px" }}>{inv.nimetus || "—"}</td>
                       <td style={{ padding: "4px 8px" }}>{inv.aasta || ""}</td>
-                      <td style={{ padding: "4px 8px" }}>{inv.kvartal || ""}</td>
                       <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{euroEE(inv.maksumus)}</td>
                       <td style={{ padding: "4px 8px" }}>{(inv.rahpiiri || []).map(rp => `${rp.allikas}: ${euroEE(rp.summa)}`).join(", ") || "—"}</td>
                     </tr>
@@ -2994,7 +2960,7 @@ export default function App() {
                         <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{euroEE(ln.principalEUR)}</td>
                         <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{String(ln.annualRatePct).replace(".", ",")}%</td>
                         <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{ln.termMonths} kuud</td>
-                        <td style={{ padding: "4px 8px" }}>{ln.algusKvartal || "I"} kv {ln.algusAasta || ""}</td>
+                        <td style={{ padding: "4px 8px" }}>{ln.algusAasta || ""}</td>
                         <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{d ? euroEE(d.servicingMonthlyEUR) : "—"}</td>
                       </tr>
                     );
