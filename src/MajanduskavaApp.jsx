@@ -1204,10 +1204,10 @@ export default function App() {
   useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
   useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME" }), category: "", arvutus: "aastas", summaInput: 0 }] } })); }, [plan.budget.incomeRows.length]);
 
-  // Migreeri vanad tulukategooriad
+  // Migreeri vanad tulukategooriad + eemalda "Halduskulude ettemaks" (nüüd automaatne)
   useEffect(() => {
     let changed = false;
-    const updated = plan.budget.incomeRows.map(r => {
+    let updated = plan.budget.incomeRows.map(r => {
       if (r.category === "Majandamiskulude ettemaks") {
         changed = true;
         return { ...r, category: "Halduskulude ettemaks" };
@@ -1218,6 +1218,10 @@ export default function App() {
       }
       return r;
     });
+    if (updated.some(r => r.category === "Halduskulude ettemaks")) {
+      updated = updated.filter(r => r.category !== "Halduskulude ettemaks");
+      changed = true;
+    }
     if (changed) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: updated } }));
   }, []);
 
@@ -1854,6 +1858,30 @@ export default function App() {
                   <div style={sectionTitle}>{side === "COST" ? "Kulud" : "Tulud"}</div>
                 </div>
 
+                {side === "INCOME" && (() => {
+                  const haldusSum = plan.budget.costRows
+                    .filter(r => HALDUSTEENUSED.includes(r.category))
+                    .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+                  return (
+                    <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12, marginBottom: 12 }}>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
+                        <div style={{ width: 220 }}>
+                          <div style={fieldLabel}>Kategooria</div>
+                          <div style={{ ...inputBase, width: "100%", background: N.muted, color: N.text, fontWeight: 600 }}>
+                            Halduskulude ettemaks
+                          </div>
+                        </div>
+                        <div style={{ width: 140 }}>
+                          <div style={fieldLabel}>Maksumus €/periood</div>
+                          <div style={{ ...numStyle, background: N.muted, fontWeight: 600 }}>
+                            {fmtEur(haldusSum)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {(() => {
                     const renderRow = (r) => (
@@ -1873,7 +1901,7 @@ export default function App() {
                                   </optgroup>
                                 </>
                               ) : (
-                                TULU_KATEGOORIAD.map(k => <option key={k} value={k}>{k}</option>)
+                                TULU_KATEGOORIAD.filter(k => k !== "Halduskulude ettemaks").map(k => <option key={k} value={k}>{k}</option>)
                               )}
                             </select>
                           </div>
@@ -1973,7 +2001,14 @@ export default function App() {
                         const m2Aastas = koguPind > 0 ? (halAastas / koguPind).toFixed(2).replace(".", ",") : "\u2014";
                         return <>Kommunaalteenused perioodis: {euro(komSum)} · Haldusteenused aastas: {euro(halAastas)} → {m2Aastas} €/m² aastas · Kulud kokku perioodis: {euro(komSum + halSum)}</>;
                       })()
-                    : <>Tulud perioodis: {euro(derived.totals.incomePeriodEUR || 0)}</>
+                    : (() => {
+                        const ettemaks = plan.budget.costRows
+                          .filter(r => HALDUSTEENUSED.includes(r.category))
+                          .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+                        const muuTulu = plan.budget.incomeRows
+                          .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+                        return <>Tulud perioodis: {euro(ettemaks + muuTulu)}</>;
+                      })()
                   }
                 </div>
                 <div style={{ marginTop: 8 }}>
