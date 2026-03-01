@@ -1884,6 +1884,9 @@ export default function App() {
                                   <optgroup label="Haldusteenused">
                                     {HALDUSTEENUSED.map(k => <option key={k} value={k}>{k}</option>)}
                                   </optgroup>
+                                  <optgroup label="Laenumaksed">
+                                    {LAENUMAKSED.map(k => <option key={k} value={k}>{k}</option>)}
+                                  </optgroup>
                                 </>
                               ) : (
                                 TULU_KATEGOORIAD.filter(k => k !== "Halduskulude ettemaks").map(k => <option key={k} value={k}>{k}</option>)
@@ -1947,7 +1950,8 @@ export default function App() {
                     if (side === "COST") {
                       const kommunaalRead = rows.filter(r => KOMMUNAALTEENUSED.includes(r.category));
                       const haldusRead = rows.filter(r => HALDUSTEENUSED.includes(r.category));
-                      const maaramataRead = rows.filter(r => !r.category || (!KOMMUNAALTEENUSED.includes(r.category) && !HALDUSTEENUSED.includes(r.category)));
+                      const laenuRead = rows.filter(r => LAENUMAKSED.includes(r.category));
+                      const maaramataRead = rows.filter(r => !r.category || (!KOMMUNAALTEENUSED.includes(r.category) && !HALDUSTEENUSED.includes(r.category) && !LAENUMAKSED.includes(r.category)));
                       const groupLabel = { fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", padding: "8px 0 0", marginTop: 4 };
                       return (
                         <>
@@ -1961,6 +1965,12 @@ export default function App() {
                             <>
                               <div style={groupLabel}>Haldusteenused</div>
                               {haldusRead.map(renderRow)}
+                            </>
+                          )}
+                          {laenuRead.length > 0 && (
+                            <>
+                              <div style={groupLabel}>Laenumaksed</div>
+                              {laenuRead.map(renderRow)}
                             </>
                           )}
                           {maaramataRead.length > 0 && maaramataRead.map(renderRow)}
