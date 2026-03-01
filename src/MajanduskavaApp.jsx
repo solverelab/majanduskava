@@ -1607,7 +1607,7 @@ export default function App() {
                 <div key={rida.id} style={{ border: `1px solid ${N.rule}`, borderRadius: 8, padding: 12, marginBottom: 10 }}>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
                     <div style={{ flex: 1, minWidth: 160 }}>
-                      <div style={fieldLabel}>Ese</div>
+                      <div style={fieldLabel}>Nimetus</div>
                       <select value={rida.ese} onChange={(e) => uuendaSeisukord(rida.id, "ese", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
                         <option value="">Vali…</option>
                         {ESEMED.map(e => <option key={e} value={e}>{e}</option>)}
@@ -1668,14 +1668,12 @@ export default function App() {
                   {rida.investeering && (
                     <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${N.rule}` }}>
                       <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: N.text }}>Investeering</div>
-                      <div style={{ display: "flex", gap: 16, alignItems: "end" }}>
+                      <div style={{ display: "flex", gap: 16, alignItems: "baseline" }}>
                         <div style={{ flex: 1 }}>
-                          <div style={fieldLabel}>Nimetus</div>
-                          <input value={rida.invNimetus} onChange={(e) => uuendaSeisukord(rida.id, "invNimetus", e.target.value)} placeholder="nt Katuse remont" style={inputStyle} />
+                          <span style={{ fontSize: 14, color: N.text }}>{rida.invNimetus || "\u2014"}</span>
                         </div>
-                        <div style={{ width: 160 }}>
-                          <div style={fieldLabel}>Maksumus €</div>
-                          <EuroInput value={rida.invMaksumus} onChange={(v) => uuendaSeisukord(rida.id, "invMaksumus", v)} style={numStyle} />
+                        <div style={{ fontFamily: "monospace", fontSize: 14, fontWeight: 600 }}>
+                          {euroEE(rida.invMaksumus)}
                         </div>
                       </div>
 
