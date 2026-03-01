@@ -468,8 +468,8 @@ export default function App() {
 
     const kuludKokku = kommunaalKokku + haldusKokku;
 
-    // Tulud kokku (€/kuu)
-    const tuludKokku = Math.round(tulud
+    // Muu tulu kokku (€/kuu) — ainult incomeRows (ilma haldustasu ja laenumakseta)
+    const muudTuludKokku = Math.round(tulud
       .reduce((sum, t) => sum + (parseFloat(t.summaKuus) || 0), 0));
 
     // Planeeritud laenumaksed kokku (€/kuu)
@@ -479,6 +479,9 @@ export default function App() {
 
     const laenumaksedKokku = planeeritudLaenudKokku;
 
+    // Tulud kokku = haldustasu + laenumaksed + muu tulu
+    const tuludKokku = haldusKokku + laenumaksedKokku + muudTuludKokku;
+
     const valjaminekudKokku = kuludKokku + laenumaksedKokku;
     const vahe = tuludKokku - valjaminekudKokku;
     const vaheHaldus = tuludKokku - haldusKokku - laenumaksedKokku;
@@ -487,6 +490,7 @@ export default function App() {
       kommunaalKokku,
       haldusKokku,
       kuludKokku,
+      muudTuludKokku,
       tuludKokku,
       planeeritudLaenudKokku,
       laenumaksedKokku,
@@ -3004,29 +3008,41 @@ export default function App() {
           {/* Tulud */}
           <div className="print-section">
             <h2 className="print-section-title">Tulud</h2>
-            {plan.budget.incomeRows.length === 0
-              ? <div>Tulusid pole lisatud.</div>
-              : plan.budget.incomeRows.map(r => (
-                <div key={r.id} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #ccc" }}>
-                  <span>{r.category ? <span style={{ color: "#666" }}>{r.category} · </span> : ""}{r.name || "—"}</span>
-                  <span style={{ fontFamily: "monospace" }}>
-                    {euroEE(r.calc.params.amountEUR)}
-                  </span>
-                </div>
-              ))
-            }
             {(() => {
               const haldusSum = plan.budget.costRows
                 .filter(r => HALDUSTEENUSED.includes(r.category))
                 .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+              const laenuSum = plan.budget.costRows
+                .filter(r => LAENUMAKSED.includes(r.category))
+                .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
               const muudSum = plan.budget.incomeRows
                 .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-              const kokku = haldusSum + muudSum;
+              const kokku = haldusSum + laenuSum + muudSum;
               const mEq = derived.period.monthEq || 12;
               return (
-                <div style={{ marginTop: 8, fontWeight: 700, fontFamily: "monospace" }}>
-                  Kokku: {euroEE(kokku)} · {euroEE(kokku / mEq)}/kuu
-                </div>
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #ccc" }}>
+                    <span>Haldustasu</span>
+                    <span style={{ fontFamily: "monospace" }}>{euroEE(haldusSum)}</span>
+                  </div>
+                  {laenuSum > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #ccc" }}>
+                      <span>Laenumakse</span>
+                      <span style={{ fontFamily: "monospace" }}>{euroEE(laenuSum)}</span>
+                    </div>
+                  )}
+                  {plan.budget.incomeRows.map(r => (
+                    <div key={r.id} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #ccc" }}>
+                      <span>{r.category ? <span style={{ color: "#666" }}>{r.category} · </span> : ""}{r.name || "—"}</span>
+                      <span style={{ fontFamily: "monospace" }}>
+                        {euroEE(r.calc.params.amountEUR)}
+                      </span>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: 8, fontWeight: 700, fontFamily: "monospace" }}>
+                    Kokku: {euroEE(kokku)} · {euroEE(kokku / mEq)}/kuu
+                  </div>
+                </>
               );
             })()}
           </div>
