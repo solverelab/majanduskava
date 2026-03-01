@@ -1,6 +1,6 @@
 # PROJECT_STATUS.md
 
-Projekti seis: 2026-02-28
+Projekti seis: 2026-03-01
 
 ---
 
@@ -88,78 +88,67 @@ Projekti seis: 2026-02-28
 - Laadimisindikaator ("Laadin korterite andmeid...") ja veateade
 - Inline styles N paletiga (sama muster nagu TracePanel.jsx)
 
-### UI (src/MajanduskavaApp.jsx, ~2900 rida)
+### UI (src/MajanduskavaApp.jsx, ~3000 rida)
 
-#### DateInput komponent (inline)
+#### Input-komponendid (inline):
 
-- PP.KK.AAAA tekstisisend → ISO (YYYY-MM-DD) formaat
-- Automaatne punkti-eraldaja: numbrite sisestamisel lisab automaatselt punktid (15062027 → 15.06.2027)
-- inputMode="numeric" mobiilile numpad'i kuvamiseks
-- select-all fookuse saamisel mugavaks ülekirjutamiseks
-- onBlur valideerimine ja fallback eelmisele väärtusele
-- Kasutusel: perioodi kuupäevad (Tab 0)
+- **NumberInput** — Eesti komaga numbriline sisend, näitab tühja välja kui 0, väärtus commitakse blur-il
+- **EuroInput** — täisarv tuhandete eraldajaga (`1 234`), blur-il commit
+- **DateInput** — PP.KK.AAAA tekstisisend → ISO (YYYY-MM-DD), automaatne punkti-eraldaja, select-all fookuses
+- Kõigil kolmel: **Enter-klahv** kutsub `blur()` → commitab väärtuse
 
 #### Kategooriasüsteem:
 
-- **Kommunaalteenused** (ühikupõhine sisestus: kogus + ühik + maksumus €/periood):
-  - Soojus, Vesi ja kanalisatsioon, Elekter, Kütus
-- **Haldusteenused** (€/aasta sisestus):
-  - Haldus, Raamatupidamine, Koristus, Kindlustus, Hooldus, Prügivedu, Laenumakse, Muu
-- **Tulukategooriad**:
-  - Halduskulude ettemaks, Renditulu, Muu tulu
-- Nimetusväli ainult "Muu" / "Muu tulu" kategooriate puhul
+```js
+KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus", "Muu kommunaalteenus"]
+HALDUSTEENUSED    = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Prügivedu", "Muu haldusteenus"]
+LAENUMAKSED       = ["Laenumakse"]
+```
+
+- Tab 2 kulude dropdown: 3 optgroup'i (Kommunaalteenused, Haldusteenused, Laenumaksed)
+- Tab 3 tulud: fikseeritud struktuur, dropdown puudub — Haldustasu ja Laenumakse readonly, Muu tulu muudetav
 
 #### 7 tabi:
 
 | Tab | Nimetus | Sisu |
 |-----|---------|------|
 | 0 | Periood & korterid | KÜ andmed (nimi, registrikood, **aadress autocomplete + EHR**), perioodi DateInput (PP.KK.AAAA), majandusaasta kiirvalik, korterite tabel (Nr, m²) koos kokkuvõttega |
-| 1 | Esemed ja investeeringud | Kaasomandi esemed (seisukord, prioriteet, eeldatav kulu, tegevus), seisukord→investeering link (bidirectional sync eeldatavKulu ↔ invMaksumus), muud investeeringud (nimi, maksumus), rahastusplaan (allikas + summa) |
-| 2 | Kulud | Kommunaalteenused (kogus + ühik + maksumus €/periood), haldusteenused (€/aasta), inforibana viitega Tab 4-le |
-| 3 | Tulud | Kategooriad (Halduskulude ettemaks, Renditulu, Muu tulu), €/aasta sisestus, inforibana viitega Tab 4-le |
-| 4 | Fondid & laen | Remondifond (saldo + määr, arvutuslik kokkuvõte, reservkapitali nõutav miinimum arvutuskäiguga), planeeritud laenud (liigid, aasta algus, indikatiivsete summade märge) |
+| 1 | Esemed ja investeeringud | Kaasomandi esemed (seisukord, prioriteet, eeldatav kulu, tegevus), seisukord→investeering link (bidirectional sync eeldatavKulu ↔ invMaksumus), muud investeeringud (nimetus, maksumus — readonly), rahastusplaan (Remondifond/Laen/Toetus/Sihtmakse + summa) |
+| 2 | Kulud | 3 visuaalset gruppi (Kommunaalteenused, Haldusteenused, Laenumaksed), `+ Lisa rida` nupp, kokkuvõte (kommunaal/haldus/laenu/kokku) |
+| 3 | Tulud | Haldustasu (readonly, arvutatud kuludest), Laenumakse (readonly, kui > 0), Muu tulu read (muudetav nimetus + summa), `+ Lisa tulu` nupp, kokkuvõte (Haldustasu €/m², Laenumakse €/m², Muu tulu, Tulud kokku) |
+| 4 | Fondid & laen | Remondifond (saldo + määr €/m² aastas, arvutuskäik), reservkapitali card, planeeritud laenud, koondribana (Haldusteenused &#124; Kommunaalteenused &#124; Kokku) |
 | 5 | Korterite maksed | Kuumaksete lahtikirjutus per korter (kommunaal, haldus, remondifond, laenumakse), laiendatavad detailread valemitega |
 | 6 | Kontroll & kokkuvõte | Solvere findings + risk badge, "Lahenda kõik" nupp, JSON eksport/import, printimise kokkuvõte, tehniline info (TracePanel) |
 
 #### Olulised UI-funktsioonid:
 
-- **Aadressi autocomplete** — AddressSearch komponent Tab 0-s, In-ADS → EHR ahel laadib korterite m² andmed automaatselt, klaviatuurinavigatsioon
-- **Korterite tabel** — lihtsustatud: ainult Nr ja m² veerud + kustuta nupp, kokkuvõtterida "Kortereid: N | Kogupind: X m²"
-- **Koondribana** — nähtav alates Tab 2, kahel real: Haldus | Kommunaal (tuhmim) || Tulud | Ülejääk/Puudujääk (roheline/punane). Ülejääk = Tulud − Haldus (kommunaal on läbivool, ei mõjuta)
-- **Koondvaade kaardid** (Tab 6) — eraldi halduskulud ja kommunaalkulud (läbivool, opacity 0.7), tulud, laenumaksed, vahe (haldus) + aastane kokkuvõte
-- **Automaatne laenurida rahastusplaanist** — "Laen" allika valimisel investeeringu rahastusplaanis tekib automaatselt laenurida Fondid & laen tabi
-- **Remondifondi arvutus** — saldo alguses + laekumine − investeeringud = saldo lõpus, negatiivse saldo hoiatus
-- **Reservkapital** — nõutav miinimum = (haldus + kommunaal) aastas / 12 (likviidsuspuhver kõigile arvetele), arvutuskäik nähtav
-- **Esemete seisukord ↔ investeering** — bidirectional sync eeldatavKulu ↔ invMaksumus
-- **Korterite kuumaksed** — per korter kommunaal/haldus/remondifond/laenumakse jaotus, laiendatavad valemid
-- **DateInput** — PP.KK.AAAA formaat automaatse punkti-eraldajaga, select-all fookuses
-- **NumberInput** (Eesti koma, näitab tühja välja kui 0) ja **EuroInput** (täisarv, tuhandete eraldaja)
-- **Inforibana** — Tab 2 ja 3 ülaosas viitega "Fondid ja laenud" tabile
-- **JSON eksport/import** dry-run valideerimisega, migratsioonidega (sh "Majandamiskulude ettemaks" → "Halduskulude ettemaks", "Vahendustasu" → "Muu tulu")
-- **Prindi kokkuvõte** — täislehekülje layout (lihtsustatud korterite tabel Nr + m²)
+- **Aadressi autocomplete** — AddressSearch komponent Tab 0-s, In-ADS → EHR ahel laadib korterite m² andmed automaatselt
+- **Korterite tabel** — ainult Nr ja m² veerud + kustuta nupp, kokkuvõtterida "Kortereid: N | Kogupind: X m²"
+- **Koondribana** — ainult Tab 4-l nähtav, 1 rida: Haldusteenused | Kommunaalteenused | Kokku (arvutatud otse sisenditest)
+- **Remondifond** — saldo alguses + laekumine (määr €/m² aastas) − investeeringud = saldo lõpus, inline inputs
+- **Reservkapital** — nõutav miinimum = (haldus + kommunaal) aastas / 12 (likviidsuspuhver)
+- **Automaatne laenurida** — "Laen" allika valimisel investeeringu rahastusplaanis tekib automaatselt laenurida
+- **Korterite kuumaksed** — per korter kommunaal/haldus/remondifond/laenumakse jaotus
+- **JSON eksport/import** — dry-run valideerimine, migratsioonid tagasiühilduvuseks
 
-#### Terminoloogia ja migratsioonid:
+#### Migratsioonid:
 
-- "Majandamiskulude ettemaks" → **"Halduskulude ettemaks"** (selgem terminoloogia)
-- "Vahendustasu" **eemaldatud** eraldi kategooriana (seadusega piiratud, vajadusel kasutab "Muu tulu")
-- "Prügivedu" liigutatud kommunaalteenustest **haldusteenuste** alla
-- Arvutusviisi dropdown eemaldatud — ainult €/aasta sisestus haldus- ja tuluridadel
-- **Olemasolev laenumakse on halduskulu** — kategooria "Laenumakse" (€/aasta nagu teised haldusteenused). Eraldi kalkulaatorit ei vaja — summa on KÜ-l teada.
-- **Olemasolevad laenud sektsioon eemaldatud** Tab 4-st (koos state, arvutusfunktsioonide, import/export käsitlusega)
-- **Koondribana Ülejääk/Puudujääk** = Tulud − Haldus (kommunaal on läbivool, ei mõjuta)
-- **Reservkapitali nõutav miinimum** = (Haldus + Kommunaal) aastas / 12 (likviidsuspuhver kõigile arvetele)
-- **Planeeritud laenude reserv** arvutatakse engine'is eraldi (Laenumakse reserv %)
-- **Planeeritud laenu algus** — ainult aasta (mitte kvartal), sünkroonis investeeringu tegevusajaga
-- **Planeeritud laenude summad indikatiivsed** — sõltuvad laenutingimustest
-- **Koondribana** peidetud Tab 0-1, nähtav alates Tab 2
-- **Vaikimisi kategooria** — uus rida algab "Vali..." (tühi), mitte eelvalitud kategooriaga
-- JSON import migratsioon tagab tagasiühilduvuse vanade failidega
+**costRows import:**
+- `"Muu"` → `"Muu haldusteenus"`
+- `remondifond.maarKuusM2` → `maarAastasM2` (× 12)
+- Rahastusplaan: `"Erakorraline makse"` → `"Sihtmakse"`, `"Reservkapital"` → `"Remondifond"`
+
+**incomeRows useEffect:**
+- `"Halduskulude ettemaks"`, `"Majandamiskulude ettemaks"`, `"Vahendustasu"` → eemaldatakse (return null)
+- `"Renditulu"` → `"Muu tulu"` + nimetus "Renditulu"
+- Muud tundmatud kategooriad → `"Muu tulu"`
+- `.filter(Boolean)` puhastab
 
 ---
 
 ## 2. Mis on pooleli
 
-Hetkel ei ole pooleliolevaid muudatusi — kõik committitud.
+Hetkel ei ole pooleliolevaid muudatusi — kõik committitud ja deployitud.
 
 ### Tegemata / tulevikus:
 
@@ -167,15 +156,11 @@ Hetkel ei ole pooleliolevaid muudatusi — kõik committitud.
 |----------|-----------|------------|
 | **YAML poliitika parsimine** | `policyLoader.ts` kasutab hardcoded remedies, YAML fail defineerib need aga parsimist ei toimu | Keskmine |
 | **CONSERVATIVE/LOAN_FRIENDLY eristus** | Praegu on 3 preset'i remedied identsed; YAML-is defineeritud limits/scoring erinevused ei rakendu | Keskmine |
-| **SHIFT_INVESTMENT action** | `policyRuntime.js` rida 115-122: confidence "LOW", `patch: []` (tühi), vajab käsitsi investeeringu valikut | Madal |
+| **SHIFT_INVESTMENT action** | `policyRuntime.js`: confidence "LOW", `patch: []` (tühi), vajab käsitsi investeeringu valikut | Madal |
 | **EXTEND_LOAN_TERM action** | Heuristiline arvutus (lineaarne koormuse vähendamine), mitte täpne annuiteet-ümberarvutus | Madal |
 | **computePlan.js testid** | Engine'il puuduvad unit testid (annuiteet, rahavood, fondid) | Keskmine |
-| **applyPatch unit testid** | Puuduvad eraldi testid veakoodidele (KEY_NOT_FOUND, INDEX_OOB jne) | Madal |
 | **UI testid** | Puuduvad täielikult — pole React Testing Library ega Playwright teste | Madal |
-| **Laenu graafik UI-s** | computePlan arvutab laenugraafiku, aga UI ei kuva detailselt igakuiseid makseid | Madal |
-| **Undo/redo** | Immutable state võimaldaks, aga pole implementeeritud | Madal |
-| **Validatsioonihoiatused inline** | computePlan genereerib controls.issues, aga neid näidatakse ainult Solvere findings'ina, mitte vormivigadena | Madal |
-| **Panga laenunõuete valideerimine** | Mõned pangad nõuavad remondifondi miinimumi €/m² kuus (sh laenumakse + reserv). Informatiivne valideerija, ei seo rakendust ühe panga reeglitega | Madal |
+| **Panga laenunõuete valideerimine** | Informatiivne valideerija remondifondi miinimumi kontrolliks | Madal |
 
 ---
 
@@ -185,64 +170,14 @@ Hetkel ei ole pooleliolevaid muudatusi — kõik committitud.
 
 ```
 vitest v4.0.18
- ✓ src/policy/__tests__/determinism.test.ts        (1 test)    8ms
- ✓ src/policy/__tests__/policyRuntime.test.js       (12 tests)  39ms
- ✓ src/policy/__tests__/majanduskava.e2e.test.ts    (5 tests)   44ms
- ✓ src/policy/__tests__/autoResolve.test.ts         (15 tests)  168ms
+ ✓ src/policy/__tests__/determinism.test.ts        (1 test)
+ ✓ src/policy/__tests__/policyRuntime.test.js       (12 tests)
+ ✓ src/policy/__tests__/majanduskava.e2e.test.ts    (5 tests)
+ ✓ src/policy/__tests__/autoResolve.test.ts         (15 tests)
 
  Test Files  4 passed (4)
       Tests  33 passed (33)
-   Duration  1.15s
 ```
-
-### Testide katvus detailne:
-
-#### autoResolve.test.ts (15 testi)
-
-- seenKey canonicalization (patch key-order sõltumatus)
-- rankVector-põhine selection (primary: riskScoreDelta, secondary: actionCode, tertiary: candidateId)
-- CandidateEligibilityReason (ELIGIBLE, FILTERED_BY_SEEN, NOT_APPLICABLE)
-- stateSignature NO_PROGRESS tuvastamine
-- RunReportV1 consistency (stepsTaken > 0 ja === 0)
-- Preset'i mõju report'ile
-- Idempotentsus (re-run → 0 sammu)
-- Determinism (kaks identset jooksu → identne tulemus)
-- schemaVersion contract (evaluation/v1, trace/v1, stepTrace/v1, runReport/v1)
-- Golden-trace snapshot (inline GOLDEN objekt)
-- JSON round-trip serializable
-
-#### policyRuntime.test.js (12 testi)
-
-- Policy YAML laadimine ja parseerimine
-- Finding'ute genereerimine: RF_NEG, RES_NEG, RESERVE_LOW
-- LOAN_WARN, LOAN_ERROR künnised
-- OWNERS_WARN, OWNERS_ERROR künnised
-- Riskiskoori arvutamine (score, level, band)
-- Preset'ide laadimine (BALANCED, CONSERVATIVE, LOAN_FRIENDLY)
-- `applyPatch()` operatsioonid (set, increment, array indices)
-
-#### majanduskava.e2e.test.ts (5 testi)
-
-- RF_NEG finding → INCREASE_REPAIR_FUND_RATE_SMALL action (+0.05 patch)
-- RESERVE_LOW → SET_RESERVE_TO_REQUIRED (loeb metrics.funds.reserveRequiredEUR)
-- Risk shape ja presets (BALANCED vs CONSERVATIVE riskiskoorid)
-- Action impact arvutused (riskScoreDelta)
-- Täielik pipeline: plan → host.run → applyActionAndRun → uus evaluation
-
-#### determinism.test.ts (1 test)
-
-- Sama sisend → identne väljund (ei sisalda timestamp'e, random väärtusi)
-
-### Testidega katmata:
-
-- `applyPatch.ts` veakoodid (unit testid puuduvad)
-- `canonicalizePatch()` eraldi testid
-- `computePlan.js` engine arvutused (annuiteet, periood, fondid)
-- `evaluateRisk.ts` kaalud ja band'id
-- `ehrService.js` API funktsioonid (mocked testid puuduvad)
-- `AddressSearch.jsx` komponendi testid
-- UI komponentide testid üldiselt
-- JSON eksport/import migratsioonid
 
 ---
 
@@ -250,13 +185,13 @@ vitest v4.0.18
 
 ```
 packages/solvere-core/src/
-  index.ts                    — Public API eksport (~30 tüüpi ja funktsiooni)
-  solvereCoreV1.ts            — Tüübidefinitsioonid (Action, Finding, Evaluation, Risk jne)
+  index.ts                    — Public API eksport
+  solvereCoreV1.ts            — Tüübidefinitsioonid
   moduleHost.ts               — Orkestraator, state signature, contract assertions
-  autoResolve.ts              — Automaatne lahendusloop, candidate selection, loop guard
+  autoResolve.ts              — Automaatne lahendusloop, candidate selection
   buildActionCandidates.ts    — Findings→candidates flat list
   computeActionImpact.ts      — Action simulatsioon, riskScoreDelta
-  applyPatch.ts               — Immutable JSON patch engine (set/increment/decrement)
+  applyPatch.ts               — Immutable JSON patch engine
   evaluateRisk.ts             — Riskiskoor 0–100, band A/B/C
   registry.ts                 — Finding codes, action codes, preset codes
 
@@ -264,13 +199,13 @@ solvere-modules/majanduskava/src/
   index.ts                    — Module eksport
   manifest.ts                 — Module ID, versioon, skeemid
   types.ts                    — PlanState, PlanMetrics tüübid
-  runtime.ts                  — Runtime factory (compute→evaluate→resolve→apply)
-  evaluatePolicy.ts           — Finding'ute genereerimine (RF_NEG, RES_NEG, RESERVE_LOW)
-  compileRemedies.ts          — Remedy→Action kompileerimine (4 strateegiat)
+  runtime.ts                  — Runtime factory
+  evaluatePolicy.ts           — Finding'ute genereerimine
+  compileRemedies.ts          — Remedy→Action kompileerimine
   policyLoader.ts             — 3 preset'i hardcoded remedies'ega
 
 src/
-  MajanduskavaApp.jsx         — Monoliitne React UI (~2900 rida, 7 tabi)
+  MajanduskavaApp.jsx         — Monoliitne React UI (~3000 rida, 7 tabi)
   App.jsx                     — Root wrapper
   main.jsx                    — Entry point
   engine/computePlan.js       — Puhas finantsmootor (~500 rida)
@@ -281,7 +216,7 @@ src/
   policy/__tests__/           — 4 testifaili, 33 testi
   services/ehrService.js      — In-ADS + EHR API liides (112 rida)
   components/TracePanel.jsx   — Solvere trace visualiseerimine
-  components/AddressSearch.jsx — Aadressi autocomplete + EHR korterite laadimine (~227 rida)
+  components/AddressSearch.jsx — Aadressi autocomplete + EHR (~227 rida)
 ```
 
 ---
@@ -289,37 +224,23 @@ src/
 ## 5. Commit'ide ajalugu (viimased)
 
 ```
-89f6a9c laenu algus: ainult aasta; debug tekstid eemaldatud; indikatiivsete summade märge
-1bd4a0e reservkapital: miinimum = (haldus + kommunaal) aastas / 12
-91b0bf1 koondribana: kokku eemaldatud, ülejääk = tulud - haldus
-dbfddee vaikimisi kategooria Vali... kuludes ja tuludes
-a1943e5 laenu periood: aastad + kuud dropdownid
-a342abe fix: tähtaeg kuudes, mitte kuud
-7d65d1f inforibana: laenumaksed eemaldatud tekstist
-89c06b4 cleanup: surnud kood ja olemasolevate laenude jäägid
-f1107a5 koondribana: 2 rida, peidetud tab 0-1
-c48111c eemalda olemasolevad laenud sektsioon tab 4-st
-20db70b laenumakse haldusteenuste alla kategooriana
-a1a51a0 docs: uuenda PROJECT_STATUS.md praeguse seisuga
-5e048bf feat: koondribana kahel real — kulud kokku + ülejääk/puudujääk
-fdc03f8 simplify: nimetusväli ainult Muu/Muu tulu kategooriale
-d204c36 remove: väljaminekute koondplokk kulud tabist
-a9fef11 fix: koondribana €/aasta + reservkapital arvutatakse UI-s (costPeriodEUR / 12)
-ef15957 refactor: Prügivedu kommunaalist haldusteenuste alla
-8172763 refactor: eemalda arvutuse dropdown, ainult €/aasta haldus- ja tuluridadel
-69d5263 feat: reservkapitali arvutuskäik nähtavaks (kulud × 1/12)
-053b1c7 feat: kulud/tulud tabidesse inforibana + väljaminekute koondplokk
-746b042 feat: koondribana eraldab haldus ja kommunaal (kommunaal tuhmim, vahe haldus)
-4d06350 fix: olemasoleva laenu kuupäevad kasutavad DateInput (PP.KK.AAAA mask)
-ceb3796 feat: bidirectional sync eeldatavKulu ↔ invMaksumus
-666ab78 fix: kopiiriondvaade round-after-sum eliminates 1€ rounding drift
-2aecdae fix: eeldatavKulu syncs to invMaksumus when investeering active
-cb268a7 UX: NumberInput/EuroInput show empty instead of 0
-8d54575 refactor: kommunaalkulude sisestus — kogus + ühik + maksumus €/periood
-09ecaf4 docs: uuenda PROJECT_STATUS.md praeguse seisuga
-88a5fee remove: Vahendustasu tulukategooriast (seadusega piiratud, kasutab Muu tulu)
-ca9f12c refactor: Majandamiskulude ettemaks → Halduskulude ettemaks (selgem terminoloogia)
-9542b3b feat: koondvaade kaardid eraldavad haldus vs kommunaal
-9afa5ee fix: DateInput selects all on focus for clean overwrite
-643a76c feat: DateInput auto-dot mask (PP.KK.AAAA)
+da09d9b Enter-klahv commitab väärtuse NumberInput/EuroInput/DateInput komponentides
+854b36f migratsioon: vanad tulukategooriad → Muu tulu
+1686bfd addRow INCOME: Muu tulu vaikimisi, tühi summa
+6a10fd9 Tab 3: fikseeritud struktuur — Haldustasu, Laenumakse, Muu tulu
+af230ec Tab 2: kokkuvõte pärast Lisa rida nuppu
+5feaf3a nimed: Halduskulude ettemaks → Haldustasu, migratsioon
+878ca90 Tab 3: tulude kokkuvõte Haldustasu + Laenumakse €/m²
+7e5212c Tab 3: Haldustasu ja Laenumakse readonly read
+bbb9d0c Tab 2: kulude kokkuvõte kolme grupiga
+207607f Tab 2: laenumaksed eraldi grupp
+e9c78d7 kategooriad: Laenumakse eraldi grupp, Halduskulude ettemaks eemaldatud
+5c7b344 Investeeringu nimetus/maksumus readonly + Ese → Nimetus
+c67e274 remondifondi card: inline inputs, arvutuskäik, uus paigutus
+5f61780 remondifond maarKuusM2→maarAastasM2
+ed057ee fix koondribana: calculate directly from inputs
+816d02b unify field labels to Maksumus €/periood, detailed cost summary
+ea56653 kulude visuaalne grupeerimine: kommunaal / haldus
+5cac01d rename Muu→Muu haldusteenus, add Muu kommunaalteenus
+a2278e8 handoff v10: äriloogika #21-26, panga valideerimine tulevikku
 ```

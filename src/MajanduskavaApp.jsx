@@ -1637,13 +1637,13 @@ export default function App() {
                       <div style={fieldLabel}>Puudused</div>
                       <input type="text" placeholder={PUUDUSED_PLACEHOLDERS[rida.ese] || "Kirjelda puudused"} value={rida.puudused} onChange={(e) => uuendaSeisukord(rida.id, "puudused", e.target.value)} style={inputStyle} />
                     </div>
-                    <div style={{ width: 160 }}>
-                      <div style={fieldLabel}>Eeldatav kulu €</div>
-                      <EuroInput value={rida.eeldatavKulu} onChange={(v) => uuendaSeisukord(rida.id, "eeldatavKulu", v)} style={numStyle} />
-                    </div>
                     <div style={{ flex: 2, minWidth: 180 }}>
                       <div style={fieldLabel}>Planeeritud tegevus</div>
                       <input type="text" placeholder={TEGEVUS_PLACEHOLDERS[rida.ese] || "Kirjelda planeeritud tegevus"} value={rida.tegevus} onChange={(e) => uuendaSeisukord(rida.id, "tegevus", e.target.value)} style={inputStyle} />
+                    </div>
+                    <div style={{ width: 160 }}>
+                      <div style={fieldLabel}>Eeldatav kulu €</div>
+                      <EuroInput value={rida.eeldatavKulu} onChange={(v) => uuendaSeisukord(rida.id, "eeldatavKulu", v)} style={numStyle} />
                     </div>
                     <div style={{ width: 90 }}>
                       <div style={fieldLabel}>Aasta</div>
