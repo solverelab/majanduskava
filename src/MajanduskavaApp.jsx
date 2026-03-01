@@ -1433,6 +1433,8 @@ export default function App() {
                 <span style={kvLabel}>Haldus</span> <span style={kvNum}>{euro(haldusA)}</span>
                 <span style={kvSep}>|</span>
                 <span style={{ ...kvLabel, opacity: 0.6 }}>Kommunaal</span> <span style={{ ...kvNum, opacity: 0.6 }}>{euro(kommunaalA)}</span>
+                <span style={kvSep}>|</span>
+                <span style={kvLabel}>Kokku</span> <span style={kvNum}>{euro(haldusA + kommunaalA)}</span>
               </div>
               <div style={rowStyle}>
                 <span style={kvLabel}>Tulud</span> <span style={kvNum}>{euro(tuludA)}</span>
