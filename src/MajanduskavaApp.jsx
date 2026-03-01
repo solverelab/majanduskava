@@ -1827,211 +1827,231 @@ export default function App() {
           </div>
         )}
 
-        {(sec === 2 || sec === 3) && (() => {
-          const side = sec === 2 ? "COST" : "INCOME";
-          const rows = side === "COST" ? plan.budget.costRows : plan.budget.incomeRows;
+        {sec === 2 && (() => {
+          const rows = plan.budget.costRows;
+          const renderRow = (r) => (
+            <div key={r.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ width: 180 }}>
+                  <div style={fieldLabel}>Kategooria</div>
+                  <select value={r.category || ""} onChange={(e) => handleKuluKategooriaChange(r.id, e.target.value)} style={{ ...selectStyle, width: "100%" }}>
+                    <option value="" disabled>Vali...</option>
+                    <optgroup label="Kommunaalteenused">
+                      {KOMMUNAALTEENUSED.map(k => <option key={k} value={k}>{k}</option>)}
+                    </optgroup>
+                    <optgroup label="Haldusteenused">
+                      {HALDUSTEENUSED.map(k => <option key={k} value={k}>{k}</option>)}
+                    </optgroup>
+                    <optgroup label="Laenumaksed">
+                      {LAENUMAKSED.map(k => <option key={k} value={k}>{k}</option>)}
+                    </optgroup>
+                  </select>
+                </div>
+                {(r.category === "Muu haldusteenus" || r.category === "Muu kommunaalteenus") && (
+                  <div style={{ flex: 2 }}>
+                    <div style={fieldLabel}>Nimetus</div>
+                    <input value={r.name} onChange={(e) => updateRow("COST", r.id, { name: e.target.value })} placeholder={KULU_NIMETUS_PLACEHOLDERS[r.category] || "Kirjelda kulu"} style={inputStyle} />
+                  </div>
+                )}
+
+                {KOMMUNAALTEENUSED.includes(r.category) && r.category !== "Muu kommunaalteenus" ? (
+                  <>
+                    <div style={{ width: 100 }}>
+                      <div style={fieldLabel}>Kogus</div>
+                      <NumberInput value={r.kogus} onChange={(v) => updateRow("COST", r.id, { kogus: v })} placeholder="0" style={numStyle} />
+                    </div>
+                    <div style={{ width: 100 }}>
+                      <div style={fieldLabel}>Ühik</div>
+                      <select value={r.uhik || ""} onChange={(e) => updateRow("COST", r.id, { uhik: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
+                        {(KOMMUNAAL_UHIKUD[r.category] || []).map(u => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ width: 140 }}>
+                      <div style={fieldLabel}>Maksumus €/periood</div>
+                      <EuroInput value={r.summaInput || 0} onChange={(v) => updateRow("COST", r.id, { summaInput: v })} style={numStyle} />
+                    </div>
+                  </>
+                ) : r.category === "Muu kommunaalteenus" ? (
+                  <>
+                    <div style={{ width: 140 }}>
+                      <div style={fieldLabel}>€/periood</div>
+                      <EuroInput value={r.summaInput || 0} onChange={(v) => updateRow("COST", r.id, { summaInput: v })} style={numStyle} />
+                    </div>
+                  </>
+                ) : r.category ? (
+                  <>
+                    <div style={{ width: 140 }}>
+                      <div style={fieldLabel}>Maksumus €/periood</div>
+                      <EuroInput value={r.summaInput} onChange={(v) => updateRow("COST", r.id, { summaInput: v, arvutus: "aastas" })} style={numStyle} />
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ width: 140 }}>
+                    <div style={fieldLabel}>Maksumus €/periood</div>
+                    <EuroInput value={r.summaInput || 0} onChange={(v) => updateRow("COST", r.id, { summaInput: v, arvutus: "perioodis" })} style={numStyle} />
+                  </div>
+                )}
+
+                <div style={{ width: 120, alignSelf: "end" }}>
+                  <button style={btnRemove} onClick={() => removeRow("COST", r.id)}>Eemalda</button>
+                </div>
+              </div>
+            </div>
+          );
+
+          const kommunaalRead = rows.filter(r => KOMMUNAALTEENUSED.includes(r.category));
+          const haldusRead = rows.filter(r => HALDUSTEENUSED.includes(r.category));
+          const laenuRead = rows.filter(r => LAENUMAKSED.includes(r.category));
+          const maaramataRead = rows.filter(r => !r.category || (!KOMMUNAALTEENUSED.includes(r.category) && !HALDUSTEENUSED.includes(r.category) && !LAENUMAKSED.includes(r.category)));
+          const groupLabel = { fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", padding: "8px 0 0", marginTop: 4 };
+
           return (
             <div style={tabStack}>
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(sec)}</div>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(2)}</div>
               <div style={card}>
                 <div style={{ marginBottom: 12 }}>
-                  <div style={sectionTitle}>{side === "COST" ? "Kulud" : "Tulud"}</div>
+                  <div style={sectionTitle}>Kulud</div>
                 </div>
 
-                {side === "INCOME" && (() => {
-                  const haldusSum = plan.budget.costRows
-                    .filter(r => HALDUSTEENUSED.includes(r.category))
-                    .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                  const laenuSum = plan.budget.costRows
-                    .filter(r => LAENUMAKSED.includes(r.category))
-                    .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                  const readonlyRow = (label, value) => (
-                    <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
-                        <div style={{ width: 220 }}>
-                          <div style={fieldLabel}>Kategooria</div>
-                          <div style={{ ...inputBase, width: "100%", background: N.muted, color: N.text, fontWeight: 600 }}>
-                            {label}
-                          </div>
-                        </div>
-                        <div style={{ width: 140 }}>
-                          <div style={fieldLabel}>Maksumus €/periood</div>
-                          <div style={{ ...numStyle, background: N.muted, fontWeight: 600 }}>
-                            {fmtEur(value)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                  return (
-                    <>
-                      {readonlyRow("Haldustasu", haldusSum)}
-                      {laenuSum > 0 && readonlyRow("Laenumakse", laenuSum)}
-                    </>
-                  );
-                })()}
-
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {(() => {
-                    const renderRow = (r) => (
-                      <div key={r.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
-                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                          <div style={{ width: side === "INCOME" ? 220 : 180 }}>
-                            <div style={fieldLabel}>Kategooria</div>
-                            <select value={r.category || ""} onChange={(e) => side === "COST" ? handleKuluKategooriaChange(r.id, e.target.value) : updateRow(side, r.id, { category: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
-                              <option value="" disabled>Vali...</option>
-                              {side === "COST" ? (
-                                <>
-                                  <optgroup label="Kommunaalteenused">
-                                    {KOMMUNAALTEENUSED.map(k => <option key={k} value={k}>{k}</option>)}
-                                  </optgroup>
-                                  <optgroup label="Haldusteenused">
-                                    {HALDUSTEENUSED.map(k => <option key={k} value={k}>{k}</option>)}
-                                  </optgroup>
-                                  <optgroup label="Laenumaksed">
-                                    {LAENUMAKSED.map(k => <option key={k} value={k}>{k}</option>)}
-                                  </optgroup>
-                                </>
-                              ) : (
-                                TULU_KATEGOORIAD.map(k => <option key={k} value={k}>{k}</option>)
-                              )}
-                            </select>
-                          </div>
-                          {(r.category === "Muu haldusteenus" || r.category === "Muu kommunaalteenus" || r.category === "Muu tulu") && (
-                            <div style={{ flex: 2 }}>
-                              <div style={fieldLabel}>Nimetus</div>
-                              <input value={r.name} onChange={(e) => updateRow(side, r.id, { name: e.target.value })} placeholder={side === "COST" ? (KULU_NIMETUS_PLACEHOLDERS[r.category] || "Kirjelda kulu") : (TULU_NIMETUS_PLACEHOLDERS[r.category] || "Kirjelda tulu")} style={inputStyle} />
-                            </div>
-                          )}
-
-                          {side === "COST" && KOMMUNAALTEENUSED.includes(r.category) && r.category !== "Muu kommunaalteenus" ? (
-                            <>
-                              <div style={{ width: 100 }}>
-                                <div style={fieldLabel}>Kogus</div>
-                                <NumberInput value={r.kogus} onChange={(v) => updateRow(side, r.id, { kogus: v })} placeholder="0" style={numStyle} />
-                              </div>
-                              <div style={{ width: 100 }}>
-                                <div style={fieldLabel}>Ühik</div>
-                                <select value={r.uhik || ""} onChange={(e) => updateRow(side, r.id, { uhik: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
-                                  {(KOMMUNAAL_UHIKUD[r.category] || []).map(u => (
-                                    <option key={u} value={u}>{u}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div style={{ width: 140 }}>
-                                <div style={fieldLabel}>Maksumus €/periood</div>
-                                <EuroInput value={r.summaInput || 0} onChange={(v) => updateRow(side, r.id, { summaInput: v })} style={numStyle} />
-                              </div>
-                            </>
-                          ) : side === "COST" && r.category === "Muu kommunaalteenus" ? (
-                            <>
-                              <div style={{ width: 140 }}>
-                                <div style={fieldLabel}>€/periood</div>
-                                <EuroInput value={r.summaInput || 0} onChange={(v) => updateRow(side, r.id, { summaInput: v })} style={numStyle} />
-                              </div>
-                            </>
-                          ) : r.category ? (
-                            <>
-                              <div style={{ width: 140 }}>
-                                <div style={fieldLabel}>Maksumus €/periood</div>
-                                <EuroInput value={r.summaInput} onChange={(v) => updateRow(side, r.id, { summaInput: v, arvutus: "aastas" })} style={numStyle} />
-                              </div>
-                            </>
-                          ) : (
-                            <div style={{ width: 140 }}>
-                              <div style={fieldLabel}>Maksumus €/periood</div>
-                              <EuroInput value={r.summaInput || 0} onChange={(v) => updateRow(side, r.id, { summaInput: v, arvutus: "perioodis" })} style={numStyle} />
-                            </div>
-                          )}
-
-                          <div style={{ width: 120, alignSelf: "end" }}>
-                            <button style={btnRemove} onClick={() => removeRow(side, r.id)}>Eemalda</button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-
-                    if (side === "COST") {
-                      const kommunaalRead = rows.filter(r => KOMMUNAALTEENUSED.includes(r.category));
-                      const haldusRead = rows.filter(r => HALDUSTEENUSED.includes(r.category));
-                      const laenuRead = rows.filter(r => LAENUMAKSED.includes(r.category));
-                      const maaramataRead = rows.filter(r => !r.category || (!KOMMUNAALTEENUSED.includes(r.category) && !HALDUSTEENUSED.includes(r.category) && !LAENUMAKSED.includes(r.category)));
-                      const groupLabel = { fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", padding: "8px 0 0", marginTop: 4 };
-                      return (
-                        <>
-                          {kommunaalRead.length > 0 && (
-                            <>
-                              <div style={groupLabel}>Kommunaalteenused</div>
-                              {kommunaalRead.map(renderRow)}
-                            </>
-                          )}
-                          {haldusRead.length > 0 && (
-                            <>
-                              <div style={groupLabel}>Haldusteenused</div>
-                              {haldusRead.map(renderRow)}
-                            </>
-                          )}
-                          {laenuRead.length > 0 && (
-                            <>
-                              <div style={groupLabel}>Laenumaksed</div>
-                              {laenuRead.map(renderRow)}
-                            </>
-                          )}
-                          {maaramataRead.length > 0 && maaramataRead.map(renderRow)}
-                        </>
-                      );
-                    }
-                    return rows.map(renderRow);
-                  })()}
+                  {kommunaalRead.length > 0 && (
+                    <>
+                      <div style={groupLabel}>Kommunaalteenused</div>
+                      {kommunaalRead.map(renderRow)}
+                    </>
+                  )}
+                  {haldusRead.length > 0 && (
+                    <>
+                      <div style={groupLabel}>Haldusteenused</div>
+                      {haldusRead.map(renderRow)}
+                    </>
+                  )}
+                  {laenuRead.length > 0 && (
+                    <>
+                      <div style={groupLabel}>Laenumaksed</div>
+                      {laenuRead.map(renderRow)}
+                    </>
+                  )}
+                  {maaramataRead.length > 0 && maaramataRead.map(renderRow)}
                 </div>
 
                 <div style={{ marginTop: 8 }}>
-                  <button style={btnAdd} onClick={() => addRow(side)}>+ Lisa rida</button>
+                  <button style={btnAdd} onClick={() => addRow("COST")}>+ Lisa rida</button>
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginTop: 12, fontFamily: "monospace" }}>
-                  {side === "COST"
-                    ? (() => {
-                        const komSum = plan.budget.costRows
-                          .filter(r => KOMMUNAALTEENUSED.includes(r.category))
-                          .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                        const halSum = plan.budget.costRows
-                          .filter(r => HALDUSTEENUSED.includes(r.category))
-                          .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                        const laenuSum = plan.budget.costRows
-                          .filter(r => LAENUMAKSED.includes(r.category))
-                          .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                        const kokku = komSum + halSum + laenuSum;
-                        return (
-                          <>
-                            <div>Kommunaalteenused perioodis: {euro(komSum)}</div>
-                            <div>Haldusteenused perioodis: {euro(halSum)}</div>
-                            <div>Laenumaksed perioodis: {euro(laenuSum)}</div>
-                            <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 4, marginTop: 4 }}>Kulud kokku perioodis: {euro(kokku)}</div>
-                          </>
-                        );
-                      })()
-                    : (() => {
-                        const haldusSum = plan.budget.costRows
-                          .filter(r => HALDUSTEENUSED.includes(r.category))
-                          .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                        const laenuSum = plan.budget.costRows
-                          .filter(r => LAENUMAKSED.includes(r.category))
-                          .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                        const muudTuludSum = plan.budget.incomeRows
-                          .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                        const tuludKokku = haldusSum + laenuSum + muudTuludSum;
-                        const koguPind = derived.building.totAreaM2;
-                        const haldusM2 = koguPind > 0 ? (haldusSum / koguPind).toFixed(2).replace(".", ",") : "\u2014";
-                        const laenuM2 = koguPind > 0 ? (laenuSum / koguPind).toFixed(2).replace(".", ",") : "\u2014";
-                        return (
-                          <>
-                            <div>Haldustasu perioodis: {euro(haldusSum)} → {haldusM2} €/m²</div>
-                            {laenuSum > 0 && <div>Laenumakse perioodis: {euro(laenuSum)} → {laenuM2} €/m²</div>}
-                            <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 4, marginTop: 4 }}>Tulud perioodis kokku: {euro(tuludKokku)}</div>
-                          </>
-                        );
-                      })()
-                  }
+                  {(() => {
+                    const komSum = plan.budget.costRows
+                      .filter(r => KOMMUNAALTEENUSED.includes(r.category))
+                      .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+                    const halSum = plan.budget.costRows
+                      .filter(r => HALDUSTEENUSED.includes(r.category))
+                      .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+                    const laenuSum = plan.budget.costRows
+                      .filter(r => LAENUMAKSED.includes(r.category))
+                      .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+                    const kokku = komSum + halSum + laenuSum;
+                    return (
+                      <>
+                        <div>Kommunaalteenused perioodis: {euro(komSum)}</div>
+                        <div>Haldusteenused perioodis: {euro(halSum)}</div>
+                        <div>Laenumaksed perioodis: {euro(laenuSum)}</div>
+                        <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 4, marginTop: 4 }}>Kulud kokku perioodis: {euro(kokku)}</div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+              </div>
+            </div>
+          );
+        })()}
+
+        {sec === 3 && (() => {
+          const haldusSum = plan.budget.costRows
+            .filter(r => HALDUSTEENUSED.includes(r.category))
+            .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+          const laenuSum = plan.budget.costRows
+            .filter(r => LAENUMAKSED.includes(r.category))
+            .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+          const muudTulud = plan.budget.incomeRows;
+          const muudTuludSum = muudTulud.reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+          const tuludKokku = haldusSum + laenuSum + muudTuludSum;
+          const koguPind = derived.building.totAreaM2;
+          const haldusM2 = koguPind > 0 ? (haldusSum / koguPind).toFixed(2).replace(".", ",") : "\u2014";
+          const laenuM2 = koguPind > 0 ? (laenuSum / koguPind).toFixed(2).replace(".", ",") : "\u2014";
+
+          const readonlyRow = (label, value) => (
+            <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
+                <div style={{ width: 220 }}>
+                  <div style={fieldLabel}>Kategooria</div>
+                  <div style={{ ...inputBase, width: "100%", background: N.muted, color: N.text, fontWeight: 600 }}>
+                    {label}
+                  </div>
+                </div>
+                <div style={{ width: 140 }}>
+                  <div style={fieldLabel}>Maksumus €/periood</div>
+                  <div style={{ ...numStyle, background: N.muted, fontWeight: 600 }}>
+                    {fmtEur(value)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+
+          return (
+            <div style={tabStack}>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(3)}</div>
+              <div style={card}>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={sectionTitle}>Tulud</div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {/* Haldustasu — readonly */}
+                  {readonlyRow("Haldustasu", haldusSum)}
+
+                  {/* Laenumakse — readonly, ainult kui > 0 */}
+                  {laenuSum > 0 && readonlyRow("Laenumakse", laenuSum)}
+
+                  {/* Muu tulu read — muudetav nimetus + summa */}
+                  {muudTulud.map(r => (
+                    <div key={r.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <div style={{ width: 220 }}>
+                          <div style={fieldLabel}>Kategooria</div>
+                          <div style={{ ...inputBase, width: "100%", background: N.muted, color: N.text, fontWeight: 600 }}>
+                            Muu tulu
+                          </div>
+                        </div>
+                        <div style={{ flex: 2 }}>
+                          <div style={fieldLabel}>Nimetus</div>
+                          <input value={r.name} onChange={(e) => updateRow("INCOME", r.id, { name: e.target.value })} placeholder="nt Renditulu, reklaamitulu, toetused" style={inputStyle} />
+                        </div>
+                        <div style={{ width: 140 }}>
+                          <div style={fieldLabel}>Maksumus €/periood</div>
+                          <EuroInput value={r.summaInput} onChange={(v) => updateRow("INCOME", r.id, { summaInput: v, arvutus: "aastas" })} style={numStyle} />
+                        </div>
+                        <div style={{ width: 120, alignSelf: "end" }}>
+                          <button style={btnRemove} onClick={() => removeRow("INCOME", r.id)}>Eemalda</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginTop: 8 }}>
+                  <button style={btnAdd} onClick={() => addRow("INCOME")}>+ Lisa tulu</button>
+                </div>
+
+                {/* Kokkuvõte */}
+                <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginTop: 12, fontFamily: "monospace" }}>
+                  <div>Haldustasu perioodis: {euro(haldusSum)} → {haldusM2} €/m²</div>
+                  {laenuSum > 0 && <div>Laenumakse perioodis: {euro(laenuSum)} → {laenuM2} €/m²</div>}
+                  {muudTuludSum > 0 && <div>Muu tulu perioodis: {euro(muudTuludSum)}</div>}
+                  <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 4, marginTop: 4 }}>Tulud perioodis kokku: {euro(tuludKokku)}</div>
                 </div>
 
               </div>
