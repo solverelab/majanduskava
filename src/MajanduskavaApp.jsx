@@ -2119,11 +2119,6 @@ export default function App() {
                 );
               })()}
 
-              {remondifondiArvutus.saldoLopp < 0 && (
-                <div style={{ marginTop: 8, padding: 10, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, fontSize: 13, color: "#991b1b" }}>
-                  Remondifondist ei piisa planeeritud investeeringute katteks. Puudujääk {euro(Math.abs(remondifondiArvutus.saldoLopp))}.
-                </div>
-              )}
             </div>
 
             <div style={card}>
