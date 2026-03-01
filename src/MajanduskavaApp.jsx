@@ -581,7 +581,9 @@ export default function App() {
 
       const sihtmakse = stsenaarium === "C" ? Math.round(sa.sihtmakseKoguC * osa) : 0;
 
-      return { id: k.id, tahis: k.label, pind, osa, kommunaal, haldus, remondifond: rf, laenumakse: laen, kokku, sihtmakse };
+      const kokkuAastas = kokku * 12;
+
+      return { id: k.id, tahis: k.label, pind, osa, kommunaal, haldus, remondifond: rf, laenumakse: laen, kokku, kokkuAastas, sihtmakse };
     });
   }, [plan.building.apartments, derived.building.totAreaM2, stsenaarium, stsenaariumArvutus, kopiiriondvaade]);
 
@@ -2347,7 +2349,7 @@ export default function App() {
                     const showLaen = stsenaarium === "B";
                     const showSiht = stsenaarium === "C";
                     const rr = { textAlign: "right", fontFamily: "monospace" };
-                    const colCount = 6 + (showLaen ? 1 : 0) + (showSiht ? 1 : 0);
+                    const colCount = 7 + (showLaen ? 1 : 0) + (showSiht ? 1 : 0);
                     return (
                       <div style={tableWrap}>
                       <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
@@ -2359,7 +2361,8 @@ export default function App() {
                             <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Haldus</th>
                             <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Remondifond</th>
                             {showLaen && <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Laenumakse</th>}
-                            <th style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>Kokku €/kuu</th>
+                            <th style={{ ...rr, padding: "8px 12px 8px 0", fontWeight: 700 }}>Kokku €/kuu</th>
+                            <th style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>Kokku €/aastas</th>
                             {showSiht && <th style={{ ...rr, padding: "8px 12px 8px 0" }} title="Ühekordne makse, ei sisaldu kuumakses">Sihtmakse</th>}
                           </tr>
                         </thead>
@@ -2378,7 +2381,8 @@ export default function App() {
                                   <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.haldus)}</td>
                                   <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.remondifond)}</td>
                                   {showLaen && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.laenumakse)}</td>}
-                                  <td style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>{euro(km.kokku)}</td>
+                                  <td style={{ ...rr, padding: "8px 12px 8px 0", fontWeight: 700 }}>{euro(km.kokku)}</td>
+                                  <td style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>{euro(km.kokkuAastas)}</td>
                                   {showSiht && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euroEE(km.sihtmakse)}</td>}
                                 </tr>
                                 {isOpen && (
@@ -2412,7 +2416,8 @@ export default function App() {
                             <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.haldus, 0))}</td>
                             <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.remondifond, 0))}</td>
                             {showLaen && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.laenumakse, 0))}</td>}
-                            <td style={{ ...rr, padding: "8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kokku, 0))}</td>
+                            <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kokku, 0))}</td>
+                            <td style={{ ...rr, padding: "8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kokkuAastas, 0))}</td>
                             {showSiht && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euroEE(korteriteKuumaksed.reduce((s, k) => s + k.sihtmakse, 0))}</td>}
                           </tr>
                         </tfoot>
