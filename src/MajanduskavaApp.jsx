@@ -1062,7 +1062,7 @@ export default function App() {
 
   const lisaRahpiiriRida = (id) => {
     setSeisukord(prev => prev.map(r => r.id === id ? {
-      ...r, rahpiiri: [...r.rahpiiri, { allikas: "Remondifond", summa: 0 }],
+      ...r, rahpiiri: [...r.rahpiiri, { allikas: "", summa: 0 }],
     } : r));
   };
 
@@ -1129,7 +1129,7 @@ export default function App() {
 
   const lisaMuuRahpiiriRida = (idx) => {
     setMuudInvesteeringud(prev => prev.map((inv, i) =>
-      i === idx ? { ...inv, rahpiiri: [...inv.rahpiiri, { allikas: "Remondifond", summa: "" }] } : inv
+      i === idx ? { ...inv, rahpiiri: [...inv.rahpiiri, { allikas: "", summa: "" }] } : inv
     ));
   };
 
@@ -1714,6 +1714,7 @@ export default function App() {
                         {rida.rahpiiri.map((rp, ri) => (
                           <div key={ri} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
                             <select value={rp.allikas} onChange={(e) => uuendaRahpiiriRida(rida.id, ri, { allikas: e.target.value })} style={{ ...selectStyle, width: 150 }}>
+                              <option value="" disabled>Vali allikas…</option>
                               <option value="Remondifond">Remondifond</option>
                               <option value="Laen">Laen</option>
                               <option value="Toetus">Toetus</option>
@@ -1795,6 +1796,7 @@ export default function App() {
                     {inv.rahpiiri.map((rp, ri) => (
                       <div key={ri} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
                         <select value={rp.allikas} onChange={(e) => handleMuuRahpiiriChange(idx, ri, "allikas", e.target.value)} style={{ ...selectStyle, width: 150 }}>
+                          <option value="" disabled>Vali allikas…</option>
                           <option value="Remondifond">Remondifond</option>
                           <option value="Laen">Laen</option>
                           <option value="Toetus">Toetus</option>
