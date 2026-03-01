@@ -3022,12 +3022,12 @@ export default function App() {
               return (
                 <>
                   <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #ccc" }}>
-                    <span>Haldustasu</span>
+                    <span><span style={{ color: "#666" }}>Automaatne · </span>Haldustasu</span>
                     <span style={{ fontFamily: "monospace" }}>{euroEE(haldusSum)}</span>
                   </div>
                   {laenuSum > 0 && (
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #ccc" }}>
-                      <span>Laenumakse</span>
+                      <span><span style={{ color: "#666" }}>Automaatne · </span>Laenumakse</span>
                       <span style={{ fontFamily: "monospace" }}>{euroEE(laenuSum)}</span>
                     </div>
                   )}
@@ -3035,7 +3035,7 @@ export default function App() {
                     <div key={r.id} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #ccc" }}>
                       <span>{r.category ? <span style={{ color: "#666" }}>{r.category} · </span> : ""}{r.name || "—"}</span>
                       <span style={{ fontFamily: "monospace" }}>
-                        {euroEE(r.calc.params.amountEUR)}
+                        {euroEE(r.summaInput || 0)}
                       </span>
                     </div>
                   ))}
@@ -3123,7 +3123,7 @@ export default function App() {
               <tbody>
                 {[
                   ["Kulud perioodis", euroEE(derived.totals.costPeriodEUR)],
-                  ["Tulud perioodis", euroEE(plan.budget.costRows.filter(r => HALDUSTEENUSED.includes(r.category)).reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0) + plan.budget.incomeRows.reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0))],
+                  ["Tulud perioodis", euroEE(plan.budget.costRows.filter(r => HALDUSTEENUSED.includes(r.category)).reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0) + plan.budget.costRows.filter(r => LAENUMAKSED.includes(r.category)).reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0) + plan.budget.incomeRows.reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0))],
                   ["Vahe", euroEE(derived.totals.netOperationalPeriodEUR)],
                   ["Omanike kuumakse", euroEE(derived.totals.ownersNeedMonthlyEUR) + "/kuu"],
                 ].map(([label, value]) => (
