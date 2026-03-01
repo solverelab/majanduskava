@@ -2886,9 +2886,20 @@ export default function App() {
                 </div>
               ))
             }
-            <div style={{ marginTop: 8, fontWeight: 700, fontFamily: "monospace" }}>
-              Kokku: {euroEE(derived.totals.incomePeriodEUR)} · {euroEE(derived.totals.incomeMonthlyEUR)}/kuu
-            </div>
+            {(() => {
+              const haldusSum = plan.budget.costRows
+                .filter(r => HALDUSTEENUSED.includes(r.category))
+                .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+              const muudSum = plan.budget.incomeRows
+                .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+              const kokku = haldusSum + muudSum;
+              const mEq = derived.period.monthEq || 12;
+              return (
+                <div style={{ marginTop: 8, fontWeight: 700, fontFamily: "monospace" }}>
+                  Kokku: {euroEE(kokku)} · {euroEE(kokku / mEq)}/kuu
+                </div>
+              );
+            })()}
           </div>
 
           {/* Fondid & laen */}
@@ -2967,7 +2978,7 @@ export default function App() {
               <tbody>
                 {[
                   ["Kulud perioodis", euroEE(derived.totals.costPeriodEUR)],
-                  ["Tulud perioodis", euroEE(derived.totals.incomePeriodEUR)],
+                  ["Tulud perioodis", euroEE(plan.budget.costRows.filter(r => HALDUSTEENUSED.includes(r.category)).reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0) + plan.budget.incomeRows.reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0))],
                   ["Vahe", euroEE(derived.totals.netOperationalPeriodEUR)],
                   ["Omanike kuumakse", euroEE(derived.totals.ownersNeedMonthlyEUR) + "/kuu"],
                 ].map(([label, value]) => (
