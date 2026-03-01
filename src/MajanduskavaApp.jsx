@@ -1435,7 +1435,10 @@ export default function App() {
           const kommunaalA = plan.budget.costRows
             .filter(r => KOMMUNAALTEENUSED.includes(r.category))
             .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-          const naitaKoondribana = haldusA > 0 || kommunaalA > 0;
+          const laenuA = plan.budget.costRows
+            .filter(r => LAENUMAKSED.includes(r.category))
+            .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+          const naitaKoondribana = haldusA > 0 || kommunaalA > 0 || laenuA > 0;
           if (!naitaKoondribana) return null;
           const kvNum = { fontFamily: "monospace", fontWeight: 700, fontSize: 15 };
           const kvLabel = { fontSize: 12, color: N.dim, minWidth: 110 };
@@ -1450,8 +1453,14 @@ export default function App() {
                 <span style={kvLabel}>Haldusteenused</span> <span style={kvNum}>{euro(haldusA)}</span>
                 <span style={kvSep}>|</span>
                 <span style={{ ...kvLabel, opacity: 0.6 }}>Kommunaalteenused</span> <span style={{ ...kvNum, opacity: 0.6 }}>{euro(kommunaalA)}</span>
+                {laenuA > 0 && (
+                  <>
+                    <span style={kvSep}>|</span>
+                    <span style={kvLabel}>Laenumaksed</span> <span style={kvNum}>{euro(laenuA)}</span>
+                  </>
+                )}
                 <span style={kvSep}>|</span>
-                <span style={kvLabel}>Kokku</span> <span style={kvNum}>{euro(haldusA + kommunaalA)}</span>
+                <span style={kvLabel}>Kokku</span> <span style={kvNum}>{euro(haldusA + kommunaalA + laenuA)}</span>
               </div>
             </div>
           );
