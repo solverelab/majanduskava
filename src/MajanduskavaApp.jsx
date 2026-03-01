@@ -2082,8 +2082,7 @@ export default function App() {
           <div style={tabStack}>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(4)}</div>
             <div style={card}>
-              <div style={{ ...sectionTitle, marginBottom: 4 }}>Remondifondi tehtavad maksed</div>
-              <div style={{ fontSize: 13, color: N.sub, marginBottom: 12 }}>Arvutatud investeeringute järgi</div>
+              <div style={{ ...sectionTitle, marginBottom: 12 }}>Remondifond</div>
 
               {(() => {
                 const ra = remondifondiArvutus;
