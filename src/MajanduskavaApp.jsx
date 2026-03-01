@@ -228,11 +228,13 @@ const btn         = btnSecondary; // legacy alias
 // ── CATEGORIES & ENUMS ──
 const KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus", "Muu kommunaalteenus"];
 
-const HALDUSTEENUSED = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Prügivedu", "Laenumakse", "Muu haldusteenus"];
+const HALDUSTEENUSED = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Prügivedu", "Muu haldusteenus"];
 
-const KULU_KATEGOORIAD = [...KOMMUNAALTEENUSED, ...HALDUSTEENUSED];
+const LAENUMAKSED = ["Laenumakse"];
 
-const TULU_KATEGOORIAD = ["Halduskulude ettemaks", "Renditulu", "Muu tulu"];
+const KULU_KATEGOORIAD = [...KOMMUNAALTEENUSED, ...HALDUSTEENUSED, ...LAENUMAKSED];
+
+const TULU_KATEGOORIAD = ["Renditulu", "Muu tulu"];
 
 const TULU_KATEGOORIA_MAP = {
   "Haldus": "Halduskulude ettemaks",
