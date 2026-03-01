@@ -1989,9 +1989,14 @@ export default function App() {
                         const tuludKokku = haldusSum + muudTuludSum;
                         const mEq = derived.period.monthEq || 12;
                         const koguPind = derived.building.totAreaM2;
-                        const tuludAastas = mEq === 12 ? tuludKokku : tuludKokku * (12 / mEq);
-                        const m2Aastas = koguPind > 0 ? (tuludAastas / koguPind).toFixed(2).replace(".", ",") : "\u2014";
-                        return <>Tulud perioodis: {euro(tuludKokku)} → {m2Aastas} €/m² aastas</>;
+                        const haldusAastas = mEq === 12 ? haldusSum : haldusSum * (12 / mEq);
+                        const m2Aastas = koguPind > 0 ? (haldusAastas / koguPind).toFixed(2).replace(".", ",") : "\u2014";
+                        return (
+                          <>
+                            <div>Halduskulude ettemaks perioodis: {euro(haldusSum)} → {m2Aastas} €/m² aastas</div>
+                            <div>Tulud perioodis kokku: {euro(tuludKokku)}</div>
+                          </>
+                        );
                       })()
                   }
                 </div>
