@@ -1409,11 +1409,14 @@ export default function App() {
 
         {/* ── Koondvaade — nähtav alates Tab 2 ── */}
         {sec >= 2 && (() => {
-          const { haldusKokku, kommunaalKokku, tuludKokku } = kopiiriondvaade;
-          const mEq = derived.period.monthEq || 12;
-          const haldusA = haldusKokku * mEq;
-          const kommunaalA = kommunaalKokku * mEq;
-          const tuludA = tuludKokku * mEq;
+          const haldusA = plan.budget.costRows
+            .filter(r => HALDUSTEENUSED.includes(r.category))
+            .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+          const kommunaalA = plan.budget.costRows
+            .filter(r => KOMMUNAALTEENUSED.includes(r.category))
+            .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+          const tuludA = plan.budget.incomeRows
+            .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
           const vaheA = tuludA - haldusA;
           const naitaKoondribana = haldusA > 0 || kommunaalA > 0 || tuludA > 0;
           if (!naitaKoondribana) return null;
