@@ -1847,23 +1847,32 @@ export default function App() {
                   const haldusSum = plan.budget.costRows
                     .filter(r => HALDUSTEENUSED.includes(r.category))
                     .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                  return (
-                    <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12, marginBottom: 12 }}>
+                  const laenuSum = plan.budget.costRows
+                    .filter(r => LAENUMAKSED.includes(r.category))
+                    .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+                  const readonlyRow = (label, value) => (
+                    <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
                         <div style={{ width: 220 }}>
                           <div style={fieldLabel}>Kategooria</div>
                           <div style={{ ...inputBase, width: "100%", background: N.muted, color: N.text, fontWeight: 600 }}>
-                            Halduskulude ettemaks
+                            {label}
                           </div>
                         </div>
                         <div style={{ width: 140 }}>
                           <div style={fieldLabel}>Maksumus €/periood</div>
                           <div style={{ ...numStyle, background: N.muted, fontWeight: 600 }}>
-                            {fmtEur(haldusSum)}
+                            {fmtEur(value)}
                           </div>
                         </div>
                       </div>
                     </div>
+                  );
+                  return (
+                    <>
+                      {readonlyRow("Haldustasu", haldusSum)}
+                      {laenuSum > 0 && readonlyRow("Laenumakse", laenuSum)}
+                    </>
                   );
                 })()}
 
@@ -1889,7 +1898,7 @@ export default function App() {
                                   </optgroup>
                                 </>
                               ) : (
-                                TULU_KATEGOORIAD.filter(k => k !== "Halduskulude ettemaks").map(k => <option key={k} value={k}>{k}</option>)
+                                TULU_KATEGOORIAD.map(k => <option key={k} value={k}>{k}</option>)
                               )}
                             </select>
                           </div>
