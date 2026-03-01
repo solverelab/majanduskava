@@ -580,6 +580,7 @@ export default function App() {
 
     const rfKuuKokku = fondNeeded / 12;
     const laenKuuKokku = stsenaarium === "B" ? sa.laenumaksedKuus : 0;
+    const reservKuuKokku = (plan.funds.reserve.plannedEUR || 0) / 12;
 
     return apts.map(k => {
       const pind = parseFloat(k.areaM2) || 0;
@@ -589,11 +590,12 @@ export default function App() {
       const haldus = Math.round(kopiiriondvaade.haldusKokku * osa);
       const rf = Math.round(rfKuuKokku * osa);
       const laen = Math.round(laenKuuKokku * osa);
-      const kokku = kommunaal + haldus + rf + laen;
+      const reserv = Math.round(reservKuuKokku * osa);
+      const kokku = kommunaal + haldus + rf + laen + reserv;
 
-      return { id: k.id, tahis: k.label, pind, osa, kommunaal, haldus, remondifond: rf, laenumakse: laen, kokku };
+      return { id: k.id, tahis: k.label, pind, osa, kommunaal, haldus, remondifond: rf, laenumakse: laen, reserv, kokku };
     });
-  }, [plan.building.apartments, derived.building.totAreaM2, stsenaarium, stsenaariumArvutus, kopiiriondvaade]);
+  }, [plan.building.apartments, derived.building.totAreaM2, stsenaarium, stsenaariumArvutus, kopiiriondvaade, plan.funds.reserve.plannedEUR]);
 
   // Sünkrooni arvutatud remondifondi määr engine'iga
   useEffect(() => {
@@ -2353,6 +2355,12 @@ export default function App() {
                       <span>Halduskulud perioodis</span>
                       <span style={{ fontFamily: "monospace" }}>{euroEE(kopiiriondvaade.haldusPeriood)} → {euro(kopiiriondvaade.haldusKokku)}/kuu</span>
                     </div>
+                    {plan.funds.reserve.plannedEUR > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>Reservkapital</span>
+                        <span style={{ fontFamily: "monospace" }}>{euroEE(plan.funds.reserve.plannedEUR)} → {euro(Math.round(plan.funds.reserve.plannedEUR / 12))}/kuu</span>
+                      </div>
+                    )}
                     {(() => {
                       const fn = stsenaarium === "A" ? stsenaariumArvutus.fondNeededA
                                : stsenaarium === "B" ? stsenaariumArvutus.fondNeededB
@@ -2394,8 +2402,9 @@ export default function App() {
 
                   {(() => {
                     const showLaen = stsenaarium === "B";
+                    const showReserv = (plan.funds.reserve.plannedEUR || 0) > 0;
                     const rr = { textAlign: "right", fontFamily: "monospace" };
-                    const colCount = 6 + (showLaen ? 1 : 0);
+                    const colCount = 6 + (showLaen ? 1 : 0) + (showReserv ? 1 : 0);
                     return (
                       <div style={tableWrap}>
                       <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
@@ -2406,6 +2415,7 @@ export default function App() {
                             <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Kommunaal</th>
                             <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Haldus</th>
                             <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Remondifond</th>
+                            {showReserv && <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Reservkapital</th>}
                             {showLaen && <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Laenumakse</th>}
                             <th style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>Kokku €/kuu</th>
                           </tr>
@@ -2424,6 +2434,7 @@ export default function App() {
                                   <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.kommunaal)}</td>
                                   <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.haldus)}</td>
                                   <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.remondifond)}</td>
+                                  {showReserv && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.reserv)}</td>}
                                   {showLaen && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.laenumakse)}</td>}
                                   <td style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>{euro(km.kokku)}</td>
                                 </tr>
@@ -2435,6 +2446,10 @@ export default function App() {
                                       Haldus: {euro(kopiiriondvaade.haldusKokku)} × {(km.osa * 100).toFixed(1)}% = {euro(km.haldus)}
                                       {" · "}
                                       Remondifond: m² osa fondimaksest
+                                      {showReserv && <>
+                                        {" · "}
+                                        Reservkapital: {euro(Math.round(plan.funds.reserve.plannedEUR / 12))} × {(km.osa * 100).toFixed(1)}% = {euro(km.reserv)}
+                                      </>}
                                       {showLaen && <>
                                         {" · "}
                                         Laenumakse: {euro(kopiiriondvaade.laenumaksedKokku)} × {(km.osa * 100).toFixed(1)}% = {euro(km.laenumakse)}
@@ -2453,6 +2468,7 @@ export default function App() {
                             <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kommunaal, 0))}</td>
                             <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.haldus, 0))}</td>
                             <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.remondifond, 0))}</td>
+                            {showReserv && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.reserv, 0))}</td>}
                             {showLaen && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.laenumakse, 0))}</td>}
                             <td style={{ ...rr, padding: "8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kokku, 0))}</td>
                           </tr>
