@@ -1995,19 +1995,20 @@ export default function App() {
                         const halSum = plan.budget.costRows
                           .filter(r => HALDUSTEENUSED.includes(r.category))
                           .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                        const mEq = derived.period.monthEq || 12;
-                        const halAastas = mEq === 12 ? halSum : halSum * (12 / mEq);
-                        const koguPind = derived.building.totAreaM2;
-                        const m2Aastas = koguPind > 0 ? (halAastas / koguPind).toFixed(2).replace(".", ",") : "\u2014";
-                        return <>Kommunaalteenused perioodis: {euro(komSum)} · Haldusteenused aastas: {euro(halAastas)} → {m2Aastas} €/m² aastas · Kulud kokku perioodis: {euro(komSum + halSum)}</>;
+                        return <>Kommunaalteenused perioodis: {euro(komSum)} · Haldusteenused perioodis: {euro(halSum)} · Kulud kokku perioodis: {euro(komSum + halSum)}</>;
                       })()
                     : (() => {
-                        const ettemaks = plan.budget.costRows
+                        const haldusSum = plan.budget.costRows
                           .filter(r => HALDUSTEENUSED.includes(r.category))
                           .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                        const muuTulu = plan.budget.incomeRows
+                        const muudTuludSum = plan.budget.incomeRows
                           .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                        return <>Tulud perioodis: {euro(ettemaks + muuTulu)}</>;
+                        const tuludKokku = haldusSum + muudTuludSum;
+                        const mEq = derived.period.monthEq || 12;
+                        const koguPind = derived.building.totAreaM2;
+                        const tuludAastas = mEq === 12 ? tuludKokku : tuludKokku * (12 / mEq);
+                        const m2Aastas = koguPind > 0 ? (tuludAastas / koguPind).toFixed(2).replace(".", ",") : "\u2014";
+                        return <>Tulud perioodis: {euro(tuludKokku)} → {m2Aastas} €/m² aastas</>;
                       })()
                   }
                 </div>
