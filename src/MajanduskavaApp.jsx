@@ -429,6 +429,7 @@ export default function App() {
   const [muudInvesteeringud, setMuudInvesteeringud] = useState([]);
   const [repairFundSaldo, setRepairFundSaldo] = useState(""); // tagasiühilduvus
   const [remondifond, setRemondifond] = useState({ saldoAlgus: "" });
+  const [stsenaarium, setStsenaarium] = useState("B"); // "A" | "B" | "C"
 
   const derived = useMemo(() => computePlan(plan), [plan]);
 
@@ -521,10 +522,52 @@ export default function App() {
     return { saldoAlgus, maarAastasM2, koguPind, laekuminePerioodis, investRemondifondist, saldoLopp };
   }, [remondifond.saldoAlgus, derived.building.totAreaM2, derived.period.monthEq, seisukord, muudInvesteeringud]);
 
+  const stsenaariumArvutus = useMemo(() => {
+    const koikInv = [
+      ...seisukord.filter(e => e.investeering),
+      ...muudInvesteeringud,
+    ];
+
+    let sumFond = 0, sumLaen = 0, sumToetus = 0, sumSiht = 0, sumKulu = 0;
+
+    koikInv.forEach(inv => {
+      const maksumus = parseFloat(inv.invMaksumus || inv.maksumus) || 0;
+      sumKulu += maksumus;
+      (inv.rahpiiri || []).forEach(rp => {
+        const s = Math.round(parseFloat(String(rp.summa).replace(",", ".")) || 0);
+        if (rp.allikas === "Remondifond") sumFond += s;
+        else if (rp.allikas === "Laen") sumLaen += s;
+        else if (rp.allikas === "Toetus") sumToetus += s;
+        else if (rp.allikas === "Sihtmakse") sumSiht += s;
+      });
+    });
+
+    const fondNeededA = Math.max(0, sumKulu - sumToetus - sumSiht);
+    const fondNeededB = Math.max(0, sumKulu - sumToetus - sumLaen - sumSiht);
+    const fondNeededC = fondNeededB;
+
+    const sihtmakseKoguC = sumSiht + sumLaen;
+
+    const laenumaksedKuus = kopiiriondvaade.laenumaksedKokku;
+
+    return {
+      fondNeededA, fondNeededB, fondNeededC,
+      sihtmakseKoguC, laenumaksedKuus,
+      sumKulu, sumFond, sumLaen, sumToetus, sumSiht,
+    };
+  }, [seisukord, muudInvesteeringud, kopiiriondvaade.laenumaksedKokku]);
+
   const korteriteKuumaksed = useMemo(() => {
     const apts = plan.building.apartments;
     const koguPind = derived.building.totAreaM2;
-    const rfMaarKuus = remondifondiArvutus.maarAastasM2 / 12;
+    const sa = stsenaariumArvutus;
+
+    const fondNeeded = stsenaarium === "A" ? sa.fondNeededA
+                     : stsenaarium === "B" ? sa.fondNeededB
+                     : sa.fondNeededC;
+
+    const rfKuuKokku = fondNeeded / 12;
+    const laenKuuKokku = stsenaarium === "B" ? sa.laenumaksedKuus : 0;
 
     return apts.map(k => {
       const pind = parseFloat(k.areaM2) || 0;
@@ -532,13 +575,15 @@ export default function App() {
 
       const kommunaal = Math.round(kopiiriondvaade.kommunaalKokku * osa);
       const haldus = Math.round(kopiiriondvaade.haldusKokku * osa);
-      const rf = Math.round(rfMaarKuus * pind);
-      const laen = Math.round(kopiiriondvaade.laenumaksedKokku * osa);
+      const rf = Math.round(rfKuuKokku * osa);
+      const laen = Math.round(laenKuuKokku * osa);
       const kokku = kommunaal + haldus + rf + laen;
 
-      return { id: k.id, tahis: k.label, pind, osa, kommunaal, haldus, remondifond: rf, laenumakse: laen, kokku };
+      const sihtmakse = stsenaarium === "C" ? Math.round(sa.sihtmakseKoguC * osa) : 0;
+
+      return { id: k.id, tahis: k.label, pind, osa, kommunaal, haldus, remondifond: rf, laenumakse: laen, kokku, sihtmakse };
     });
-  }, [plan.building.apartments, derived.building.totAreaM2, remondifondiArvutus.maarAastasM2, kopiiriondvaade]);
+  }, [plan.building.apartments, derived.building.totAreaM2, stsenaarium, stsenaariumArvutus, kopiiriondvaade]);
 
   // Sünkrooni arvutatud remondifondi määr engine'iga
   useEffect(() => {
@@ -2253,75 +2298,130 @@ export default function App() {
         {sec === 5 && (
           <div style={tabStack}>
             <div style={card}>
+              {/* Stsenaariumi valik */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={fieldLabel}>Stsenaarium</div>
+                <div style={{ display: "flex", gap: 0, borderRadius: 8, overflow: "hidden", border: `1px solid ${N.border}` }}>
+                  {[
+                    { key: "A", label: "Ilma laenuta" },
+                    { key: "B", label: "Laenuga" },
+                    { key: "C", label: "Sihtmaksega" },
+                  ].map(s => (
+                    <button
+                      key={s.key}
+                      onClick={() => setStsenaarium(s.key)}
+                      style={{
+                        flex: 1, padding: "10px 12px", fontSize: 14, fontWeight: 600,
+                        border: "none", cursor: "pointer",
+                        background: stsenaarium === s.key ? N.accent : N.surface,
+                        color: stsenaarium === s.key ? "#fff" : N.sub,
+                      }}
+                    >
+                      {s.key}: {s.label}
+                    </button>
+                  ))}
+                </div>
+                {stsenaarium === "B" && (
+                  <div style={{ fontSize: 12, color: N.dim, marginTop: 6 }}>
+                    Laenuga variant rakendub ainult laenulepingu sõlmimisel.
+                  </div>
+                )}
+              </div>
+
+              {/* Pealkiri */}
               <div style={{ ...sectionTitle, marginBottom: 12 }}>Korterite kuumaksed (m² järgi)</div>
 
-              {(() => {
-                const hasLaen = korteriteKuumaksed.some(k => k.laenumakse > 0);
-                const rr = { textAlign: "right", fontFamily: "monospace" };
-                return (
-                  <div style={tableWrap}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
-                    <thead>
-                      <tr style={thRow}>
-                        <th style={{ padding: "8px 12px 8px 0" }}>Korter</th>
-                        <th style={{ ...rr, padding: "8px 12px 8px 0" }}>m²</th>
-                        <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Kommunaal</th>
-                        <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Haldus</th>
-                        <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Remondifond</th>
-                        {hasLaen && <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Laenumakse</th>}
-                        <th style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>Kokku</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {korteriteKuumaksed.map(km => {
-                        const isOpen = avaKorterDetail[km.id];
-                        const colCount = 6 + (hasLaen ? 1 : 0);
-                        const rfMaarKuus = remondifondiArvutus.maarAastasM2 / 12;
-                        return (
-                          <Fragment key={km.id}>
-                            <tr style={{ ...tdSep, cursor: "pointer" }} onClick={() => setAvaKorterDetail(p => ({ ...p, [km.id]: !p[km.id] }))}>
-                              <td style={{ padding: "8px 12px 8px 0" }}><b>{km.tahis}</b> <span style={{ fontSize: 11, color: N.dim }}>{isOpen ? "\u25B2" : "\u25BC"}</span></td>
-                              <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{km.pind.toFixed(2)} m²</td>
-                              <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.kommunaal)}</td>
-                              <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.haldus)}</td>
-                              <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.remondifond)}</td>
-                              {hasLaen && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.laenumakse)}</td>}
-                              <td style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>{euro(km.kokku)}</td>
-                            </tr>
-                            {isOpen && (
-                              <tr>
-                                <td colSpan={colCount} style={{ padding: "4px 0 8px 24px", fontSize: 12, color: N.dim }}>
-                                  Kommunaal: {euro(kopiiriondvaade.kommunaalKokku)} {"\u00D7"} {(km.osa * 100).toFixed(1)}% = {euro(km.kommunaal)}
-                                  {" \u00B7 "}
-                                  Haldus: {euro(kopiiriondvaade.haldusKokku)} {"\u00D7"} {(km.osa * 100).toFixed(1)}% = {euro(km.haldus)}
-                                  {" \u00B7 "}
-                                  Remondifond: {String(rfMaarKuus.toFixed(4)).replace(".", ",")} €/m² {"\u00D7"} {km.pind.toFixed(2).replace(".", ",")} m² = {euro(km.remondifond)}
-                                  {hasLaen && <>
-                                    {" \u00B7 "}
-                                    Laenumakse: {euro(kopiiriondvaade.laenumaksedKokku)} {"\u00D7"} {(km.osa * 100).toFixed(1)}% = {euro(km.laenumakse)}
-                                  </>}
-                                </td>
-                              </tr>
-                            )}
-                          </Fragment>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot>
-                      <tr style={{ ...thRow, fontWeight: 700 }}>
-                        <td style={{ padding: "8px 12px 8px 0" }}>Kokku</td>
-                        <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{korteriteKuumaksed.reduce((s, k) => s + k.pind, 0).toFixed(2)} m²</td>
-                        <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kommunaal, 0))}</td>
-                        <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.haldus, 0))}</td>
-                        <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.remondifond, 0))}</td>
-                        {hasLaen && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.laenumakse, 0))}</td>}
-                        <td style={{ ...rr, padding: "8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kokku, 0))}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                  </div>
-                );
-              })()}
+              {derived.building.totAreaM2 === 0 ? (
+                <div style={{ padding: 16, background: N.muted, borderRadius: 8, fontSize: 14, color: N.sub }}>
+                  Sisesta korterite m² (Tab "Periood & korterid"), et arvutada makseid.
+                </div>
+              ) : (
+                <>
+                  {stsenaarium === "B" && kopiiriondvaade.laenumaksedKokku === 0 && (
+                    <div style={{ padding: 10, background: "#fefce8", border: "1px solid #fde68a", borderRadius: 8, fontSize: 13, color: "#854d0e", marginBottom: 12 }}>
+                      Laenumakseid pole sisestatud. Lisa laen Tab "Fondid & laen".
+                    </div>
+                  )}
+
+                  {(() => {
+                    const showLaen = stsenaarium === "B";
+                    const showSiht = stsenaarium === "C";
+                    const rr = { textAlign: "right", fontFamily: "monospace" };
+                    const colCount = 6 + (showLaen ? 1 : 0) + (showSiht ? 1 : 0);
+                    return (
+                      <div style={tableWrap}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
+                        <thead>
+                          <tr style={thRow}>
+                            <th style={{ padding: "8px 12px 8px 0" }}>Korter</th>
+                            <th style={{ ...rr, padding: "8px 12px 8px 0" }}>m²</th>
+                            <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Kommunaal</th>
+                            <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Haldus</th>
+                            <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Remondifond</th>
+                            {showLaen && <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Laenumakse</th>}
+                            <th style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>Kokku €/kuu</th>
+                            {showSiht && <th style={{ ...rr, padding: "8px 12px 8px 0" }} title="Ühekordne makse, ei sisaldu kuumakses">Sihtmakse</th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {korteriteKuumaksed.map(km => {
+                            const isOpen = avaKorterDetail[km.id];
+                            return (
+                              <Fragment key={km.id}>
+                                <tr style={{ ...tdSep, cursor: "pointer" }} onClick={() => setAvaKorterDetail(p => ({ ...p, [km.id]: !p[km.id] }))}>
+                                  <td style={{ padding: "8px 12px 8px 0" }}>
+                                    <b>{km.tahis}</b>{" "}
+                                    <span style={{ fontSize: 11, color: N.dim }}>{isOpen ? "\u25B2" : "\u25BC"}</span>
+                                  </td>
+                                  <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{km.pind.toFixed(2)} m²</td>
+                                  <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.kommunaal)}</td>
+                                  <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.haldus)}</td>
+                                  <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.remondifond)}</td>
+                                  {showLaen && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.laenumakse)}</td>}
+                                  <td style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>{euro(km.kokku)}</td>
+                                  {showSiht && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euroEE(km.sihtmakse)}</td>}
+                                </tr>
+                                {isOpen && (
+                                  <tr>
+                                    <td colSpan={colCount} style={{ padding: "4px 0 8px 24px", fontSize: 12, color: N.dim }}>
+                                      Kommunaal: {euro(kopiiriondvaade.kommunaalKokku)} × {(km.osa * 100).toFixed(1)}% = {euro(km.kommunaal)}
+                                      {" · "}
+                                      Haldus: {euro(kopiiriondvaade.haldusKokku)} × {(km.osa * 100).toFixed(1)}% = {euro(km.haldus)}
+                                      {" · "}
+                                      Remondifond: m² osa fondimaksest
+                                      {showLaen && <>
+                                        {" · "}
+                                        Laenumakse: {euro(kopiiriondvaade.laenumaksedKokku)} × {(km.osa * 100).toFixed(1)}% = {euro(km.laenumakse)}
+                                      </>}
+                                      {showSiht && <>
+                                        {" · "}
+                                        Sihtmakse (ühekordne): {euroEE(stsenaariumArvutus.sihtmakseKoguC)} × {(km.osa * 100).toFixed(1)}% = {euroEE(km.sihtmakse)}
+                                      </>}
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr style={{ ...thRow, fontWeight: 700 }}>
+                            <td style={{ padding: "8px 12px 8px 0" }}>Kokku</td>
+                            <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{korteriteKuumaksed.reduce((s, k) => s + k.pind, 0).toFixed(2)} m²</td>
+                            <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kommunaal, 0))}</td>
+                            <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.haldus, 0))}</td>
+                            <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.remondifond, 0))}</td>
+                            {showLaen && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.laenumakse, 0))}</td>}
+                            <td style={{ ...rr, padding: "8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kokku, 0))}</td>
+                            {showSiht && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euroEE(korteriteKuumaksed.reduce((s, k) => s + k.sihtmakse, 0))}</td>}
+                          </tr>
+                        </tfoot>
+                      </table>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
             </div>
           </div>
         )}
