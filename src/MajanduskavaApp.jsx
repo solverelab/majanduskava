@@ -237,12 +237,12 @@ const KULU_KATEGOORIAD = [...KOMMUNAALTEENUSED, ...HALDUSTEENUSED, ...LAENUMAKSE
 const TULU_KATEGOORIAD = ["Renditulu", "Muu tulu"];
 
 const TULU_KATEGOORIA_MAP = {
-  "Haldus": "Halduskulude ettemaks",
-  "Raamatupidamine": "Halduskulude ettemaks",
-  "Koristus": "Halduskulude ettemaks",
-  "Kindlustus": "Halduskulude ettemaks",
-  "Hooldus": "Halduskulude ettemaks",
-  "Kommunaalmaksed": "Halduskulude ettemaks",
+  "Haldus": "Haldustasu",
+  "Raamatupidamine": "Haldustasu",
+  "Koristus": "Haldustasu",
+  "Kindlustus": "Haldustasu",
+  "Hooldus": "Haldustasu",
+  "Kommunaalmaksed": "Haldustasu",
   "Muu haldusteenus": "Muu tulu",
 };
 
@@ -299,7 +299,6 @@ const KULU_NIMETUS_PLACEHOLDERS = {
 };
 
 const TULU_NIMETUS_PLACEHOLDERS = {
-  "Halduskulude ettemaks": "nt Korteriomanike igakuine ettemaks",
   "Renditulu": "nt Ruumide või parkimiskohtade rent",
   "Muu tulu": "nt Reklaamitulu, laekumised, toetused",
 };
@@ -1206,24 +1205,20 @@ export default function App() {
   useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
   useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME" }), category: "", arvutus: "aastas", summaInput: "" }] } })); }, [plan.budget.incomeRows.length]);
 
-  // Migreeri vanad tulukategooriad + eemalda "Halduskulude ettemaks" (nüüd automaatne readonly)
+  // Migreeri vanad tulukategooriad + eemalda "Haldustasu" (nüüd automaatne readonly)
   useEffect(() => {
     let changed = false;
-    let filtered = plan.budget.incomeRows.map(r => {
-      if (r.category === "Majandamiskulude ettemaks") {
+    const filtered = plan.budget.incomeRows.map(r => {
+      if (r.category === "Majandamiskulude ettemaks" || r.category === "Halduskulude ettemaks" || r.category === "Haldustasu") {
         changed = true;
-        return { ...r, category: "Halduskulude ettemaks" };
+        return null; // eemaldatakse, kuna nüüd automaatne
       }
       if (r.category === "Vahendustasu") {
         changed = true;
         return { ...r, category: "Muu tulu" };
       }
       return r;
-    });
-    // Eemalda "Halduskulude ettemaks" read — see tulurida on nüüd automaatne
-    const beforeLen = filtered.length;
-    filtered = filtered.filter(r => r.category !== "Halduskulude ettemaks");
-    if (filtered.length !== beforeLen) changed = true;
+    }).filter(Boolean);
     if (changed) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: filtered } }));
   }, []);
 
