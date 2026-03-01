@@ -2061,7 +2061,7 @@ export default function App() {
                   <div>Haldustasu perioodis: {euro(haldusSum)} → {haldusM2} €/m²</div>
                   {laenuSum > 0 && <div>Laenumakse perioodis: {euro(laenuSum)} → {laenuM2} €/m²</div>}
                   {muudTuludSum > 0 && <div>Muu tulu perioodis: {euro(muudTuludSum)}</div>}
-                  <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 4, marginTop: 4 }}>Tulud perioodis kokku: {euro(tuludKokku)}</div>
+                  <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 4, marginTop: 4 }}>Tulud kokku perioodis: {euro(tuludKokku)}</div>
                 </div>
 
               </div>
