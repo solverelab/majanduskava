@@ -1427,19 +1427,26 @@ export default function App() {
             <div style={{
               padding: "8px 14px", marginBottom: 16, borderRadius: 8,
               background: N.surface, border: `1px solid ${N.border}`, fontSize: 14,
-              display: "flex", flexDirection: "column", gap: 2,
+              display: "flex", gap: 24, flexWrap: "wrap", justifyContent: "space-between",
             }}>
-              <div style={rowStyle}>
-                <span style={kvLabel}>Haldus</span> <span style={kvNum}>{euro(haldusA)}</span>
-                <span style={kvSep}>|</span>
-                <span style={{ ...kvLabel, opacity: 0.6 }}>Kommunaal</span> <span style={{ ...kvNum, opacity: 0.6 }}>{euro(kommunaalA)}</span>
-                <span style={kvSep}>|</span>
-                <span style={kvLabel}>Kokku</span> <span style={kvNum}>{euro(haldusA + kommunaalA)}</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <div style={rowStyle}>
+                  <span style={kvLabel}>Haldus</span> <span style={kvNum}>{euro(haldusA)}</span>
+                </div>
+                <div style={rowStyle}>
+                  <span style={kvLabel}>Tulud</span> <span style={kvNum}>{euro(tuludA)}</span>
+                </div>
+                <div style={{ ...rowStyle, borderTop: `1px solid ${N.border}`, paddingTop: 2, marginTop: 2 }}>
+                  <span style={kvLabel}>{vaheLabel}</span> <span style={{ ...kvNum, color: vaheColor }}>{euro(Math.abs(vaheA))}</span>
+                </div>
               </div>
-              <div style={rowStyle}>
-                <span style={kvLabel}>Tulud</span> <span style={kvNum}>{euro(tuludA)}</span>
-                <span style={kvSep}>|</span>
-                <span style={kvLabel}>{vaheLabel}</span> <span style={{ ...kvNum, color: vaheColor }}>{euro(Math.abs(vaheA))}</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, opacity: 0.6 }}>
+                <div style={rowStyle}>
+                  <span style={kvLabel}>Kommunaal</span> <span style={kvNum}>{euro(kommunaalA)}</span>
+                </div>
+                <div style={rowStyle}>
+                  <span style={kvLabel}>Kokku</span> <span style={kvNum}>{euro(haldusA + kommunaalA)}</span>
+                </div>
               </div>
             </div>
           );
