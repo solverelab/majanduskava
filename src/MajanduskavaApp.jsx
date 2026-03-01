@@ -466,6 +466,15 @@ export default function App() {
       .filter(k => HALDUSTEENUSED.some(ht => ht === k.kategooria))
       .reduce((sum, k) => sum + (parseFloat(k.summaKuus) || 0), 0));
 
+    // Perioodi kogusummad (täpsed, otse summaInput-ist — kuvamiseks jaotamise alustes)
+    const kommunaalPeriood = plan.budget.costRows
+      .filter(r => KOMMUNAALTEENUSED.includes(r.category))
+      .reduce((sum, r) => sum + (Math.round(parseFloat(r.summaInput) || 0)), 0);
+
+    const haldusPeriood = plan.budget.costRows
+      .filter(r => HALDUSTEENUSED.includes(r.category))
+      .reduce((sum, r) => sum + (Math.round(parseFloat(r.summaInput) || 0)), 0);
+
     const kuludKokku = kommunaalKokku + haldusKokku;
 
     // Muu tulu kokku (€/kuu) — ainult incomeRows (ilma haldustasu ja laenumakseta)
@@ -489,6 +498,8 @@ export default function App() {
     return {
       kommunaalKokku,
       haldusKokku,
+      kommunaalPeriood,
+      haldusPeriood,
       kuludKokku,
       muudTuludKokku,
       tuludKokku,
@@ -2336,11 +2347,11 @@ export default function App() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span>Kommunaalkulud perioodis</span>
-                      <span style={{ fontFamily: "monospace" }}>{euroEE(kopiiriondvaade.kommunaalKokku * (derived.period.monthEq || 12))} → {euro(kopiiriondvaade.kommunaalKokku)}/kuu</span>
+                      <span style={{ fontFamily: "monospace" }}>{euroEE(kopiiriondvaade.kommunaalPeriood)} → {euro(kopiiriondvaade.kommunaalKokku)}/kuu</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span>Halduskulud perioodis</span>
-                      <span style={{ fontFamily: "monospace" }}>{euroEE(kopiiriondvaade.haldusKokku * (derived.period.monthEq || 12))} → {euro(kopiiriondvaade.haldusKokku)}/kuu</span>
+                      <span style={{ fontFamily: "monospace" }}>{euroEE(kopiiriondvaade.haldusPeriood)} → {euro(kopiiriondvaade.haldusKokku)}/kuu</span>
                     </div>
                     {(() => {
                       const fn = stsenaarium === "A" ? stsenaariumArvutus.fondNeededA
