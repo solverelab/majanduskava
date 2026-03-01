@@ -2179,16 +2179,22 @@ export default function App() {
                 <div style={{ width: 260 }}>
                   <div style={fieldLabel}>Nõutav miinimum</div>
                   {(() => {
-                    const mEq = derived.period.monthEq || 12;
-                    const kuludAastas = (kopiiriondvaade.haldusKokku + kopiiriondvaade.kommunaalKokku) * mEq;
+                    const aastaKulud = plan.budget.costRows
+                      .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+                    const noutavMiinimum = Math.round(aastaKulud / 12);
                     return (
                       <>
                         <div style={{ fontFamily: "monospace", fontSize: 18, fontWeight: 800 }}>
-                          {euro(Math.round(kuludAastas / 12))}
+                          {euro(noutavMiinimum)}
                         </div>
                         <div style={{ fontSize: 12, color: N.dim, marginTop: 4, fontFamily: "monospace" }}>
-                          {euro(kuludAastas)} × 1/12
+                          {euro(aastaKulud)} × 1/12
                         </div>
+                        {plan.funds.reserve.plannedEUR > 0 && plan.funds.reserve.plannedEUR < noutavMiinimum && (
+                          <div style={{ fontSize: 13, color: "#854d0e", marginTop: 4 }}>
+                            Kavandatud reservkapital on alla nõutava miinimumi ({euro(noutavMiinimum)}).
+                          </div>
+                        )}
                       </>
                     );
                   })()}
@@ -2965,7 +2971,7 @@ export default function App() {
               <div><span style={{ fontWeight: 700 }}>Remondifondi määr:</span> {String(plan.funds.repairFund.monthlyRateEurPerM2).replace(".", ",")} €/m²/kuu</div>
               <div><span style={{ fontWeight: 700 }}>Laekumine perioodis:</span> {euroEE(derived.funds.repairFundIncomePeriodEUR)}</div>
               <div><span style={{ fontWeight: 700 }}>Planeeritud reserv:</span> {euroEE(plan.funds.reserve.plannedEUR)}</div>
-              <div><span style={{ fontWeight: 700 }}>Nõutav reserv:</span> {euroEE(derived.funds.reserveRequiredEUR)}</div>
+              <div><span style={{ fontWeight: 700 }}>Nõutav reserv:</span> {euroEE(Math.round(plan.budget.costRows.reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0) / 12))}</div>
             </div>
             {plan.loans.length > 0 && (
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
