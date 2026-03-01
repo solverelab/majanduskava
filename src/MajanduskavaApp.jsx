@@ -716,13 +716,9 @@ export default function App() {
           setPreset(data.preset);
           setHostPreset(data.preset);
         }
-        // Migrate investment quarters (numeric → roman)
-        const kvMap = { "1": "I", "2": "II", "3": "III", "4": "IV" };
+        // Strip investment quarters from old data
         if (candidateState.investmentsPipeline?.items) {
-          candidateState.investmentsPipeline.items = candidateState.investmentsPipeline.items.map(it => ({
-            ...it,
-            quarter: kvMap[String(it.quarter)] || it.quarter || "I",
-          }));
+          candidateState.investmentsPipeline.items = candidateState.investmentsPipeline.items.map(({ quarter: _ignored, ...rest }) => rest);
         }
         // Migrate old income categories + add missing fields
         if (candidateState.budget?.incomeRows) {
@@ -1296,7 +1292,7 @@ export default function App() {
     const prev = plan.investmentsPipeline.items;
     const same = prev.length === items.length && items.every((it, i) =>
       prev[i]?.id === it.id && prev[i]?.name === it.name && prev[i]?.totalCostEUR === it.totalCostEUR
-      && prev[i]?.plannedYear === it.plannedYear && prev[i]?.quarter === it.quarter
+      && prev[i]?.plannedYear === it.plannedYear
       && JSON.stringify(prev[i]?.fundingPlan) === JSON.stringify(it.fundingPlan)
     );
     if (!same) setPlan(p => ({ ...p, investmentsPipeline: { ...p.investmentsPipeline, items } }));
