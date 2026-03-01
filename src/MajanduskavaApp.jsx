@@ -226,9 +226,9 @@ const btnRemove   = { ..._btnBase, background: "transparent", color: N.dim, font
 const btn         = btnSecondary; // legacy alias
 
 // ── CATEGORIES & ENUMS ──
-const KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus"];
+const KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus", "Muu kommunaalteenus"];
 
-const HALDUSTEENUSED = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Prügivedu", "Laenumakse", "Muu"];
+const HALDUSTEENUSED = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Prügivedu", "Laenumakse", "Muu haldusteenus"];
 
 const KULU_KATEGOORIAD = [...KOMMUNAALTEENUSED, ...HALDUSTEENUSED];
 
@@ -241,7 +241,7 @@ const TULU_KATEGOORIA_MAP = {
   "Kindlustus": "Halduskulude ettemaks",
   "Hooldus": "Halduskulude ettemaks",
   "Kommunaalmaksed": "Halduskulude ettemaks",
-  "Muu": "Muu tulu",
+  "Muu haldusteenus": "Muu tulu",
 };
 
 const KOMMUNAAL_UHIKUD = {
@@ -292,7 +292,8 @@ const KULU_NIMETUS_PLACEHOLDERS = {
   "Kindlustus": "nt Hoone koguriskikindlustus",
   "Hooldus": "nt Lukkude vahetus, kraanide remont",
   "Laenumakse": "nt Remondilaen, investeerimislaen",
-  "Muu": "Kirjelda kulu",
+  "Muu haldusteenus": "Kirjelda kulu",
+  "Muu kommunaalteenus": "Kirjelda kulu",
 };
 
 const TULU_NIMETUS_PLACEHOLDERS = {
@@ -717,6 +718,12 @@ export default function App() {
             ...r,
             category: TULU_KATEGOORIA_MAP[r.category] || r.category,
           }));
+        }
+        // Migrate old "Muu" → "Muu haldusteenus"
+        if (candidateState.budget?.costRows) {
+          candidateState.budget.costRows = candidateState.budget.costRows.map(r =>
+            r.category === "Muu" ? { ...r, category: "Muu haldusteenus" } : r
+          );
         }
         // Migrate old cost rows — add missing UI fields
         if (candidateState.budget?.costRows) {
@@ -1870,14 +1877,14 @@ export default function App() {
                             )}
                           </select>
                         </div>
-                        {(r.category === "Muu" || r.category === "Muu tulu") && (
+                        {(r.category === "Muu haldusteenus" || r.category === "Muu kommunaalteenus" || r.category === "Muu tulu") && (
                           <div style={{ flex: 2 }}>
                             <div style={fieldLabel}>Nimetus</div>
                             <input value={r.name} onChange={(e) => updateRow(side, r.id, { name: e.target.value })} placeholder={side === "COST" ? (KULU_NIMETUS_PLACEHOLDERS[r.category] || "Kirjelda kulu") : (TULU_NIMETUS_PLACEHOLDERS[r.category] || "Kirjelda tulu")} style={inputStyle} />
                           </div>
                         )}
 
-                        {side === "COST" && KOMMUNAALTEENUSED.includes(r.category) ? (
+                        {side === "COST" && KOMMUNAALTEENUSED.includes(r.category) && r.category !== "Muu kommunaalteenus" ? (
                           <>
                             <div style={{ width: 100 }}>
                               <div style={fieldLabel}>Kogus</div>
@@ -1893,6 +1900,13 @@ export default function App() {
                             </div>
                             <div style={{ width: 140 }}>
                               <div style={fieldLabel}>Maksumus €/periood</div>
+                              <EuroInput value={r.summaInput || 0} onChange={(v) => updateRow(side, r.id, { summaInput: v })} style={numStyle} />
+                            </div>
+                          </>
+                        ) : side === "COST" && r.category === "Muu kommunaalteenus" ? (
+                          <>
+                            <div style={{ width: 140 }}>
+                              <div style={fieldLabel}>€/periood</div>
                               <EuroInput value={r.summaInput || 0} onChange={(v) => updateRow(side, r.id, { summaInput: v })} style={numStyle} />
                             </div>
                           </>
