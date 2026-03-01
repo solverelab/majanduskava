@@ -2218,20 +2218,22 @@ export default function App() {
                           <div style={fieldLabel}>Intress %/a</div>
                           <NumberInput value={ln.annualRatePct} onChange={(v) => updateLoan(ln.id, { annualRatePct: v })} style={numStyle} />
                         </div>
-                        <div style={{ width: 200 }}>
-                          <div style={fieldLabel}>Periood</div>
+                        <div style={{ width: 260 }}>
+                          <div style={{ ...fieldLabel, display: "flex", alignItems: "center" }}>
+                            Periood
+                            <span title="Laenu tagasimaksmise periood" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", border: `1px solid ${N.border}`, fontSize: 11, color: N.dim, cursor: "help", marginLeft: 6 }}>?</span>
+                          </div>
                           {(() => {
                             const total = parseInt(ln.termMonths) || 0;
                             const yy = Math.floor(total / 12);
                             const mm = total % 12;
                             return (
-                              <div style={{ display: "flex", gap: 4 }}>
-                                <select value={total > 0 ? yy : ""} onChange={(e) => { const v = e.target.value; updateLoan(ln.id, { termMonths: (v === "" ? 0 : parseInt(v) * 12) + mm }); }} style={{ ...selectStyle, flex: 2 }}>
-                                  <option value="">—</option>
-                                  {Array.from({ length: 31 }, (_, i) => <option key={i} value={i}>{i} a</option>)}
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <select value={yy} onChange={(e) => { const v = parseInt(e.target.value); updateLoan(ln.id, { termMonths: v * 12 + mm }); }} style={{ ...selectStyle, flex: 2, padding: "10px 12px", fontSize: 15 }}>
+                                  {Array.from({ length: 31 }, (_, i) => <option key={i} value={i}>{i} {i === 1 ? "aasta" : "aastat"}</option>)}
                                 </select>
-                                <select value={mm} onChange={(e) => updateLoan(ln.id, { termMonths: yy * 12 + parseInt(e.target.value) })} style={{ ...selectStyle, flex: 1 }}>
-                                  {Array.from({ length: 12 }, (_, i) => <option key={i} value={i}>{i} k</option>)}
+                                <select value={mm} onChange={(e) => updateLoan(ln.id, { termMonths: yy * 12 + parseInt(e.target.value) })} style={{ ...selectStyle, flex: 1, padding: "10px 12px", fontSize: 15 }}>
+                                  {Array.from({ length: 12 }, (_, i) => <option key={i} value={i}>{i} {i === 1 ? "kuu" : "kuud"}</option>)}
                                 </select>
                               </div>
                             );
