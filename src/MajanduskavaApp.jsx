@@ -2045,6 +2045,44 @@ export default function App() {
               )}
             </div>
 
+            {/* ── Halduskulu ettemaks ── */}
+            <div style={card}>
+              <div style={{ ...sectionTitle, marginBottom: 4 }}>Halduskulu ettemaks</div>
+              <div style={{ fontSize: 13, color: N.sub, marginBottom: 12 }}>Arvutatud haldusteenuste kulude järgi</div>
+
+              {(() => {
+                const mEq = derived.period.monthEq || 12;
+                const koguPind = derived.building.totAreaM2;
+                const haldusSumma = plan.budget.costRows
+                  .filter(r => HALDUSTEENUSED.includes(r.category))
+                  .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+                const halAastas = mEq === 12 ? haldusSumma : haldusSumma * (12 / mEq);
+                const m2Aastas = koguPind > 0 ? halAastas / koguPind : 0;
+                const m2Kuus = m2Aastas / 12;
+                const rvRow = { display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 14 };
+                return (
+                  <div style={{ background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8, padding: 12, fontSize: 14 }}>
+                    <div style={rvRow}>
+                      <span style={{ color: N.sub }}>Haldusteenused perioodis</span>
+                      <span style={{ fontFamily: "monospace" }}>{euro(haldusSumma)}</span>
+                    </div>
+                    <div style={rvRow}>
+                      <span style={{ color: N.sub }}>Haldusteenused aastas</span>
+                      <span style={{ fontFamily: "monospace" }}>{euro(halAastas)}</span>
+                    </div>
+                    <div style={rvRow}>
+                      <span style={{ color: N.sub }}>Maja pind kokku</span>
+                      <span style={{ fontFamily: "monospace" }}>{koguPind.toFixed(1).replace(".", ",")} m²</span>
+                    </div>
+                    <div style={{ ...rvRow, fontWeight: 700, borderTop: `1px solid ${N.border}`, marginTop: 4, paddingTop: 8 }}>
+                      <span>Vajalik ettemaks</span>
+                      <span style={{ fontFamily: "monospace" }}>{m2Kuus.toFixed(2).replace(".", ",")} €/m² kuus · {m2Aastas.toFixed(2).replace(".", ",")} €/m² aastas</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
             <div style={card}>
               <div style={{ ...sectionTitle, marginBottom: 4 }}>Reservkapital</div>
               <div style={{ fontSize: 13, color: N.sub, marginBottom: 12 }}>Minimaalselt 1/12 aasta kuludest</div>
