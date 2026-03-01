@@ -1421,7 +1421,7 @@ export default function App() {
         )}
 
         {/* ── Koondvaade — nähtav alates Tab 2 ── */}
-        {sec >= 2 && (() => {
+        {sec === 4 && (() => {
           const haldusA = plan.budget.costRows
             .filter(r => HALDUSTEENUSED.includes(r.category))
             .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
