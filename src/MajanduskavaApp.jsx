@@ -1914,13 +1914,13 @@ export default function App() {
                           ) : r.category ? (
                             <>
                               <div style={{ width: 140 }}>
-                                <div style={fieldLabel}>€/aasta</div>
+                                <div style={fieldLabel}>Maksumus €/periood</div>
                                 <EuroInput value={r.summaInput} onChange={(v) => updateRow(side, r.id, { summaInput: v, arvutus: "aastas" })} style={numStyle} />
                               </div>
                             </>
                           ) : (
                             <div style={{ width: 140 }}>
-                              <div style={fieldLabel}>Summa €</div>
+                              <div style={fieldLabel}>Maksumus €/periood</div>
                               <EuroInput value={r.summaInput || 0} onChange={(v) => updateRow(side, r.id, { summaInput: v, arvutus: "perioodis" })} style={numStyle} />
                             </div>
                           )}
@@ -1961,8 +1961,14 @@ export default function App() {
 
                 <div style={{ ...helperText, marginTop: 12, fontFamily: "monospace" }}>
                   {side === "COST"
-                    ? <>Kulud perioodis: {euro(derived.totals.costPeriodEUR || 0)} · kuus {euro(derived.totals.costMonthlyEUR || 0)}/kuu</>
-                    : <>Tulud perioodis: {euro(derived.totals.incomePeriodEUR || 0)} · kuus {euro(derived.totals.incomeMonthlyEUR || 0)}/kuu</>
+                    ? (() => {
+                        const mEq = derived.period.monthEq || 12;
+                        const { kommunaalKokku, haldusKokku } = kopiiriondvaade;
+                        const komA = kommunaalKokku * mEq;
+                        const halA = haldusKokku * mEq;
+                        return <>Kommunaalteenused perioodis: {euro(komA)} · Haldusteenused perioodis: {euro(halA)} · Kulud kokku perioodis: {euro(komA + halA)}</>;
+                      })()
+                    : <>Tulud perioodis: {euro(derived.totals.incomePeriodEUR || 0)}</>
                   }
                 </div>
                 <div style={{ marginTop: 8 }}>
