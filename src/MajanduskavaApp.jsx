@@ -424,7 +424,7 @@ export default function App() {
   const [seisukord, setSeisukord] = useState([]);
   const [muudInvesteeringud, setMuudInvesteeringud] = useState([]);
   const [repairFundSaldo, setRepairFundSaldo] = useState(""); // tagasiühilduvus
-  const [remondifond, setRemondifond] = useState({ saldoAlgus: "", maarKuusM2: "" });
+  const [remondifond, setRemondifond] = useState({ saldoAlgus: "", maarAastasM2: "" });
 
   const derived = useMemo(() => computePlan(plan), [plan]);
 
@@ -493,12 +493,11 @@ export default function App() {
 
   const remondifondiArvutus = useMemo(() => {
     const saldoAlgus = Math.round(parseFloat(String(remondifond.saldoAlgus).replace(",", ".")) || 0);
-    const maarKuusM2 = parseFloat(String(remondifond.maarKuusM2).replace(",", ".")) || 0;
+    const maarAastasM2 = parseFloat(String(remondifond.maarAastasM2).replace(",", ".")) || 0;
     const koguPind = derived.building.totAreaM2;
     const kuudeArv = derived.period.monthEq || 12;
 
-    const kuuLaekumine = Math.round(maarKuusM2 * koguPind);
-    const laekumisedKokku = kuuLaekumine * kuudeArv;
+    const laekuminePerioodis = Math.round(maarAastasM2 / 12 * koguPind * kuudeArv);
 
     // Planeeritud investeeringud remondifondist
     const investRemondifondist = [
@@ -510,15 +509,15 @@ export default function App() {
         .reduce((s, r) => s + (Math.round(parseFloat(String(r.summa).replace(",", ".")) || 0)), 0);
     }, 0);
 
-    const saldoLopp = saldoAlgus + laekumisedKokku - investRemondifondist;
+    const saldoLopp = saldoAlgus + laekuminePerioodis - investRemondifondist;
 
-    return { saldoAlgus, maarKuusM2, koguPind, kuuLaekumine, laekumisedKokku, investRemondifondist, saldoLopp };
+    return { saldoAlgus, maarAastasM2, koguPind, laekuminePerioodis, investRemondifondist, saldoLopp };
   }, [remondifond, derived.building.totAreaM2, derived.period.monthEq, seisukord, muudInvesteeringud]);
 
   const korteriteKuumaksed = useMemo(() => {
     const apts = plan.building.apartments;
     const koguPind = derived.building.totAreaM2;
-    const rfMaar = parseFloat(String(remondifond.maarKuusM2).replace(",", ".")) || 0;
+    const rfMaarKuus = (parseFloat(String(remondifond.maarAastasM2).replace(",", ".")) || 0) / 12;
 
     return apts.map(k => {
       const pind = parseFloat(k.areaM2) || 0;
@@ -526,13 +525,13 @@ export default function App() {
 
       const kommunaal = Math.round(kopiiriondvaade.kommunaalKokku * osa);
       const haldus = Math.round(kopiiriondvaade.haldusKokku * osa);
-      const rf = Math.round(rfMaar * pind);
+      const rf = Math.round(rfMaarKuus * pind);
       const laen = Math.round(kopiiriondvaade.laenumaksedKokku * osa);
       const kokku = kommunaal + haldus + rf + laen;
 
       return { id: k.id, tahis: k.label, pind, osa, kommunaal, haldus, remondifond: rf, laenumakse: laen, kokku };
     });
-  }, [plan.building.apartments, derived.building.totAreaM2, remondifond.maarKuusM2, kopiiriondvaade]);
+  }, [plan.building.apartments, derived.building.totAreaM2, remondifond.maarAastasM2, kopiiriondvaade]);
 
   // ── Solvere policy evaluation ──
   const [evaluation, setEvaluation] = useState(null);
@@ -758,9 +757,14 @@ export default function App() {
         if (data.kyData) setKyData(data.kyData);
         setRepairFundSaldo(data.repairFundSaldo ?? "");
         if (data.remondifond) {
-          setRemondifond(data.remondifond);
+          const rf = data.remondifond;
+          if (rf.maarKuusM2 !== undefined && rf.maarAastasM2 === undefined) {
+            rf.maarAastasM2 = (parseFloat(String(rf.maarKuusM2).replace(",", ".")) || 0) * 12 || "";
+            delete rf.maarKuusM2;
+          }
+          setRemondifond(rf);
         } else if (data.repairFundSaldo) {
-          setRemondifond({ saldoAlgus: data.repairFundSaldo, maarKuusM2: candidateState.funds?.repairFund?.monthlyRateEurPerM2 || "" });
+          setRemondifond({ saldoAlgus: data.repairFundSaldo, maarAastasM2: (parseFloat(candidateState.funds?.repairFund?.monthlyRateEurPerM2) || 0) * 12 || "" });
         }
         // Migrate seisukord + old investments → eseme-based
         let importedSeisukord = [];
@@ -1324,7 +1328,7 @@ export default function App() {
       if (tabIdx === 1) { setSeisukord([]); setMuudInvesteeringud([]); return { ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [] } }; }
       if (tabIdx === 2) return { ...p, budget: { ...p.budget, costRows: [] } };
       if (tabIdx === 3) return { ...p, budget: { ...p.budget, incomeRows: [] } };
-      if (tabIdx === 4) { setRepairFundSaldo(""); setRemondifond({ saldoAlgus: "", maarKuusM2: "" }); return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, loans: [] }; }
+      if (tabIdx === 4) { setRepairFundSaldo(""); setRemondifond({ saldoAlgus: "", maarAastasM2: "" }); return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, loans: [] }; }
       return p;
     });
   };
@@ -1965,7 +1969,7 @@ export default function App() {
                   })()}
                 </div>
 
-                <div style={{ ...helperText, marginTop: 12, fontFamily: "monospace" }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginTop: 12, fontFamily: "monospace" }}>
                   {side === "COST"
                     ? (() => {
                         const komSum = plan.budget.costRows
@@ -1974,7 +1978,11 @@ export default function App() {
                         const halSum = plan.budget.costRows
                           .filter(r => HALDUSTEENUSED.includes(r.category))
                           .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                        return <>Kommunaalteenused perioodis: {euro(komSum)} · Haldusteenused perioodis: {euro(halSum)} · Kulud kokku perioodis: {euro(komSum + halSum)}</>;
+                        const mEq = derived.period.monthEq || 12;
+                        const halAastas = mEq === 12 ? halSum : halSum * (12 / mEq);
+                        const koguPind = derived.building.totAreaM2;
+                        const m2Aastas = koguPind > 0 ? (halAastas / koguPind).toFixed(2).replace(".", ",") : "\u2014";
+                        return <>Kommunaalteenused perioodis: {euro(komSum)} · Haldusteenused aastas: {euro(halAastas)} → {m2Aastas} €/m² aastas · Kulud kokku perioodis: {euro(komSum + halSum)}</>;
                       })()
                     : <>Tulud perioodis: {euro(derived.totals.incomePeriodEUR || 0)}</>
                   }
@@ -2000,11 +2008,11 @@ export default function App() {
                   <EuroInput value={remondifond.saldoAlgus} onChange={(v) => { setRemondifond(p => ({ ...p, saldoAlgus: v })); setRepairFundSaldo(v); }} placeholder="Fondi jääk" style={numStyle} />
                 </div>
                 <div style={{ width: 144 }}>
-                  <div style={fieldLabel}>Määr (€/m² kuus)</div>
+                  <div style={fieldLabel}>Määr (€/m² aastas)</div>
                   <NumberInput
-                    value={remondifond.maarKuusM2}
-                    onChange={(v) => { setRemondifond(p => ({ ...p, maarKuusM2: v })); setPlan(p => ({ ...p, funds: { ...p.funds, repairFund: { monthlyRateEurPerM2: v } } })); }}
-                    placeholder="nt 0,30"
+                    value={remondifond.maarAastasM2}
+                    onChange={(v) => { setRemondifond(p => ({ ...p, maarAastasM2: v })); const kuus = (parseFloat(String(v).replace(",", ".")) || 0) / 12; setPlan(p => ({ ...p, funds: { ...p.funds, repairFund: { monthlyRateEurPerM2: kuus } } })); }}
+                    placeholder="nt 3,60"
                     style={numStyle}
                   />
                 </div>
@@ -2023,9 +2031,9 @@ export default function App() {
                     </div>
                     <div style={rvRow}>
                       <span style={{ color: N.sub }}>
-                        Laekumine ({ra.maarKuusM2 ? `${String(ra.maarKuusM2).replace(".", ",")} €/m²` : "0 €/m²"} {"\u00D7"} {ra.koguPind.toFixed(1).replace(".", ",")} m² {"\u00D7"} {kuudeArv} kuu)
+                        Laekumine ({ra.maarAastasM2 ? `${String(ra.maarAastasM2).replace(".", ",")} €/m² aastas` : "0 €/m² aastas"} {"\u00D7"} {ra.koguPind.toFixed(1).replace(".", ",")} m² {"\u00D7"} {kuudeArv}/{12})
                       </span>
-                      <span style={{ fontFamily: "monospace" }}>+ {euro(ra.laekumisedKokku)}</span>
+                      <span style={{ fontFamily: "monospace" }}>+ {euro(ra.laekuminePerioodis)}</span>
                     </div>
                     {ra.investRemondifondist > 0 && (
                       <div style={rvRow}>
@@ -2046,44 +2054,6 @@ export default function App() {
                   Remondifondist ei piisa planeeritud investeeringute katteks. Puudujääk {euro(Math.abs(remondifondiArvutus.saldoLopp))}.
                 </div>
               )}
-            </div>
-
-            {/* ── Halduskulu ettemaks ── */}
-            <div style={card}>
-              <div style={{ ...sectionTitle, marginBottom: 4 }}>Halduskulu ettemaks</div>
-              <div style={{ fontSize: 13, color: N.sub, marginBottom: 12 }}>Arvutatud haldusteenuste kulude järgi</div>
-
-              {(() => {
-                const mEq = derived.period.monthEq || 12;
-                const koguPind = derived.building.totAreaM2;
-                const haldusSumma = plan.budget.costRows
-                  .filter(r => HALDUSTEENUSED.includes(r.category))
-                  .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-                const halAastas = mEq === 12 ? haldusSumma : haldusSumma * (12 / mEq);
-                const m2Aastas = koguPind > 0 ? halAastas / koguPind : 0;
-                const m2Kuus = m2Aastas / 12;
-                const rvRow = { display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 14 };
-                return (
-                  <div style={{ background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8, padding: 12, fontSize: 14 }}>
-                    <div style={rvRow}>
-                      <span style={{ color: N.sub }}>Haldusteenused perioodis</span>
-                      <span style={{ fontFamily: "monospace" }}>{euro(haldusSumma)}</span>
-                    </div>
-                    <div style={rvRow}>
-                      <span style={{ color: N.sub }}>Haldusteenused aastas</span>
-                      <span style={{ fontFamily: "monospace" }}>{euro(halAastas)}</span>
-                    </div>
-                    <div style={rvRow}>
-                      <span style={{ color: N.sub }}>Maja pind kokku</span>
-                      <span style={{ fontFamily: "monospace" }}>{koguPind.toFixed(1).replace(".", ",")} m²</span>
-                    </div>
-                    <div style={{ ...rvRow, fontWeight: 700, borderTop: `1px solid ${N.border}`, marginTop: 4, paddingTop: 8 }}>
-                      <span>Vajalik ettemaks</span>
-                      <span style={{ fontFamily: "monospace" }}>{m2Kuus.toFixed(2).replace(".", ",")} €/m² kuus · {m2Aastas.toFixed(2).replace(".", ",")} €/m² aastas</span>
-                    </div>
-                  </div>
-                );
-              })()}
             </div>
 
             <div style={card}>
@@ -2230,7 +2200,7 @@ export default function App() {
                       {korteriteKuumaksed.map(km => {
                         const isOpen = avaKorterDetail[km.id];
                         const colCount = 6 + (hasLaen ? 1 : 0);
-                        const rfMaar = parseFloat(String(remondifond.maarKuusM2).replace(",", ".")) || 0;
+                        const rfMaarKuus = (parseFloat(String(remondifond.maarAastasM2).replace(",", ".")) || 0) / 12;
                         return (
                           <Fragment key={km.id}>
                             <tr style={{ ...tdSep, cursor: "pointer" }} onClick={() => setAvaKorterDetail(p => ({ ...p, [km.id]: !p[km.id] }))}>
@@ -2249,7 +2219,7 @@ export default function App() {
                                   {" \u00B7 "}
                                   Haldus: {euro(kopiiriondvaade.haldusKokku)} {"\u00D7"} {(km.osa * 100).toFixed(1)}% = {euro(km.haldus)}
                                   {" \u00B7 "}
-                                  Remondifond: {String(rfMaar).replace(".", ",")} €/m² {"\u00D7"} {km.pind.toFixed(2).replace(".", ",")} m² = {euro(km.remondifond)}
+                                  Remondifond: {String(rfMaarKuus.toFixed(4)).replace(".", ",")} €/m² {"\u00D7"} {km.pind.toFixed(2).replace(".", ",")} m² = {euro(km.remondifond)}
                                   {hasLaen && <>
                                     {" \u00B7 "}
                                     Laenumakse: {euro(kopiiriondvaade.laenumaksedKokku)} {"\u00D7"} {(km.osa * 100).toFixed(1)}% = {euro(km.laenumakse)}
