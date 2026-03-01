@@ -1199,18 +1199,17 @@ export default function App() {
   };
 
   const eemaldaSeostudLaen = (investeeringId) => {
-    setPlan(p => {
-      const seotud = p.loans.find(l => l.sepiiriostudInvId === investeeringId);
-      if (!seotud) return p;
-      if (seotud.annualRatePct || seotud.termMonths) {
-        if (!window.confirm("Eemaldada ka seotud laenurida Fondid & laen sektsioonist?")) {
-          return { ...p, loans: p.loans.map(l =>
-            l.sepiiriostudInvId === investeeringId ? { ...l, sepiiriostudInvId: null } : l
-          )};
-        }
+    const seotud = plan.loans.find(l => l.sepiiriostudInvId === investeeringId);
+    if (!seotud) return;
+    if (seotud.annualRatePct || seotud.termMonths) {
+      if (!window.confirm("Eemaldada ka seotud laenurida Fondid & laen sektsioonist?")) {
+        setPlan(p => ({ ...p, loans: p.loans.map(l =>
+          l.sepiiriostudInvId === investeeringId ? { ...l, sepiiriostudInvId: null } : l
+        )}));
+        return;
       }
-      return { ...p, loans: p.loans.filter(l => l.sepiiriostudInvId !== investeeringId) };
-    });
+    }
+    setPlan(p => ({ ...p, loans: p.loans.filter(l => l.sepiiriostudInvId !== investeeringId) }));
   };
 
   const addLoan = () => {
@@ -1230,14 +1229,11 @@ export default function App() {
   };
 
   const removeLoan = (id) => {
-    setPlan(p => {
-      const ln = p.loans.find(l => l.id === id);
-      if (ln?.sepiiriostudInvId) {
-        if (!window.confirm("See laen on seotud investeeringuga. Eemaldada?")) return p;
-      }
-      const updated = p.loans.filter(l => l.id !== id);
-      return { ...p, loans: updated };
-    });
+    const ln = plan.loans.find(l => l.id === id);
+    if (ln?.sepiiriostudInvId) {
+      if (!window.confirm("See laen on seotud investeeringuga. Eemaldada?")) return;
+    }
+    setPlan(p => ({ ...p, loans: p.loans.filter(l => l.id !== id) }));
   };
 
   // Auto-add one empty row when section is empty (setPlan, not addX — idempotent even if effect fires twice)
