@@ -1424,13 +1424,8 @@ export default function App() {
           const kommunaalA = plan.budget.costRows
             .filter(r => KOMMUNAALTEENUSED.includes(r.category))
             .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-          const tuludA = plan.budget.incomeRows
-            .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
-          const vaheA = tuludA - haldusA;
-          const naitaKoondribana = haldusA > 0 || kommunaalA > 0 || tuludA > 0;
+          const naitaKoondribana = haldusA > 0 || kommunaalA > 0;
           if (!naitaKoondribana) return null;
-          const vaheColor = vaheA > 0 ? "#15803d" : vaheA < 0 ? "#dc2626" : N.dim;
-          const vaheLabel = vaheA >= 0 ? "Ülejääk" : "Puudujääk";
           const kvNum = { fontFamily: "monospace", fontWeight: 700, fontSize: 15 };
           const kvLabel = { fontSize: 12, color: N.dim, minWidth: 110 };
           const kvSep = { color: N.border, margin: "0 6px", fontSize: 13 };
@@ -1439,7 +1434,6 @@ export default function App() {
             <div style={{
               padding: "8px 14px", marginBottom: 16, borderRadius: 8,
               background: N.surface, border: `1px solid ${N.border}`, fontSize: 14,
-              display: "flex", flexDirection: "column", gap: 2,
             }}>
               <div style={rowStyle}>
                 <span style={kvLabel}>Haldusteenused</span> <span style={kvNum}>{euro(haldusA)}</span>
@@ -1447,12 +1441,6 @@ export default function App() {
                 <span style={{ ...kvLabel, opacity: 0.6 }}>Kommunaalteenused</span> <span style={{ ...kvNum, opacity: 0.6 }}>{euro(kommunaalA)}</span>
                 <span style={kvSep}>|</span>
                 <span style={kvLabel}>Kokku</span> <span style={kvNum}>{euro(haldusA + kommunaalA)}</span>
-              </div>
-              <div style={rowStyle}>
-                <span style={kvLabel}>Tulud</span> <span style={kvNum}>{euro(tuludA)}</span>
-              </div>
-              <div style={rowStyle}>
-                <span style={kvLabel}>{vaheLabel}</span> <span style={{ ...kvNum, color: vaheColor }}>{euro(Math.abs(vaheA))}</span>
               </div>
             </div>
           );
