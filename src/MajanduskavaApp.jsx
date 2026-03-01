@@ -105,6 +105,7 @@ function NumberInput({ value, onChange, ...props }) {
           setDisplay(e.target.value);
         }
       }}
+      onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
       onFocus={(e) => { setEditing(true); e.target.select(); }}
       onBlur={() => {
         setEditing(false);
@@ -137,6 +138,7 @@ function EuroInput({ value, onChange, ...props }) {
           setDisplay(e.target.value);
         }
       }}
+      onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
       onFocus={(e) => {
         setEditing(true);
         const rounded = Math.round(value) || 0;
@@ -201,6 +203,7 @@ function DateInput({ value, onChange, ...props }) {
       placeholder="PP.KK.AAAA"
       value={display}
       onChange={handleChange}
+      onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
       onFocus={(e) => { setEditing(true); e.target.select(); }}
       onBlur={() => {
         setEditing(false);
