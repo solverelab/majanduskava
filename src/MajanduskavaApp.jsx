@@ -2161,7 +2161,8 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ ...sectionTitle, marginBottom: 12 }}>Laenud</div>
+            <div style={{ ...sectionTitle, marginBottom: 4 }}>Laenud</div>
+            <div style={{ fontSize: 13, color: N.dim, marginBottom: 12 }}>Indikatiivsed arvutused. Täpsed tingimused sõltuvad laenuandjast.</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {plan.loans.map(ln => (
                 <div key={ln.id} id={`laen-${ln.id}`} style={card}>
