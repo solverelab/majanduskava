@@ -1965,11 +1965,13 @@ export default function App() {
                 <div style={{ ...helperText, marginTop: 12, fontFamily: "monospace" }}>
                   {side === "COST"
                     ? (() => {
-                        const mEq = derived.period.monthEq || 12;
-                        const { kommunaalKokku, haldusKokku } = kopiiriondvaade;
-                        const komA = kommunaalKokku * mEq;
-                        const halA = haldusKokku * mEq;
-                        return <>Kommunaalteenused perioodis: {euro(komA)} · Haldusteenused perioodis: {euro(halA)} · Kulud kokku perioodis: {euro(komA + halA)}</>;
+                        const komSum = plan.budget.costRows
+                          .filter(r => KOMMUNAALTEENUSED.includes(r.category))
+                          .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+                        const halSum = plan.budget.costRows
+                          .filter(r => HALDUSTEENUSED.includes(r.category))
+                          .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+                        return <>Kommunaalteenused perioodis: {euro(komSum)} · Haldusteenused perioodis: {euro(halSum)} · Kulud kokku perioodis: {euro(komSum + halSum)}</>;
                       })()
                     : <>Tulud perioodis: {euro(derived.totals.incomePeriodEUR || 0)}</>
                   }
