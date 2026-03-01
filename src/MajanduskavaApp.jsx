@@ -1202,12 +1202,12 @@ export default function App() {
   useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [mkApartment({ label: "1" })] } })); }, [plan.building.apartments.length]);
   // Investeeringud algavad tühjana — luuakse ainult "Loo investeering" või "+ Lisa investeering" kaudu
   useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0 }] } })); }, [plan.budget.costRows.length]);
-  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME" }), category: "", arvutus: "aastas", summaInput: 0 }] } })); }, [plan.budget.incomeRows.length]);
+  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME" }), category: "", arvutus: "aastas", summaInput: "" }] } })); }, [plan.budget.incomeRows.length]);
 
-  // Migreeri vanad tulukategooriad + eemalda "Halduskulude ettemaks" (nüüd automaatne)
+  // Migreeri vanad tulukategooriad + eemalda "Halduskulude ettemaks" (nüüd automaatne readonly)
   useEffect(() => {
     let changed = false;
-    let updated = plan.budget.incomeRows.map(r => {
+    let filtered = plan.budget.incomeRows.map(r => {
       if (r.category === "Majandamiskulude ettemaks") {
         changed = true;
         return { ...r, category: "Halduskulude ettemaks" };
@@ -1218,11 +1218,11 @@ export default function App() {
       }
       return r;
     });
-    if (updated.some(r => r.category === "Halduskulude ettemaks")) {
-      updated = updated.filter(r => r.category !== "Halduskulude ettemaks");
-      changed = true;
-    }
-    if (changed) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: updated } }));
+    // Eemalda "Halduskulude ettemaks" read — see tulurida on nüüd automaatne
+    const beforeLen = filtered.length;
+    filtered = filtered.filter(r => r.category !== "Halduskulude ettemaks");
+    if (filtered.length !== beforeLen) changed = true;
+    if (changed) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: filtered } }));
   }, []);
 
   // Kulude summa sünkroonimine engine'ile (→ calc.params.amountEUR)
@@ -1836,23 +1836,6 @@ export default function App() {
           return (
             <div style={tabStack}>
               <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(sec)}</div>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "10px 14px", borderRadius: 8,
-                background: "#f0f5ff", border: "1px solid #c7d7f5",
-                fontSize: 13, color: "#3b5998",
-              }}>
-                <span style={{ fontSize: 15 }}>ℹ</span>
-                <span>
-                  Remondifond ja reservkapital →{" "}
-                  <span
-                    onClick={() => setSec(4)}
-                    style={{ fontWeight: 600, textDecoration: "underline", cursor: "pointer" }}
-                  >
-                    Fondid ja laenud
-                  </span>
-                </span>
-              </div>
               <div style={card}>
                 <div style={{ marginBottom: 12 }}>
                   <div style={sectionTitle}>{side === "COST" ? "Kulud" : "Tulud"}</div>
