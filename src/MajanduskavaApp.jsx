@@ -2214,6 +2214,11 @@ export default function App() {
 
             <div style={{ ...sectionTitle, marginBottom: 4 }}>Laenud</div>
             <div style={{ fontSize: 13, color: N.dim, marginBottom: 12 }}>Indikatiivsed arvutused. Täpsed tingimused sõltuvad laenuandjast.</div>
+            {plan.loans.length === 0 && (
+              <div style={{ padding: 16, background: N.muted, borderRadius: 8, fontSize: 14, color: N.sub }}>
+                Laenud tekivad investeeringute rahastusplaanist. Praegu ühtegi laenu planeeritud ei ole.
+              </div>
+            )}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {plan.loans.map(ln => (
                 <div key={ln.id} id={`laen-${ln.id}`} style={card}>
@@ -2294,9 +2299,6 @@ export default function App() {
                   </div>
                 </div>
               ))}
-            </div>
-            <div style={{ marginTop: 8 }}>
-              <button style={btnAdd} onClick={addLoan}>+ Lisa laen</button>
             </div>
           </div>
         )}
