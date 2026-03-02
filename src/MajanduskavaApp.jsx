@@ -1822,7 +1822,8 @@ export default function App() {
                               })}
                             </select>
                             <div style={{ width: 120 }}>
-                              <EuroInput value={rp.summa} onChange={(v) => uuendaRahpiiriRida(rida.id, ri, { summa: v })} style={numStyle} />
+                              <EuroInput value={rp.summa} onChange={(v) => uuendaRahpiiriRida(rida.id, ri, { summa: v })} style={{ ...numStyle, ...(!rp.allikas ? { opacity: 0.45, background: "#f3f4f6" } : {}) }} disabled={!rp.allikas} />
+                              {!rp.allikas && <div style={{ color: "#d97706", fontSize: 12, marginTop: 2 }}>Vali rahastusallikas</div>}
                             </div>
                             <button onClick={() => eemaldaRahpiiriRida(rida.id, ri)} style={{ color: N.dim, background: "none", border: "none", cursor: "pointer", fontSize: 13 }}>Eemalda</button>
                             {rp.allikas === "Laen" && plan.loans.find(l => l.sepiiriostudInvId === rida.id) && (
@@ -1906,7 +1907,8 @@ export default function App() {
                           })}
                         </select>
                         <div style={{ width: 120 }}>
-                          <EuroInput value={rp.summa} onChange={(v) => handleMuuRahpiiriChange(idx, ri, "summa", v)} style={numStyle} />
+                          <EuroInput value={rp.summa} onChange={(v) => handleMuuRahpiiriChange(idx, ri, "summa", v)} style={{ ...numStyle, ...(!rp.allikas ? { opacity: 0.45, background: "#f3f4f6" } : {}) }} disabled={!rp.allikas} />
+                          {!rp.allikas && <div style={{ color: "#d97706", fontSize: 12, marginTop: 2 }}>Vali rahastusallikas</div>}
                         </div>
                         <button onClick={() => eemaldaMuuRahpiiriRida(idx, ri)} style={{ color: N.dim, background: "none", border: "none", cursor: "pointer", fontSize: 13 }}>Eemalda</button>
                         {rp.allikas === "Laen" && plan.loans.find(l => l.sepiiriostudInvId === inv.id) && (

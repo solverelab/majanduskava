@@ -118,7 +118,7 @@ LAENUMAKSED       = ["Laenumakse"]
 | 3 | Tulud | Haldustasu (readonly, arvutatud kuludest), Laenumakse (readonly, kui > 0), Muu tulu read (muudetav nimetus + summa), `+ Lisa tulu` nupp, kokkuvõte (Haldustasu €/m², Laenumakse €/m², Muu tulu, Tulud kokku) |
 | 4 | Fondid & laen | Remondifond (saldo + auto määr €/m² aastas, arvutuskäik), reservkapitali card, laenud (automaatsed rahastusplaanist, indikatiivsed arvutused), koondribana (Haldusteenused &#124; Kommunaalteenused &#124; Laenumaksed &#124; Kokku) |
 | 5 | Korterite maksed | **2 stsenaariumit** (A: Ilma laenuta, B: Laenuga), jaotamise aluste kokkuvõte, kuumaksete tabel per korter (kommunaal, haldus, remondifond, reservkapital, laenumakse), laiendatavad detailread |
-| 6 | Kontroll & kokkuvõte | Solvere findings + risk badge, "Lahenda kõik" nupp, JSON eksport/import, printimise kokkuvõte, tehniline info (TracePanel) |
+| 6 | Kontroll & kokkuvõte | **Koondvaade** (perioodipõhised summad + kuumaksed: kulud, tulud, vahe, remondifond, reservkapital), Prindi/Ekspordi nupud, tehniline info toggle (Poliitika & soovitused, Riskitase, Findings, TracePanel) |
 
 #### Olulised UI-funktsioonid:
 
@@ -131,6 +131,8 @@ LAENUMAKSED       = ["Laenumakse"]
 - **Korterite maksed stsenaariumid** — A: fond = kulu − toetus − sihtmakse, B: fond = kulu − toetus − laen + laenumaksed eraldi; reservkapital eraldi veerg (kui > 0); jaotamise alused kuvatud enne tabelit (täpsed perioodisummad)
 - **Tulude arvutus** — tuludKokku = Haldustasu + Laenumakse + Muu tulu (Tab 3, Tab 6 ja print kõik ühtlustatud)
 - **Rahastusplaani dropdown** — vaikimisi "Vali allikas…" (disabled placeholder), valikud: Remondifond, Laen, Toetus, Sihtmakse
+- **Tab 7 koondvaade** — perioodipõhised summad esmasena, kuumakse hallilt teisena; sektsioonid: Kulud (kommunaal, haldus, laenumaksed), Tulud (haldustasu, laenumakse, muu tulu), Vahe (ülejääk/puudujääk), Remondifond (saldo alguses→laekumine→investeeringud→saldo lõpus), Reservkapital (kui > 0)
+- **Tehniline info peidetud** — Poliitika & soovitused, Riskitase, Findings ja TracePanel nähtavad ainult showTechnicalInfo toggle'iga; Prindi ja Eksport alati nähtavad
 - **JSON eksport/import** — dry-run valideerimine, migratsioonid tagasiühilduvuseks
 
 #### Laenude kaart (Tab 4):
@@ -234,6 +236,7 @@ src/
 ## 5. Commit'ide ajalugu (viimased)
 
 ```
+5022503 refactor: Tab 7 koondvaade ümbertöötlus — perioodipõhine, remondifond, reserv, tulud lahti, tehniline peidetud
 f32652a UX: kulude hinnatõusu soovitus Tab 2
 6d09eb5 feat: reservkapital eraldi veeruna korterite kuumaksetes
 f844420 fix: jaotamise aluste perioodisummad täpsed, mitte ümardatud kuumakse × 12
