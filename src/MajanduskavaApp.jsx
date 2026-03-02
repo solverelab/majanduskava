@@ -1838,7 +1838,9 @@ export default function App() {
                               <EuroInput value={rp.summa} onChange={(v) => uuendaRahpiiriRida(rida.id, ri, { summa: v })} style={{ ...numStyle, ...(!rp.allikas ? { opacity: 0.45, background: "#f3f4f6" } : {}) }} disabled={!rp.allikas} />
                               {!rp.allikas && <div style={{ color: "#d97706", fontSize: 12, marginTop: 2 }}>Vali rahastusallikas</div>}
                             </div>
-                            <button onClick={() => eemaldaRahpiiriRida(rida.id, ri)} style={{ color: N.dim, background: "none", border: "none", cursor: "pointer", fontSize: 13 }}>Eemalda</button>
+                            {rida.rahpiiri.length > 1 && (
+                              <button onClick={() => eemaldaRahpiiriRida(rida.id, ri)} style={{ color: "#9ca3af", background: "none", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "2px 4px" }} title="Eemalda rida">{"\u00d7"}</button>
+                            )}
                             {rp.allikas === "Laen" && plan.loans.find(l => l.sepiiriostudInvId === rida.id) && (
                               <button onClick={() => { setSec(4); setTimeout(() => document.getElementById(`laen-${plan.loans.find(l => l.sepiiriostudInvId === rida.id)?.id}`)?.scrollIntoView({ behavior: "smooth" }), 100); }} style={{ color: "#15803d", background: "none", border: "none", cursor: "pointer", fontSize: 12 }}>
                                 {"\u2713"} Laen {euro(parseFloat(rp.summa) || 0)} {"\u2192"} Fondid & laen
@@ -1923,7 +1925,9 @@ export default function App() {
                           <EuroInput value={rp.summa} onChange={(v) => handleMuuRahpiiriChange(idx, ri, "summa", v)} style={{ ...numStyle, ...(!rp.allikas ? { opacity: 0.45, background: "#f3f4f6" } : {}) }} disabled={!rp.allikas} />
                           {!rp.allikas && <div style={{ color: "#d97706", fontSize: 12, marginTop: 2 }}>Vali rahastusallikas</div>}
                         </div>
-                        <button onClick={() => eemaldaMuuRahpiiriRida(idx, ri)} style={{ color: N.dim, background: "none", border: "none", cursor: "pointer", fontSize: 13 }}>Eemalda</button>
+                        {inv.rahpiiri.length > 1 && (
+                          <button onClick={() => eemaldaMuuRahpiiriRida(idx, ri)} style={{ color: "#9ca3af", background: "none", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "2px 4px" }} title="Eemalda rida">{"\u00d7"}</button>
+                        )}
                         {rp.allikas === "Laen" && plan.loans.find(l => l.sepiiriostudInvId === inv.id) && (
                           <button onClick={() => { setSec(4); setTimeout(() => document.getElementById(`laen-${plan.loans.find(l => l.sepiiriostudInvId === inv.id)?.id}`)?.scrollIntoView({ behavior: "smooth" }), 100); }} style={{ color: "#15803d", background: "none", border: "none", cursor: "pointer", fontSize: 12 }}>
                             {"\u2713"} Laen {euro(parseFloat(rp.summa) || 0)} {"\u2192"} Fondid & laen
@@ -2546,6 +2550,7 @@ export default function App() {
               );
             })()}
 
+            {[...seisukord, ...muudInvesteeringud].some(inv => (inv.rahpiiri || []).some(rp => rp.allikas === "Laen")) && (<>
             <div style={{ ...sectionTitle, marginBottom: 4 }}>Laenud</div>
             {plan.loans.length > 0 && (
               <div style={{ fontSize: 13, color: N.dim, marginBottom: 12 }}>Indikatiivsed arvutused. Täpsed tingimused sõltuvad laenuandjast.</div>
@@ -2636,6 +2641,7 @@ export default function App() {
                 </div>
               ))}
             </div>
+            </>)}
           </div>
         )}
 
