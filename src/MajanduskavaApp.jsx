@@ -2306,8 +2306,11 @@ export default function App() {
                         ? { bg: STATE.ERROR.bg, border: STATE.ERROR.border, color: STATE.ERROR.color, text: "Kaaluge laenurahastust investeeringu katmiseks." }
                         : { bg: N.muted, border: N.border, color: N.dim, text: "Määramata" };
                       return (
-                        <div style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500, marginBottom: 8 }}>
-                          {cfg.text}
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500 }}>
+                            {cfg.text}
+                          </div>
+                          <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>Eesti keskmine 0,5–1,5 €/m²/kuu</div>
                         </div>
                       );
                     })()}
@@ -2612,6 +2615,7 @@ export default function App() {
                           <span style={{ fontSize: 11, fontWeight: 500, padding: "1px 8px", borderRadius: 99, background: badgeCfg.bg, color: badgeCfg.color }}>
                             {ra.maarKuusM2.toFixed(2).replace(".", ",")} €/m²/kuu
                           </span>
+                          <span style={{ fontSize: 11, color: "#9ca3af", marginLeft: 2 }}>Eesti keskmine 0,5–1,5</span>
                         </span>
                         <span style={aMono}>{euro(rfKuu)}</span>
                       </div>
