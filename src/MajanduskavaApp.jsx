@@ -2594,22 +2594,20 @@ export default function App() {
                       const label = ra.onLaen
                         ? "Remondifond (panga soovitus)"
                         : "Remondifond (kogumisperiood)";
-                      const badgeCfg = !ra.onLaen && ra.maarKuusM2 > 0
-                        ? (ra.tase === "normaalne"
-                          ? { bg: STATE.OK.bg, color: STATE.OK.color }
-                          : ra.tase === "korgendatud"
-                          ? { bg: STATE.WARN.bg, color: STATE.WARN.color }
-                          : { bg: STATE.ERROR.bg, color: STATE.ERROR.color })
-                        : null;
+                      const badgeCfg = ra.tase === "normaalne"
+                        ? { bg: STATE.OK.bg, color: STATE.OK.color }
+                        : ra.tase === "korgendatud"
+                        ? { bg: STATE.WARN.bg, color: STATE.WARN.color }
+                        : ra.tase === "kriitiline"
+                        ? { bg: STATE.ERROR.bg, color: STATE.ERROR.color }
+                        : { bg: N.muted, color: N.dim };
                       return (
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                             {label}
-                            {badgeCfg && (
-                              <span style={{ fontSize: 11, fontWeight: 600, padding: "0 6px", borderRadius: 3, background: badgeCfg.bg, color: badgeCfg.color }}>
-                                {ra.maarKuusM2.toFixed(2).replace(".", ",")} €/m²/kuu
-                              </span>
-                            )}
+                            <span style={{ fontSize: 11, fontWeight: 500, padding: "1px 8px", borderRadius: 99, background: badgeCfg.bg, color: badgeCfg.color, display: "inline-block" }}>
+                              {ra.maarKuusM2.toFixed(2).replace(".", ",")} €/m²/kuu
+                            </span>
                           </span>
                           <span style={{ fontFamily: "monospace" }}>{euroEE(rfAastas)} → {euro(Math.round(rfAastas / 12))}/kuu</span>
                         </div>
