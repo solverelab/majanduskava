@@ -74,9 +74,6 @@ const stateBadge = (s) => ({
 const sectionTitle = { fontSize: 18, fontWeight: 800, color: N.text, margin: 0 };
 const fieldLabel   = { fontSize: 13, fontWeight: 500, color: N.sub, marginBottom: 4 };
 const helperText   = { fontSize: 13, color: N.dim };
-const summaryNum   = { fontFamily: "monospace", fontSize: 26, fontWeight: 900 };
-const summaryLabel = { fontSize: 13, color: N.sub, marginTop: 4 };
-const summarySub   = { fontSize: 13, color: N.dim, marginTop: 2 };
 
 // ── INPUTS ──
 const inputBase  = { padding: "8px 10px", border: `1px solid ${N.border}`, borderRadius: 6, fontSize: 15, background: N.surface, color: N.text, outline: "none" };
@@ -346,7 +343,6 @@ const tabStack = { display: "flex", flexDirection: "column", gap: 16 };
 const tableWrap = { overflowX: "auto" };
 
 // ── SUMMARY CARD ──
-const summaryCard = { border: `1px solid ${N.border}`, borderRadius: 12, padding: 16, background: N.surface };
 
 // ── TABLE ──
 const thRow = { textAlign: "left", fontSize: 13, fontWeight: 600, color: N.sub };
@@ -434,7 +430,7 @@ export default function App() {
     pangaKoefitsient: 1.15,     // vaikimisi 1.15
     pangaMaarOverride: null,    // null = auto, number = käsitsi €/m²/a
   });
-  const [stsenaarium, setStsenaarium] = useState("B"); // "A" | "B"
+
 
   const derived = useMemo(() => computePlan(plan), [plan]);
 
@@ -521,7 +517,7 @@ export default function App() {
     const koguPind = derived.building.totAreaM2;
     const periodiAasta = plan.period.year || new Date().getFullYear();
 
-    // Kõik investeeringud, kus remondifondist kaetakse
+    // Kõik investeeringud
     const koikInv = [
       ...seisukord.filter(e => e.investeering),
       ...muudInvesteeringud,
@@ -555,9 +551,8 @@ export default function App() {
       })
       .filter(Boolean);
 
-    // ── STSENAARIUM A: ilma laenuta — fond katab investeeringud ──
-    let maarA_aastasM2 = 0;
-    let aastaLaekumineA = 0;
+    // ── ILMA LAENUTA: fond katab investeeringud, kogumisperioodiga ──
+    let maarIlmaLaenuta = 0;
 
     if (koguPind > 0 && investRemondifondist > 0) {
       if (remondifond.kogumisViis === "eraldi" && invDetail.length > 1) {
@@ -568,32 +563,30 @@ export default function App() {
           const netVajadus = Math.max(0, d.rfSumma - saldoOsa);
           return sum + netVajadus / d.kogumisaastad;
         }, 0);
-        aastaLaekumineA = Math.round(totalAastaVajadus);
-        maarA_aastasM2 = totalAastaVajadus / koguPind;
+        maarIlmaLaenuta = totalAastaVajadus / koguPind;
       } else {
         // Ühine: pikima perioodi järgi
         const maxKogumisaastad = invDetail.length > 0
           ? Math.max(...invDetail.map(d => d.kogumisaastad))
           : 1;
         const vajadus = Math.max(0, investRemondifondist - saldoAlgus);
-        aastaLaekumineA = Math.round(vajadus / maxKogumisaastad);
-        maarA_aastasM2 = vajadus / maxKogumisaastad / koguPind;
+        maarIlmaLaenuta = koguPind > 0 ? vajadus / maxKogumisaastad / koguPind : 0;
       }
     }
 
-    // ── STSENAARIUM B: laenuga — panga nõue ──
+    // ── LAENUGA: panga nõue ──
     const laenumaksedKuus = plan.loans.reduce((sum, l) =>
       sum + arvutaKuumakse(l.principalEUR, l.annualRatePct, parseInt(l.termMonths) || 0),
     0);
     const laenumakseM2Kuus = koguPind > 0 ? laenumaksedKuus / koguPind : 0;
     const pangaKoef = remondifond.pangaKoefitsient || 1.15;
     const soovitusMaarAastasM2 = laenumakseM2Kuus * pangaKoef * 12;
-    const maarB_aastasM2 = remondifond.pangaMaarOverride != null
+    const maarLaenuga = remondifond.pangaMaarOverride != null
       ? remondifond.pangaMaarOverride
       : soovitusMaarAastasM2;
 
-    // ── Aktiivne määr stsenaariumi järgi ──
-    const maarAastasM2 = onLaen ? maarB_aastasM2 : maarA_aastasM2;
+    // ── Aktiivne määr ──
+    const maarAastasM2 = onLaen ? maarLaenuga : maarIlmaLaenuta;
 
     const laekuminePerioodis = Math.round(maarAastasM2 * koguPind);
     const saldoLopp = saldoAlgus + laekuminePerioodis - investRemondifondist;
@@ -601,8 +594,8 @@ export default function App() {
     return {
       saldoAlgus,
       maarAastasM2,
-      maarA_aastasM2,
-      maarB_aastasM2,
+      maarIlmaLaenuta,
+      maarLaenuga,
       soovitusMaarAastasM2,
       koguPind,
       laekuminePerioodis,
@@ -610,7 +603,6 @@ export default function App() {
       saldoLopp,
       onLaen,
       invDetail,
-      aastaLaekumineA,
       laenumaksedKuus,
       laenumakseM2Kuus,
     };
@@ -621,49 +613,13 @@ export default function App() {
     plan.loans, seisukord, muudInvesteeringud,
   ]);
 
-  const stsenaariumArvutus = useMemo(() => {
-    const koikInv = [
-      ...seisukord.filter(e => e.investeering),
-      ...muudInvesteeringud,
-    ];
-
-    let sumFond = 0, sumLaen = 0, sumToetus = 0, sumSiht = 0, sumKulu = 0;
-
-    koikInv.forEach(inv => {
-      const maksumus = parseFloat(inv.invMaksumus || inv.maksumus) || 0;
-      sumKulu += maksumus;
-      (inv.rahpiiri || []).forEach(rp => {
-        const s = Math.round(parseFloat(String(rp.summa).replace(",", ".")) || 0);
-        if (rp.allikas === "Remondifond") sumFond += s;
-        else if (rp.allikas === "Laen") sumLaen += s;
-        else if (rp.allikas === "Toetus") sumToetus += s;
-        else if (rp.allikas === "Sihtmakse") sumSiht += s;
-      });
-    });
-
-    // A: ilma laenuta — sihtmakse arvestatakse (vähendab fondi vajadust)
-    const fondNeededA = Math.max(0, sumKulu - sumToetus - sumSiht);
-    // B: laenuga — laen arvestatakse, sihtmakse ignoreeritakse
-    const fondNeededB = Math.max(0, sumKulu - sumToetus - sumLaen);
-
-    const laenumaksedKuus = kopiiriondvaade.laenumaksedKokku;
-
-    return {
-      fondNeededA, fondNeededB,
-      laenumaksedKuus,
-      sumKulu, sumFond, sumLaen, sumToetus, sumSiht,
-    };
-  }, [seisukord, muudInvesteeringud, kopiiriondvaade.laenumaksedKokku]);
-
   const korteriteKuumaksed = useMemo(() => {
     const apts = plan.building.apartments;
     const koguPind = derived.building.totAreaM2;
-    const sa = stsenaariumArvutus;
+    const ra = remondifondiArvutus;
 
-    const fondNeeded = stsenaarium === "A" ? sa.fondNeededA : sa.fondNeededB;
-
-    const rfKuuKokku = fondNeeded / 12;
-    const laenKuuKokku = stsenaarium === "B" ? sa.laenumaksedKuus : 0;
+    const rfKuuKokku = ra.maarAastasM2 * koguPind / 12;
+    const laenKuuKokku = ra.onLaen ? ra.laenumaksedKuus : 0;
     const reservKuuKokku = (plan.funds.reserve.plannedEUR || 0) / 12;
 
     return apts.map(k => {
@@ -679,7 +635,7 @@ export default function App() {
 
       return { id: k.id, tahis: k.label, pind, osa, kommunaal, haldus, remondifond: rf, laenumakse: laen, reserv, kokku };
     });
-  }, [plan.building.apartments, derived.building.totAreaM2, stsenaarium, stsenaariumArvutus, kopiiriondvaade, plan.funds.reserve.plannedEUR]);
+  }, [plan.building.apartments, derived.building.totAreaM2, remondifondiArvutus, kopiiriondvaade, plan.funds.reserve.plannedEUR]);
 
   // Sünkrooni arvutatud remondifondi määr engine'iga
   useEffect(() => {
@@ -2036,6 +1992,11 @@ export default function App() {
                   <button style={btnRemove} onClick={() => removeRow("COST", r.id)}>Eemalda</button>
                 </div>
               </div>
+              {r.category === "Kindlustus" && remondifondiArvutus.onLaen && (
+                <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>
+                  Pangalaenu korral nõuab pank tavaliselt koguriskikindlustust — arvestage kindlustuskulusse ca 20% lisaks.
+                </div>
+              )}
             </div>
           );
 
@@ -2408,35 +2369,6 @@ export default function App() {
         {sec === 5 && (
           <div style={tabStack}>
             <div style={card}>
-              {/* Stsenaariumi valik */}
-              <div style={{ marginBottom: 16 }}>
-                <div style={fieldLabel}>Stsenaarium</div>
-                <div style={{ display: "flex", gap: 0, borderRadius: 8, overflow: "hidden", border: `1px solid ${N.border}` }}>
-                  {[
-                    { key: "A", label: "Ilma laenuta" },
-                    { key: "B", label: "Laenuga" },
-                  ].map(s => (
-                    <button
-                      key={s.key}
-                      onClick={() => setStsenaarium(s.key)}
-                      style={{
-                        flex: 1, padding: "10px 12px", fontSize: 14, fontWeight: 600,
-                        border: "none", cursor: "pointer",
-                        background: stsenaarium === s.key ? N.accent : N.surface,
-                        color: stsenaarium === s.key ? "#fff" : N.sub,
-                      }}
-                    >
-                      {s.key}: {s.label}
-                    </button>
-                  ))}
-                </div>
-                {stsenaarium === "B" && (
-                  <div style={{ fontSize: 12, color: N.dim, marginTop: 6 }}>
-                    Laenuga variant rakendub ainult laenulepingu sõlmimisel.
-                  </div>
-                )}
-              </div>
-
               {/* Pealkiri */}
               <div style={{ ...sectionTitle, marginBottom: 12 }}>Korterite kuumaksed (m² järgi)</div>
 
@@ -2460,19 +2392,19 @@ export default function App() {
                       </div>
                     )}
                     {(() => {
-                      const fn = stsenaarium === "A" ? stsenaariumArvutus.fondNeededA
-                               : stsenaarium === "B" ? stsenaariumArvutus.fondNeededB
-                               : stsenaariumArvutus.fondNeededC;
-                      const label = stsenaarium === "A" ? "Remondifond (kulu \u2013 toetus \u2013 sihtmakse)"
-                                  : "Remondifond (kulu \u2013 toetus \u2013 laen)";
+                      const ra = remondifondiArvutus;
+                      const rfAastas = Math.round(ra.maarAastasM2 * ra.koguPind);
+                      const label = ra.onLaen
+                        ? "Remondifond (panga soovitus)"
+                        : "Remondifond (kogumisperiood)";
                       return (
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
                           <span>{label}</span>
-                          <span style={{ fontFamily: "monospace" }}>{euroEE(fn)} → {euro(Math.round(fn / 12))}/kuu</span>
+                          <span style={{ fontFamily: "monospace" }}>{euroEE(rfAastas)} → {euro(Math.round(rfAastas / 12))}/kuu</span>
                         </div>
                       );
                     })()}
-                    {stsenaarium === "B" && kopiiriondvaade.laenumaksedKokku > 0 && (
+                    {remondifondiArvutus.onLaen && kopiiriondvaade.laenumaksedKokku > 0 && (
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
                         <span>Laenumaksed</span>
                         <span style={{ fontFamily: "monospace" }}>{euro(kopiiriondvaade.laenumaksedKokku)}/kuu</span>
@@ -2492,14 +2424,8 @@ export default function App() {
                 </div>
               ) : (
                 <>
-                  {stsenaarium === "B" && kopiiriondvaade.laenumaksedKokku === 0 && (
-                    <div style={{ padding: 10, background: "#fefce8", border: "1px solid #fde68a", borderRadius: 8, fontSize: 13, color: "#854d0e", marginBottom: 12 }}>
-                      Laenumakseid pole sisestatud. Lisa laen Tab "Fondid & laen".
-                    </div>
-                  )}
-
                   {(() => {
-                    const showLaen = stsenaarium === "B";
+                    const showLaen = remondifondiArvutus.onLaen;
                     const showReserv = (plan.funds.reserve.plannedEUR || 0) > 0;
                     const rr = { textAlign: "right", fontFamily: "monospace" };
                     const colCount = 6 + (showLaen ? 1 : 0) + (showReserv ? 1 : 0);
