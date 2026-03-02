@@ -2036,11 +2036,17 @@ export default function App() {
                   <button style={btnRemove} onClick={() => removeRow("COST", r.id)}>Eemalda</button>
                 </div>
               </div>
-              {r.category === "Kindlustus" && remondifondiArvutus.onLaen && (
-                <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>
-                  Pangalaenu korral nõuab pank tavaliselt koguriskikindlustust — arvestage kindlustuskulusse ca 20% lisaks.
-                </div>
-              )}
+              {r.category === "Kindlustus" && (() => {
+                const onKindlustus = (parseFloat(r.summaInput) || 0) > 0;
+                const onPlaneeritudLaen = remondifondiArvutus.onLaen;
+                if (onKindlustus && onPlaneeritudLaen)
+                  return <div style={{ fontSize: 12, color: "#d97706", marginTop: 4 }}>Uue pangalaenu kavandamisel on soovitatav planeerida kindlustuskulud vähemalt 20% kõrgemana, kuna pank nõuab üldjuhul laiendatud koguriskikindlustust.</div>;
+                if (!onKindlustus && onPlaneeritudLaen)
+                  return <div style={{ fontSize: 12, color: "#dc2626", fontWeight: 500, marginTop: 4 }}>Pangalaenu taotlemisel on kindlustus kohustuslik. Lisage kindlustuskulu.</div>;
+                if (!onKindlustus && !onPlaneeritudLaen)
+                  return <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>Kindlustus on korteriühistu vara kaitseks soovitatav.</div>;
+                return null;
+              })()}
             </div>
           );
 
