@@ -430,6 +430,11 @@ export default function App() {
     pangaKoefitsient: 1.15,     // vaikimisi 1.15
     pangaMaarOverride: null,    // null = auto, number = käsitsi €/m²/a
   });
+  const [resKap, setResKap] = useState({
+    saldoAlgus: "",
+    kasutamine: "",
+    pohjendus: "",
+  });
 
 
   const derived = useMemo(() => computePlan(plan), [plan]);
@@ -798,6 +803,7 @@ export default function App() {
       muudInvesteeringud,
       repairFundSaldo,
       remondifond,
+      resKap,
     };
     const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -913,6 +919,13 @@ export default function App() {
             kogumisViis: "eraldi",
             pangaKoefitsient: 1.15,
             pangaMaarOverride: null,
+          });
+        }
+        if (data.resKap) {
+          setResKap({
+            saldoAlgus: data.resKap.saldoAlgus || "",
+            kasutamine: data.resKap.kasutamine || "",
+            pohjendus: data.resKap.pohjendus || "",
           });
         }
         // Migrate seisukord + old investments → eseme-based
@@ -1471,7 +1484,7 @@ export default function App() {
       if (tabIdx === 1) { setSeisukord([]); setMuudInvesteeringud([]); return { ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [] } }; }
       if (tabIdx === 2) return { ...p, budget: { ...p.budget, costRows: [] } };
       if (tabIdx === 3) return { ...p, budget: { ...p.budget, incomeRows: [] } };
-      if (tabIdx === 4) { setRepairFundSaldo(""); setRemondifond({ saldoAlgus: "" }); return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, loans: [] }; }
+      if (tabIdx === 4) { setRepairFundSaldo(""); setRemondifond({ saldoAlgus: "" }); setResKap({ saldoAlgus: "", kasutamine: "", pohjendus: "" }); return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, loans: [] }; }
       return p;
     });
   };
@@ -2452,33 +2465,86 @@ export default function App() {
               );
             })()}
 
-            <div style={card}>
-              <div style={{ ...sectionTitle, marginBottom: 4 }}>Reservkapital</div>
-              <div style={{ fontSize: 14, color: STATE.OK.color, marginBottom: 8 }}>
-                Minimaalselt 1/12 aastakuludest:{" "}
-                <span style={{ fontFamily: "monospace", fontWeight: 800 }}>
-                  {euro(reserveMin.noutavMiinimum)}
-                </span>
-              </div>
+            {(() => {
+              const rkSaldoAlgus = parseFloat(resKap.saldoAlgus) || 0;
+              const rkKogumine = plan.funds.reserve.plannedEUR || 0;
+              const rkKasutamine = parseFloat(resKap.kasutamine) || 0;
+              const rkSaldoLopp = rkSaldoAlgus + rkKogumine - rkKasutamine;
+              const kuuKulud = reserveMin.noutavMiinimum || 1;
+              const katvusKuud = kuuKulud > 0 ? rkSaldoLopp / kuuKulud : 0;
+              const katvusCfg = katvusKuud >= 3
+                ? { bg: STATE.OK.bg, border: STATE.OK.border, color: STATE.OK.color, text: "Hea" }
+                : katvusKuud >= 1.5
+                ? { bg: STATE.WARN.bg, border: STATE.WARN.border, color: STATE.WARN.color, text: "Rahuldav" }
+                : { bg: STATE.ERROR.bg, border: STATE.ERROR.border, color: STATE.ERROR.color, text: "Riskantne" };
+              return (
+                <div style={card}>
+                  <div style={{ ...sectionTitle, marginBottom: 12 }}>Reservkapital</div>
 
-              <div style={{ width: 260 }}>
-                <div style={fieldLabel}>Kavandatud reserv €</div>
-                <EuroInput
-                  value={plan.funds.reserve.plannedEUR}
-                  onChange={(v) => setPlan(p => ({ ...p, funds: { ...p.funds, reserve: { ...p.funds.reserve, plannedEUR: v } } }))}
-                  style={numStyle}
-                />
-                <div style={{ fontSize: 12, color: N.dim, marginTop: 4, fontFamily: "monospace" }}>
-                  {euro(reserveMin.aastaKulud)} × 1/12
-                </div>
-
-                {plan.funds.reserve.plannedEUR > 0 && plan.funds.reserve.plannedEUR < reserveMin.noutavMiinimum && (
-                  <div style={{ fontSize: 13, color: STATE.WARN.color, marginTop: 6 }}>
-                    ⚠ Kavandatud reservkapital on alla nõutava miinimumi ({euro(reserveMin.noutavMiinimum)}).
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12 }}>
+                    <div style={{ width: 200 }}>
+                      <div style={fieldLabel}>Saldo perioodi alguses €</div>
+                      <EuroInput value={resKap.saldoAlgus} onChange={(v) => setResKap(p => ({ ...p, saldoAlgus: v }))} style={numStyle} />
+                    </div>
+                    <div style={{ width: 200 }}>
+                      <div style={fieldLabel}>Planeeritud kogumine €</div>
+                      <EuroInput
+                        value={rkKogumine}
+                        onChange={(v) => setPlan(p => ({ ...p, funds: { ...p.funds, reserve: { ...p.funds.reserve, plannedEUR: v } } }))}
+                        style={numStyle}
+                      />
+                      <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>Soovitus: 1/12 aastakuludest ({euro(reserveMin.noutavMiinimum)})</div>
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
+
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12 }}>
+                    <div style={{ width: 200 }}>
+                      <div style={fieldLabel}>Kasutamine €</div>
+                      <EuroInput value={resKap.kasutamine} onChange={(v) => setResKap(p => ({ ...p, kasutamine: v }))} style={numStyle} />
+                    </div>
+                  </div>
+                  {rkKasutamine > 0 && (
+                    <div style={{ marginBottom: 12 }}>
+                      <textarea
+                        value={resKap.pohjendus}
+                        onChange={(e) => setResKap(p => ({ ...p, pohjendus: e.target.value }))}
+                        placeholder="Põhjendage erakorralised kulud"
+                        rows={2}
+                        style={{ ...inputStyle, width: "100%", fontSize: 13, padding: 8, border: `1px solid ${resKap.pohjendus ? N.border : "#d97706"}`, borderRadius: 6 }}
+                      />
+                      {!resKap.pohjendus && (
+                        <div style={{ fontSize: 12, color: "#d97706", marginTop: 2 }}>Põhjendus on soovitav</div>
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "8px 0", borderTop: `1px solid ${N.border}`, marginBottom: 12 }}>
+                    <span style={{ fontSize: 14, color: N.sub }}>Saldo perioodi lõpus</span>
+                    <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 18, color: rkSaldoLopp < 0 ? "#dc2626" : N.text }}>
+                      {euroEE(rkSaldoLopp)}
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, color: N.sub }}>Katvus</span>
+                    <span style={{ fontFamily: "monospace", fontSize: 14, color: N.text }}>{katvusKuud.toFixed(1).replace(".", ",")} kuud</span>
+                  </div>
+
+                  <div style={{ marginBottom: 4 }}>
+                    <div style={{ background: katvusCfg.bg, border: `1px solid ${katvusCfg.border}`, color: katvusCfg.color, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500 }}>
+                      {katvusCfg.text}
+                    </div>
+                    {katvusCfg.text === "Rahuldav" && (
+                      <div style={{ fontSize: 12, color: STATE.WARN.color, marginTop: 4 }}>Reserv katab alla 3 kuu kulusid.</div>
+                    )}
+                    {katvusCfg.text === "Riskantne" && (
+                      <div style={{ fontSize: 12, color: STATE.ERROR.color, marginTop: 4 }}>Reserv ei kata minimaalselt vajalikku perioodi. Suurendage kogumist.</div>
+                    )}
+                    <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>Hinnang tugineb finantsjuhtimise heale tavale</div>
+                  </div>
+                </div>
+              );
+            })()}
 
             <div style={{ ...sectionTitle, marginBottom: 4 }}>Laenud</div>
             {plan.loans.length > 0 && (
