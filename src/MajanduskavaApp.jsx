@@ -2472,7 +2472,9 @@ export default function App() {
             </div>
 
             <div style={{ ...sectionTitle, marginBottom: 4 }}>Laenud</div>
-            <div style={{ fontSize: 13, color: N.dim, marginBottom: 12 }}>Indikatiivsed arvutused. Täpsed tingimused sõltuvad laenuandjast.</div>
+            {plan.loans.length > 0 && (
+              <div style={{ fontSize: 13, color: N.dim, marginBottom: 12 }}>Indikatiivsed arvutused. Täpsed tingimused sõltuvad laenuandjast.</div>
+            )}
             {plan.loans.length === 0 && (
               <div style={{ padding: 16, background: N.muted, borderRadius: 8, fontSize: 14, color: N.sub }}>
                 Laenud tekivad investeeringute rahastusplaanist. Praegu ühtegi laenu planeeritud ei ole.
