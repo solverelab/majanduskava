@@ -428,7 +428,12 @@ export default function App() {
   const [seisukord, setSeisukord] = useState([]);
   const [muudInvesteeringud, setMuudInvesteeringud] = useState([]);
   const [repairFundSaldo, setRepairFundSaldo] = useState(""); // tagasiühilduvus
-  const [remondifond, setRemondifond] = useState({ saldoAlgus: "" });
+  const [remondifond, setRemondifond] = useState({
+    saldoAlgus: "",
+    kogumisViis: "uhine",       // "uhine" | "eraldi"
+    pangaKoefitsient: 1.15,     // vaikimisi 1.15
+    pangaMaarOverride: null,    // null = auto, number = käsitsi €/m²/a
+  });
   const [stsenaarium, setStsenaarium] = useState("B"); // "A" | "B"
 
   const derived = useMemo(() => computePlan(plan), [plan]);
@@ -514,28 +519,107 @@ export default function App() {
   const remondifondiArvutus = useMemo(() => {
     const saldoAlgus = Math.round(parseFloat(String(remondifond.saldoAlgus).replace(",", ".")) || 0);
     const koguPind = derived.building.totAreaM2;
+    const periodiAasta = plan.period.year || new Date().getFullYear();
 
-    // Planeeritud investeeringud remondifondist
-    const investRemondifondist = [
+    // Kõik investeeringud, kus remondifondist kaetakse
+    const koikInv = [
       ...seisukord.filter(e => e.investeering),
       ...muudInvesteeringud,
-    ].reduce((sum, inv) => {
-      return sum + (inv.rahpiiri || [])
-        .filter(r => r.allikas === "Remondifond")
-        .reduce((s, r) => s + (Math.round(parseFloat(String(r.summa).replace(",", ".")) || 0)), 0);
-    }, 0);
+    ];
 
-    // Määr arvutatakse: (investeeringud - algsaldo) / m²
-    const vahe = investRemondifondist - saldoAlgus;
-    const maarAastasM2 = koguPind > 0 && vahe > 0
-      ? vahe / koguPind
-      : 0;
+    // Kas rahastusplaanis on laenu?
+    const sumLaen = koikInv.reduce((sum, inv) =>
+      sum + (inv.rahpiiri || [])
+        .filter(r => r.allikas === "Laen")
+        .reduce((s, r) => s + (Math.round(parseFloat(String(r.summa).replace(",", ".")) || 0)), 0),
+    0);
+    const onLaen = sumLaen > 0;
+
+    // Investeeringutest remondifondist planeeritud (kokku)
+    const investRemondifondist = koikInv.reduce((sum, inv) =>
+      sum + (inv.rahpiiri || [])
+        .filter(r => r.allikas === "Remondifond")
+        .reduce((s, r) => s + (Math.round(parseFloat(String(r.summa).replace(",", ".")) || 0)), 0),
+    0);
+
+    // ── Iga investeeringu detail (eraldi perioodi arvutuseks) ──
+    const invDetail = koikInv
+      .map(inv => {
+        const rfSumma = (inv.rahpiiri || [])
+          .filter(r => r.allikas === "Remondifond")
+          .reduce((s, r) => s + (Math.round(parseFloat(String(r.summa).replace(",", ".")) || 0)), 0);
+        if (rfSumma <= 0) return null;
+        const aasta = parseInt(inv.tegevusAasta || inv.aasta) || periodiAasta;
+        const kogumisaastad = Math.max(1, aasta - periodiAasta);
+        return { rfSumma, aasta, kogumisaastad };
+      })
+      .filter(Boolean);
+
+    // ── STSENAARIUM A: ilma laenuta — fond katab investeeringud ──
+    let maarA_aastasM2 = 0;
+    let aastaLaekumineA = 0;
+
+    if (koguPind > 0 && investRemondifondist > 0) {
+      if (remondifond.kogumisViis === "eraldi" && invDetail.length > 1) {
+        // Eraldi: iga investeeringu vajadus / selle kogumisaastad
+        const totalRf = invDetail.reduce((s, d) => s + d.rfSumma, 0);
+        const totalAastaVajadus = invDetail.reduce((sum, d) => {
+          const saldoOsa = totalRf > 0 ? (d.rfSumma / totalRf) * saldoAlgus : 0;
+          const netVajadus = Math.max(0, d.rfSumma - saldoOsa);
+          return sum + netVajadus / d.kogumisaastad;
+        }, 0);
+        aastaLaekumineA = Math.round(totalAastaVajadus);
+        maarA_aastasM2 = totalAastaVajadus / koguPind;
+      } else {
+        // Ühine: pikima perioodi järgi
+        const maxKogumisaastad = invDetail.length > 0
+          ? Math.max(...invDetail.map(d => d.kogumisaastad))
+          : 1;
+        const vajadus = Math.max(0, investRemondifondist - saldoAlgus);
+        aastaLaekumineA = Math.round(vajadus / maxKogumisaastad);
+        maarA_aastasM2 = vajadus / maxKogumisaastad / koguPind;
+      }
+    }
+
+    // ── STSENAARIUM B: laenuga — panga nõue ──
+    const laenumaksedKuus = plan.loans.reduce((sum, l) =>
+      sum + arvutaKuumakse(l.principalEUR, l.annualRatePct, parseInt(l.termMonths) || 0),
+    0);
+    const laenumakseM2Kuus = koguPind > 0 ? laenumaksedKuus / koguPind : 0;
+    const pangaKoef = remondifond.pangaKoefitsient || 1.15;
+    const soovitusMaarAastasM2 = laenumakseM2Kuus * pangaKoef * 12;
+    const maarB_aastasM2 = remondifond.pangaMaarOverride != null
+      ? remondifond.pangaMaarOverride
+      : soovitusMaarAastasM2;
+
+    // ── Aktiivne määr stsenaariumi järgi ──
+    const maarAastasM2 = onLaen ? maarB_aastasM2 : maarA_aastasM2;
 
     const laekuminePerioodis = Math.round(maarAastasM2 * koguPind);
     const saldoLopp = saldoAlgus + laekuminePerioodis - investRemondifondist;
 
-    return { saldoAlgus, maarAastasM2, koguPind, laekuminePerioodis, investRemondifondist, saldoLopp };
-  }, [remondifond.saldoAlgus, derived.building.totAreaM2, derived.period.monthEq, seisukord, muudInvesteeringud]);
+    return {
+      saldoAlgus,
+      maarAastasM2,
+      maarA_aastasM2,
+      maarB_aastasM2,
+      soovitusMaarAastasM2,
+      koguPind,
+      laekuminePerioodis,
+      investRemondifondist,
+      saldoLopp,
+      onLaen,
+      invDetail,
+      aastaLaekumineA,
+      laenumaksedKuus,
+      laenumakseM2Kuus,
+    };
+  }, [
+    remondifond.saldoAlgus, remondifond.kogumisViis,
+    remondifond.pangaKoefitsient, remondifond.pangaMaarOverride,
+    derived.building.totAreaM2, plan.period.year,
+    plan.loans, seisukord, muudInvesteeringud,
+  ]);
 
   const stsenaariumArvutus = useMemo(() => {
     const koikInv = [
@@ -823,9 +907,19 @@ export default function App() {
         if (data.kyData) setKyData(data.kyData);
         setRepairFundSaldo(data.repairFundSaldo ?? "");
         if (data.remondifond) {
-          setRemondifond({ saldoAlgus: data.remondifond.saldoAlgus || "" });
+          setRemondifond({
+            saldoAlgus: data.remondifond.saldoAlgus || "",
+            kogumisViis: data.remondifond.kogumisViis || "uhine",
+            pangaKoefitsient: data.remondifond.pangaKoefitsient ?? 1.15,
+            pangaMaarOverride: data.remondifond.pangaMaarOverride ?? null,
+          });
         } else if (data.repairFundSaldo) {
-          setRemondifond({ saldoAlgus: data.repairFundSaldo });
+          setRemondifond({
+            saldoAlgus: data.repairFundSaldo,
+            kogumisViis: "uhine",
+            pangaKoefitsient: 1.15,
+            pangaMaarOverride: null,
+          });
         }
         // Migrate seisukord + old investments → eseme-based
         let importedSeisukord = [];
