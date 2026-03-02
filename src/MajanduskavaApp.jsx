@@ -2125,9 +2125,6 @@ export default function App() {
           const muudTulud = plan.budget.incomeRows;
           const muudTuludSum = muudTulud.reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
           const tuludKokku = haldusSum + laenuSum + muudTuludSum;
-          const koguPind = derived.building.totAreaM2;
-          const haldusM2 = koguPind > 0 ? (haldusSum / koguPind).toFixed(2).replace(".", ",") : "\u2014";
-          const laenuM2 = koguPind > 0 ? (laenuSum / koguPind).toFixed(2).replace(".", ",") : "\u2014";
 
           const readonlyRow = (label, value) => (
             <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
@@ -2195,8 +2192,8 @@ export default function App() {
 
                 {/* Kokkuvõte */}
                 <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginTop: 12, fontFamily: "monospace" }}>
-                  <div>Haldustasu perioodis: {euro(haldusSum)} → {haldusM2} €/m²</div>
-                  {laenuSum > 0 && <div>Laenumakse perioodis: {euro(laenuSum)} → {laenuM2} €/m²</div>}
+                  <div>Haldustasu perioodis: {euro(haldusSum)}</div>
+                  {laenuSum > 0 && <div>Laenumakse perioodis: {euro(laenuSum)}</div>}
                   {muudTuludSum > 0 && <div>Muu tulu perioodis: {euro(muudTuludSum)}</div>}
                   <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 4, marginTop: 4 }}>Tulud kokku perioodis: {euro(tuludKokku)}</div>
                 </div>
@@ -2754,48 +2751,38 @@ export default function App() {
                 return (
                   <div style={{ display: "flex", flexDirection: "column" }}>
 
-                    {/* ── KULUD ── */}
-                    <div style={{ fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Kulud</div>
-                    <div style={kvRow}>
-                      <span>Kommunaalkulud</span>
-                      <span style={mono}>{euroEE(kommunaalPeriood)}<span style={{ color: N.dim }}> · {euro(kopiiriondvaade.kommunaalKokku)}/kuu</span></span>
+                    {/* ── Perioodi kulud ── */}
+                    <div style={{ fontWeight: 700, fontSize: 15, color: N.text, marginBottom: 4 }}>Perioodi kulud</div>
+                    <div style={{ ...kvRow, paddingLeft: 16 }}>
+                      <span>Kommunaalteenused</span>
+                      <span style={mono}>{euroEE(kommunaalPeriood)}</span>
                     </div>
-                    <div style={kvRow}>
-                      <span>Halduskulud</span>
-                      <span style={mono}>{euroEE(haldusPeriood)}<span style={{ color: N.dim }}> · {euro(kopiiriondvaade.haldusKokku)}/kuu</span></span>
+                    <div style={{ ...kvRow, paddingLeft: 16 }}>
+                      <span>Haldusteenused</span>
+                      <span style={mono}>{euroEE(haldusPeriood)}</span>
                     </div>
-                    {laenumaksedPeriood > 0 && (
-                      <div style={kvRow}>
-                        <span>Laenumaksed</span>
-                        <span style={mono}>{euroEE(laenumaksedPeriood)}<span style={{ color: N.dim }}> · {euro(kopiiriondvaade.laenumaksedKokku)}/kuu</span></span>
-                      </div>
-                    )}
-                    <div style={kvBold}>
-                      <span>Väljaminekud kokku</span>
-                      <span style={mono}>{euroEE(valjaminekudPeriood)}<span style={{ color: N.dim }}> · {euro(Math.round(valjaminekudPeriood / mEq))}/kuu</span></span>
+                    <div style={{ ...kvRow, paddingLeft: 16 }}>
+                      <span>Laenumaksed</span>
+                      <span style={mono}>{euroEE(laenumaksedPeriood)}</span>
+                    </div>
+                    <div style={{ ...kvBold, paddingLeft: 16 }}>
+                      <span>Kokku</span>
+                      <span style={mono}>{euroEE(valjaminekudPeriood)}</span>
                     </div>
 
-                    {/* ── TULUD ── */}
-                    <div style={{ fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 16, marginBottom: 4 }}>Tulud</div>
-                    <div style={kvRow}>
+                    {/* ── Perioodi tulud ── */}
+                    <div style={{ fontWeight: 700, fontSize: 15, color: N.text, marginTop: 16, marginBottom: 4 }}>Perioodi tulud</div>
+                    <div style={{ ...kvRow, paddingLeft: 16 }}>
                       <span>Haldustasu</span>
-                      <span style={mono}>{euroEE(haldustasuPeriood)}<span style={{ color: N.dim }}> · {euro(kopiiriondvaade.haldusKokku)}/kuu</span></span>
+                      <span style={mono}>{euroEE(haldustasuPeriood)}</span>
                     </div>
-                    {laenumakseTuluPeriood > 0 && (
-                      <div style={kvRow}>
-                        <span>Laenumakse</span>
-                        <span style={mono}>{euroEE(laenumakseTuluPeriood)}<span style={{ color: N.dim }}> · {euro(kopiiriondvaade.laenumaksedKokku)}/kuu</span></span>
-                      </div>
-                    )}
-                    {muudTuludPeriood > 0 && (
-                      <div style={kvRow}>
-                        <span>Muu tulu</span>
-                        <span style={mono}>{euroEE(muudTuludPeriood)}<span style={{ color: N.dim }}> · {euro(kopiiriondvaade.muudTuludKokku)}/kuu</span></span>
-                      </div>
-                    )}
-                    <div style={kvBold}>
-                      <span>Tulud kokku</span>
-                      <span style={mono}>{euroEE(tuludPeriood)}<span style={{ color: N.dim }}> · {euro(Math.round(tuludPeriood / mEq))}/kuu</span></span>
+                    <div style={{ ...kvRow, paddingLeft: 16 }}>
+                      <span>Muu tulu</span>
+                      <span style={mono}>{euroEE(muudTuludPeriood)}</span>
+                    </div>
+                    <div style={{ ...kvBold, paddingLeft: 16 }}>
+                      <span>Kokku</span>
+                      <span style={mono}>{euroEE(tuludPeriood)}</span>
                     </div>
 
                     {/* ── VAHE ── */}
