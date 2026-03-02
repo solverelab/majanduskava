@@ -2395,15 +2395,48 @@ export default function App() {
                     </div>
 
                     {/* Kokkuvolditav lisainfo */}
-                    <details style={{ marginTop: 10, fontSize: 12, color: N.dim }}>
-                      <summary style={{ cursor: "pointer", userSelect: "none" }}>Lisainfo</summary>
-                      <div style={{ fontFamily: "monospace", marginTop: 6, padding: "4px 0", display: "flex", flexDirection: "column", gap: 2 }}>
-                        <div>Kogupind: {ra.koguPind.toFixed(2).replace(".", ",")} m²</div>
-                        <div>Määr: {ra.maarAastasM2.toFixed(4).replace(".", ",")} €/m²/a = {ra.maarKuusM2.toFixed(4).replace(".", ",")} €/m²/kuu</div>
-                        <div>Laekumine: {ra.maarAastasM2.toFixed(2).replace(".", ",")} × {ra.koguPind.toFixed(1).replace(".", ",")} = {euro(ra.laekuminePerioodis)}</div>
-                        {ra.invArvutusread.length > 0 && ra.invArvutusread.map((d, i) => (
-                          <div key={i}>{d.nimetus} ({d.aasta}): {euroEE(d.rfSumma)} − saldo {euroEE(d.saldost)} = koguda {euroEE(d.koguda)} ({d.kogumisaastad}a)</div>
-                        ))}
+                    <details style={{ marginTop: 16 }}>
+                      <summary style={{ cursor: "pointer", fontSize: 13, color: N.dim, userSelect: "none" }}>
+                        Arvutuse detail
+                      </summary>
+                      <div style={{ marginTop: 8, padding: 12, background: N.muted, borderRadius: 8, fontSize: 12, color: N.sub }}>
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontWeight: 600, marginBottom: 4 }}>Arvutusvalem</div>
+                          <div style={{ fontFamily: "monospace" }}>
+                            <div>Kogupind: {ra.koguPind.toFixed(2).replace(".", ",")} m²</div>
+                            <div>Määr: {ra.maarKuusM2.toFixed(4).replace(".", ",")} €/m²/kuu ({ra.maarAastasM2.toFixed(4).replace(".", ",")} €/m²/a)</div>
+                            <div>Laekumine: {ra.maarAastasM2.toFixed(2).replace(".", ",")} × {ra.koguPind.toFixed(1).replace(".", ",")} = {euro(ra.laekuminePerioodis)}</div>
+                          </div>
+                        </div>
+                        {ra.invArvutusread.length > 0 && (
+                          <div>
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>Kronoloogiline saldo jaotus</div>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 11 }}>
+                              <thead>
+                                <tr style={{ borderBottom: `1px solid ${N.border}`, color: N.dim }}>
+                                  <th style={{ textAlign: "left", padding: "2px 6px 2px 0" }}>Objekt</th>
+                                  <th style={{ textAlign: "right", padding: "2px 6px" }}>RF summa</th>
+                                  <th style={{ textAlign: "right", padding: "2px 6px" }}>Saldost</th>
+                                  <th style={{ textAlign: "right", padding: "2px 6px" }}>Koguda</th>
+                                  <th style={{ textAlign: "right", padding: "2px 6px" }}>Per</th>
+                                  <th style={{ textAlign: "right", padding: "2px 0 2px 6px" }}>€/a</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {ra.invArvutusread.map((d, i) => (
+                                  <tr key={i}>
+                                    <td style={{ padding: "2px 6px 2px 0" }}>{d.nimetus} ({d.aasta})</td>
+                                    <td style={{ textAlign: "right", padding: "2px 6px" }}>{euroEE(d.rfSumma)}</td>
+                                    <td style={{ textAlign: "right", padding: "2px 6px" }}>{euroEE(d.saldost)}</td>
+                                    <td style={{ textAlign: "right", padding: "2px 6px" }}>{euroEE(d.koguda)}</td>
+                                    <td style={{ textAlign: "right", padding: "2px 6px" }}>{d.kogumisaastad}a</td>
+                                    <td style={{ textAlign: "right", padding: "2px 0 2px 6px" }}>{euroEE(d.aastasKoguda)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                     </details>
                   </div>
