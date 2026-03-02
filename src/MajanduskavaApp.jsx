@@ -2569,62 +2569,66 @@ export default function App() {
               <div style={{ ...sectionTitle, marginBottom: 12 }}>Korterite kuumaksed (m² järgi)</div>
 
               {/* Arvutusalused */}
-              {derived.building.totAreaM2 > 0 && (
-                <div style={{ marginBottom: 16, padding: 14, background: N.muted, borderRadius: 8, fontSize: 13, color: N.sub }}>
-                  <div style={{ fontWeight: 600, color: N.text, marginBottom: 8 }}>Jaotamise alused</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>Kommunaalkulud perioodis</span>
-                      <span style={{ fontFamily: "monospace" }}>{euroEE(kopiiriondvaade.kommunaalPeriood)} → {euro(kopiiriondvaade.kommunaalKokku)}/kuu</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>Halduskulud perioodis</span>
-                      <span style={{ fontFamily: "monospace" }}>{euroEE(kopiiriondvaade.haldusPeriood)} → {euro(kopiiriondvaade.haldusKokku)}/kuu</span>
-                    </div>
-                    {plan.funds.reserve.plannedEUR > 0 && (
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span>Reservkapital</span>
-                        <span style={{ fontFamily: "monospace" }}>{euroEE(plan.funds.reserve.plannedEUR)} → {euro(Math.round(plan.funds.reserve.plannedEUR / 12))}/kuu</span>
+              {derived.building.totAreaM2 > 0 && (() => {
+                const ra = remondifondiArvutus;
+                const rfKuu = Math.round(ra.maarAastasM2 * ra.koguPind / 12);
+                const reservKuu = Math.round((plan.funds.reserve.plannedEUR || 0) / 12);
+                const olemasolevLaenuKuu = Math.round(plan.loans.filter(l => !l.sepiiriostudInvId).reduce((s, l) => s + arvutaKuumakse(l.principalEUR, l.annualRatePct, parseInt(l.termMonths) || 0), 0));
+                const planeeritudLaenuKuu = Math.round(plan.loans.filter(l => l.sepiiriostudInvId).reduce((s, l) => s + arvutaKuumakse(l.principalEUR, l.annualRatePct, parseInt(l.termMonths) || 0), 0));
+                const onPlaneeritudLaen = ra.onLaen;
+                const kokku = kopiiriondvaade.kommunaalKokku + kopiiriondvaade.haldusKokku + rfKuu + reservKuu + olemasolevLaenuKuu + (onPlaneeritudLaen ? planeeritudLaenuKuu : 0);
+                const badgeCfg = ra.tase === "normaalne"
+                  ? { bg: STATE.OK.bg, color: STATE.OK.color }
+                  : ra.tase === "korgendatud"
+                  ? { bg: STATE.WARN.bg, color: STATE.WARN.color }
+                  : ra.tase === "kriitiline"
+                  ? { bg: STATE.ERROR.bg, color: STATE.ERROR.color }
+                  : { bg: N.muted, color: N.dim };
+                const aRow = { display: "flex", justifyContent: "space-between", padding: "3px 0" };
+                const aMono = { fontFamily: "monospace" };
+                return (
+                  <div style={{ marginBottom: 16, padding: 14, background: N.muted, borderRadius: 8, fontSize: 13, color: N.sub }}>
+                    <div style={{ fontWeight: 600, color: N.text, marginBottom: 8 }}>Jaotuse alused</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <div style={aRow}>
+                        <span>Kommunaalkulud</span>
+                        <span style={aMono}>{euro(kopiiriondvaade.kommunaalKokku)}</span>
                       </div>
-                    )}
-                    {(() => {
-                      const ra = remondifondiArvutus;
-                      const rfAastas = Math.round(ra.maarAastasM2 * ra.koguPind);
-                      const label = ra.onLaen
-                        ? "Remondifond (panga soovitus)"
-                        : "Remondifond (kogumisperiood)";
-                      const badgeCfg = ra.tase === "normaalne"
-                        ? { bg: STATE.OK.bg, color: STATE.OK.color }
-                        : ra.tase === "korgendatud"
-                        ? { bg: STATE.WARN.bg, color: STATE.WARN.color }
-                        : ra.tase === "kriitiline"
-                        ? { bg: STATE.ERROR.bg, color: STATE.ERROR.color }
-                        : { bg: N.muted, color: N.dim };
-                      return (
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                            {label}
-                            <span style={{ fontSize: 11, fontWeight: 500, padding: "1px 8px", borderRadius: 99, background: badgeCfg.bg, color: badgeCfg.color, display: "inline-block" }}>
-                              {ra.maarKuusM2.toFixed(2).replace(".", ",")} €/m²/kuu
-                            </span>
+                      <div style={aRow}>
+                        <span>Halduskulud</span>
+                        <span style={aMono}>{euro(kopiiriondvaade.haldusKokku)}</span>
+                      </div>
+                      <div style={{ ...aRow, alignItems: "center" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          Remondifondi kogumine
+                          <span style={{ fontSize: 11, fontWeight: 500, padding: "1px 8px", borderRadius: 99, background: badgeCfg.bg, color: badgeCfg.color }}>
+                            {ra.maarKuusM2.toFixed(2).replace(".", ",")} €/m²/kuu
                           </span>
-                          <span style={{ fontFamily: "monospace" }}>{euroEE(rfAastas)} → {euro(Math.round(rfAastas / 12))}/kuu</span>
-                        </div>
-                      );
-                    })()}
-                    {remondifondiArvutus.onLaen && kopiiriondvaade.laenumaksedKokku > 0 && (
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span>Laenumaksed</span>
-                        <span style={{ fontFamily: "monospace" }}>{euro(kopiiriondvaade.laenumaksedKokku)}/kuu</span>
+                        </span>
+                        <span style={aMono}>{euro(rfKuu)}</span>
                       </div>
-                    )}
-                    <div style={{ display: "flex", justifyContent: "space-between", borderTop: `1px solid ${N.border}`, paddingTop: 4, marginTop: 4, fontWeight: 600, color: N.text }}>
-                      <span>Kogupind</span>
-                      <span style={{ fontFamily: "monospace" }}>{derived.building.totAreaM2.toFixed(2)} m²</span>
+                      <div style={aRow}>
+                        <span>Reservkapitali kogumine</span>
+                        <span style={aMono}>{euro(reservKuu)}</span>
+                      </div>
+                      <div style={aRow}>
+                        <span>Laenumakse</span>
+                        <span style={aMono}>{euro(olemasolevLaenuKuu)}</span>
+                      </div>
+                      {onPlaneeritudLaen && (
+                        <div style={aRow}>
+                          <span>Planeeritud pangalaen</span>
+                          <span style={aMono}>{euro(planeeritudLaenuKuu)}</span>
+                        </div>
+                      )}
+                      <div style={{ ...aRow, borderTop: `1px solid ${N.border}`, paddingTop: 4, marginTop: 4, fontWeight: 600, color: N.text }}>
+                        <span>Kokku</span>
+                        <span style={aMono}>{euro(kokku)}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {derived.building.totAreaM2 === 0 ? (
                 <div style={{ padding: 16, background: N.muted, borderRadius: 8, fontSize: 14, color: N.sub }}>
