@@ -692,6 +692,25 @@ export default function App() {
     });
   }, [plan.building.apartments, derived.building.totAreaM2, remondifondiArvutus, kopiiriondvaade, plan.funds.reserve.plannedEUR, loanStatus]);
 
+  // Orvuks jäänud laenude automaatne puhastus
+  useEffect(() => {
+    const koikInv = [...seisukord, ...muudInvesteeringud];
+    const orvud = plan.loans.filter(l => {
+      if (!l.sepiiriostudInvId) return false; // käsitsi lisatud, pole orvu
+      const inv = koikInv.find(i => i.id === l.sepiiriostudInvId);
+      if (!inv) return true; // investeering kustutatud
+      return !(inv.rahpiiri || []).some(rp => rp.allikas === "Laen");
+    });
+    if (orvud.length > 0) {
+      setPlan(p => ({
+        ...p,
+        loans: p.loans.filter(l =>
+          !orvud.some(o => o.id === l.id)
+        )
+      }));
+    }
+  }, [seisukord, muudInvesteeringud, plan.loans]);
+
   // Sünkrooni arvutatud remondifondi määr engine'iga
   useEffect(() => {
     const kuuMaar = remondifondiArvutus.maarAastasM2 / 12;
