@@ -435,6 +435,7 @@ export default function App() {
     kasutamine: "",
     pohjendus: "",
   });
+  const [loanStatus, setLoanStatus] = useState("APPLIED"); // "APPLIED" | "APPROVED"
 
 
   const derived = useMemo(() => computePlan(plan), [plan]);
@@ -804,6 +805,7 @@ export default function App() {
       repairFundSaldo,
       remondifond,
       resKap,
+      loanStatus,
     };
     const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -928,6 +930,7 @@ export default function App() {
             pohjendus: data.resKap.pohjendus || "",
           });
         }
+        if (data.loanStatus) setLoanStatus(data.loanStatus);
         // Migrate seisukord + old investments → eseme-based
         let importedSeisukord = [];
         if (data.seisukord) {
@@ -2546,6 +2549,29 @@ export default function App() {
 
             {[...seisukord, ...muudInvesteeringud].some(inv => (inv.rahpiiri || []).some(rp => rp.allikas === "Laen")) && (<>
             <div style={{ ...sectionTitle, marginBottom: 4 }}>Laenud</div>
+
+            {/* Laenu staatus */}
+            {[...seisukord, ...muudInvesteeringud].some(inv => (inv.rahpiiri || []).some(rp => rp.allikas === "Laen")) && (
+              <div style={{ marginBottom: 16, padding: 14, background: loanStatus === "APPROVED" ? STATE.OK.bg : "#fffbeb", border: `1px solid ${loanStatus === "APPROVED" ? STATE.OK.border : "#fde68a"}`, borderRadius: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <div style={fieldLabel}>Laenu staatus</div>
+                  <select
+                    value={loanStatus}
+                    onChange={(e) => setLoanStatus(e.target.value)}
+                    style={{ ...selectStyle, padding: "8px 12px", fontSize: 14, minWidth: 180 }}
+                  >
+                    <option value="APPLIED">Taotlusel (tingimuslik)</option>
+                    <option value="APPROVED">Kinnitatud</option>
+                  </select>
+                </div>
+                <div style={{ fontSize: 12, marginTop: 6, color: loanStatus === "APPROVED" ? STATE.OK.color : "#92400e" }}>
+                  {loanStatus === "APPLIED"
+                    ? "Laen ei ole kinnitatud. Kohustuslikud kuumaksed arvutatakse ilma laenuta."
+                    : "Laen on kinnitatud. Kuumaksed sisaldavad laenumakseid."}
+                </div>
+              </div>
+            )}
+
             {plan.loans.length > 0 && (
               <div style={{ fontSize: 13, color: N.dim, marginBottom: 12 }}>Indikatiivsed arvutused. Täpsed tingimused sõltuvad laenuandjast.</div>
             )}
@@ -2556,7 +2582,12 @@ export default function App() {
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {plan.loans.map(ln => (
-                <div key={ln.id} id={`laen-${ln.id}`} style={card}>
+                <div key={ln.id} id={`laen-${ln.id}`} style={{
+                  ...card,
+                  ...(ln.sepiiriostudInvId && loanStatus === "APPLIED"
+                    ? { borderLeft: "3px solid #d97706", background: "#fffbeb" }
+                    : {})
+                }}>
 
                   {/* 1. Laenusumma */}
                   <div style={{ marginBottom: 16 }}>

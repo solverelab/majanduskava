@@ -83,3 +83,12 @@ All state is local React `useState` in MajanduskavaApp.jsx — no Redux, Context
 - **Remondifond**: pikaajalised suuremad tööd, kogumisperiood planeeritud üle kava perioodi
 - **Laenu tingimuslikkus**: kui laen pole kinnitatud, on see "taotlusel" ja omanike maksed peavad toimima ka ilma laenuta (KrtS § 41)
 - **Juriidiline kaitseklausel**: kava peab sisaldama selgitust, et omanike kohustused ei muutu kui laenu ei saada
+
+## Tab 7 arhitektuur (otsustatud)
+
+- Tab 7 = lõplik kontroll-kokkuvõte, mis prinditakse/PDF
+- Kõik andmed tulevad tabidest 1-6 automaatselt, sisestusväljasid pole
+- Eraldi print-content div kaob ära — Tab 7 ise ongi prindi sisu
+- Juriidilist kaitseklauslit EI LISA
+- Peab vastama KrtS § 41 struktuurinõuetele (kaasomandi seisukord, tulud-kulud, fondid, investeeringud, kuumaksed)
+- See on Samm 3 teema, mitte praegu
