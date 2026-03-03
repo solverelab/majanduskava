@@ -46,16 +46,16 @@ function arvutaKuumakse(summa, aastaneIntress, tahtaegKuudes) {
 
 // ── NEUTRAL PALETTE ──
 const N = {
-  bg:      "#f0eeeb",  // page background (warm stone)
-  surface: "#ffffff",  // card / form surface
-  muted:   "#f7f6f4",  // secondary surface (warm off-white)
-  border:  "#e0ddd8",  // card borders, dividers
-  rule:    "#e5e2de",  // table/row separators
-  text:    "#2c2825",  // primary text (warm near-black)
-  sub:     "#5c554d",  // secondary text / labels (warm grey)
-  dim:     "#9b9389",  // tertiary / muted text (warm light grey)
-  accent:  "#3b3632",  // primary button fill (warm dark)
-  sidebar: "#3d3835",  // sidebar background (warm dark, 1 step lighter)
+  bg:      "#f7f7f7",
+  surface: "#ffffff",
+  muted:   "#f5f6f7",
+  border:  "#e5e5e5",
+  rule:    "#eeeeee",
+  text:    "#222222",
+  sub:     "#666666",
+  dim:     "#666666",
+  accent:  "#333333",
+  sidebar: "#2c2c2c",
 };
 
 // ── STATE BADGES (OK / HOIATUS / RISK) ──
@@ -65,21 +65,26 @@ const STATE = {
   ERROR: { bg: "#fef2f2", border: "#fecaca", color: "#991b1b" },
 };
 const stateBadge = (s) => ({
-  display: "inline-block", fontSize: 13, fontWeight: 700,
+  display: "inline-block", fontSize: 14, fontWeight: 700,
   padding: "2px 10px", borderRadius: 4,
   background: s.bg, color: s.color,
 });
 
-// ── TYPOGRAPHY ──
-const sectionTitle = { fontSize: 18, fontWeight: 800, color: N.text, margin: 0 };
-const fieldLabel   = { fontSize: 13, fontWeight: 500, color: N.sub, marginBottom: 4 };
-const helperText   = { fontSize: 13, color: N.dim };
+// -- TYPOGRAPHY (4 taset, mitte rohkem) --
+const H1_STYLE = { fontSize: 20, fontWeight: 600, color: N.text, margin: 0, marginBottom: 24 };
+const H2_STYLE = { fontSize: 16, fontWeight: 600, color: N.text, margin: 0, marginTop: 24, marginBottom: 12 };
+const H3_STYLE = { fontSize: 14, fontWeight: 600, color: N.text, margin: 0, marginBottom: 8 };
+// Body: fontSize 14, fontWeight 400, lineHeight 1.5 (rakendatakse main div-il)
+
+const sectionTitle = H2_STYLE;  // tagasiühilduvus
+const fieldLabel   = { fontSize: 14, fontWeight: 400, color: N.sub, marginBottom: 4 };
+const helperText   = { fontSize: 14, fontWeight: 400, color: N.sub };
 
 // ── INPUTS ──
-const inputBase  = { padding: "8px 10px", border: `1px solid ${N.border}`, borderRadius: 6, fontSize: 15, background: N.surface, color: N.text, outline: "none" };
+const inputBase  = { height: 38, padding: "0 12px", border: `1px solid ${N.border}`, borderRadius: 6, fontSize: 14, background: N.surface, color: N.text, outline: "none", boxSizing: "border-box" };
 const inputStyle = { ...inputBase, width: "100%" };
 const numStyle   = { ...inputStyle, fontFamily: "monospace", textAlign: "right" };
-const selectStyle = { ...inputBase, padding: "6px 10px" };
+const selectStyle = { ...inputBase, padding: "0 10px", appearance: "auto" };
 const numFocus   = (e) => e.target.select();
 
 // ── Universal number input with Estonian comma-decimal support ──
@@ -218,12 +223,12 @@ function DateInput({ value, onChange, ...props }) {
 }
 
 // ── BUTTONS ──
-const _btnBase    = { padding: "8px 14px", borderRadius: 8, cursor: "pointer", fontSize: 15, border: "none", lineHeight: 1.4 };
-const btnPrimary  = { ..._btnBase, background: N.accent, color: "#fff", fontWeight: 700 };
-const btnSecondary = { ..._btnBase, background: N.surface, color: N.text, fontWeight: 600, border: `1px solid ${N.border}` };
-const btnAdd      = { ..._btnBase, background: N.muted, color: N.sub, fontWeight: 600, border: `1px solid ${N.border}` };
-const btnRemove   = { ..._btnBase, background: "transparent", color: N.dim, fontWeight: 500, padding: "6px 10px", fontSize: 14 };
-const btn         = btnSecondary; // legacy alias
+const _btnBase    = { height: 38, borderRadius: 6, cursor: "pointer", fontSize: 14, border: "none", padding: "0 16px", lineHeight: "38px" };
+const btnPrimary  = { ..._btnBase, background: "#333", color: "#fff", fontWeight: 600 };
+const btnSecondary = { ..._btnBase, background: N.surface, color: N.text, fontWeight: 500, border: `1px solid ${N.border}` };
+const btnAdd      = btnSecondary;  // sama mis secondary
+const btnRemove   = { background: "none", border: "none", cursor: "pointer", fontSize: 14, color: N.sub, padding: "4px 8px" };
+const btn         = btnSecondary;
 
 // ── CATEGORIES & ENUMS ──
 const KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus", "Muu kommunaalteenus"];
@@ -338,15 +343,12 @@ const PUUDUSED_PLACEHOLDERS = {
 };
 
 // ── LAYOUT ──
-const card     = { border: `1px solid ${N.border}`, borderRadius: 12, padding: 16, background: N.surface };
-const tabStack = { display: "flex", flexDirection: "column", gap: 16 };
+const card     = { border: "1px solid #eee", borderRadius: 8, padding: "20px 24px", background: N.surface, marginBottom: 24 };
+const tabStack = { display: "flex", flexDirection: "column", gap: 24 };
 const tableWrap = { overflowX: "auto" };
 
-// ── SUMMARY CARD ──
-
-// ── TABLE ──
-const thRow = { textAlign: "left", fontSize: 13, fontWeight: 600, color: N.sub };
-const tdSep = { borderTop: `1px solid ${N.rule}` };
+const thRow = { fontSize: 14, fontWeight: 600, color: N.text, background: N.muted, borderBottom: "1px solid #eee" };
+const tdSep = { borderBottom: "1px solid #eee" };
 
 function Issue({ it }) {
   const s = it.severity === "ERROR" ? STATE.ERROR : it.severity === "WARN" ? STATE.WARN : STATE.OK;
