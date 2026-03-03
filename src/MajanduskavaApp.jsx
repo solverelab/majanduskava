@@ -419,7 +419,9 @@ export default function App() {
     kogumisViis: "eraldi",      // "eraldi" | "uhine"
     pangaKoefitsient: 1.15,     // vaikimisi 1.15
     pangaMaarOverride: null,    // null = auto, number = käsitsi €/m²/a
+    maarOverride: null,         // null = auto (investeeringutest), number = käsitsi €/m²/kuu
   });
+  const [resKapManual, setResKapManual] = useState(false);
   const [resKap, setResKap] = useState({
     saldoAlgus: "",
     kasutamine: "",
@@ -440,15 +442,10 @@ export default function App() {
 
   // Auto-täida reserv miinimumiga ainult siis, kui kasutaja pole midagi sisestanud (null/undefined/0).
   useEffect(() => {
+    if (resKapManual) return;
     const min = reserveMin.noutavMiinimum;
-    setPlan(p => {
-      const cur = p?.funds?.reserve?.plannedEUR;
-      if (cur == null || cur === 0) {
-        return { ...p, funds: { ...p.funds, reserve: { ...p.funds.reserve, plannedEUR: min } } };
-      }
-      return p;
-    });
-  }, [reserveMin.noutavMiinimum]);
+    setPlan(p => ({ ...p, funds: { ...p.funds, reserve: { ...p.funds.reserve, plannedEUR: min } } }));
+  }, [reserveMin.noutavMiinimum, resKapManual]);
 
   const kopiiriondvaade = useMemo(() => {
     // Map actual field names → Estonian aliases
@@ -612,7 +609,9 @@ export default function App() {
         ? remondifond.pangaMaarOverride
         : soovitusMaarAastasM2;
 
-      const maarAastasM2 = onLaen ? maarLaenuga : maarIlmaLaenuta;
+      const maarAastasM2 = remondifond.maarOverride != null
+        ? remondifond.maarOverride * 12
+        : onLaen ? maarLaenuga : maarIlmaLaenuta;
       const laekuminePerioodis = Math.round(maarAastasM2 * koguPind);
       const saldoLopp = saldoAlgus + laekuminePerioodis - investRemondifondist;
 
@@ -630,6 +629,8 @@ export default function App() {
         investRemondifondist, saldoLopp, onLaen, invDetail, invArvutusread,
         laenumaksedKuus, planeeritudLaenumaksedKuus, olemasolevLaenumaksedKuus,
         laenumakseM2Kuus, maarKuusM2, tase,
+        maarSoovituslik: maarIlmaLaenuta,
+        kasitsiMaar: remondifond.maarOverride != null,
       };
     };
 
@@ -649,6 +650,7 @@ export default function App() {
   }, [
     remondifond.saldoAlgus, remondifond.kogumisViis,
     remondifond.pangaKoefitsient, remondifond.pangaMaarOverride,
+    remondifond.maarOverride,
     derived.building.totAreaM2, plan.period.year,
     plan.loans, seisukord, muudInvesteeringud, loanStatus,
   ]);
@@ -934,6 +936,7 @@ export default function App() {
             kogumisViis: data.remondifond.kogumisViis || "eraldi",
             pangaKoefitsient: data.remondifond.pangaKoefitsient ?? 1.15,
             pangaMaarOverride: data.remondifond.pangaMaarOverride ?? null,
+            maarOverride: data.remondifond.maarOverride ?? null,
           });
         } else if (data.repairFundSaldo) {
           setRemondifond({
@@ -950,6 +953,7 @@ export default function App() {
             pohjendus: data.resKap.pohjendus || "",
           });
         }
+        setResKapManual(false);
         if (data.loanStatus) setLoanStatus(data.loanStatus);
         // Migrate seisukord + old investments → eseme-based
         let importedSeisukord = [];
@@ -1507,7 +1511,7 @@ export default function App() {
       if (tabIdx === 1) { setSeisukord([]); setMuudInvesteeringud([]); return { ...p, investmentsPipeline: { ...p.investmentsPipeline, items: [] } }; }
       if (tabIdx === 2) return { ...p, budget: { ...p.budget, costRows: [] } };
       if (tabIdx === 3) return { ...p, budget: { ...p.budget, incomeRows: [] } };
-      if (tabIdx === 4) { setRepairFundSaldo(""); setRemondifond({ saldoAlgus: "" }); setResKap({ saldoAlgus: "", kasutamine: "", pohjendus: "" }); return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, loans: [] }; }
+      if (tabIdx === 4) { setRepairFundSaldo(""); setRemondifond({ saldoAlgus: "", kogumisViis: "eraldi", pangaKoefitsient: 1.15, pangaMaarOverride: null, maarOverride: null }); setResKap({ saldoAlgus: "", kasutamine: "", pohjendus: "" }); setResKapManual(false); return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, loans: [] }; }
       return p;
     });
   };
@@ -2335,17 +2339,31 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* ── REMONDIFONDI MÄÄR (tugevaim element) ── */}
+                    {/* ── REMONDIFONDI MÄÄR (muudetav) ── */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0 8px" }}>
                       <span style={{ fontSize: 14, color: N.sub }}>Remondifondi määr</span>
-                      <span style={{ fontFamily: "monospace", fontWeight: 600, fontSize: 20, color: N.text }}>
-                        {ra.maarKuusM2.toFixed(2).replace(".", ",")} €/m²/kuu
-                      </span>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                        <NumberInput
+                          value={remondifond.maarOverride ?? parseFloat(ra.maarKuusM2.toFixed(2))}
+                          onChange={(v) => setRemondifond(p => ({ ...p, maarOverride: v > 0 ? v : null }))}
+                          style={{ ...numStyle, width: 100, fontSize: 20, fontWeight: 600 }}
+                          placeholder="0,00"
+                        />
+                        <span style={{ fontFamily: "monospace", fontSize: 20, fontWeight: 600, color: N.text }}>€/m²/kuu</span>
+                      </div>
                     </div>
+
+                    {/* Soovituslik info investeeringutest */}
+                    {ra.maarSoovituslik > 0 && ra.kasitsiMaar && (
+                      <div style={{ fontSize: 14, color: N.sub, marginBottom: 8 }}>
+                        Investeeringutest tuletatud vajadus: {(ra.maarSoovituslik / 12).toFixed(2).replace(".", ",")} €/m²/kuu
+                      </div>
+                    )}
 
                     {/* Staatus */}
                     <div style={{ fontSize: 14, color: N.sub, marginTop: 8, marginBottom: 8 }}>
-                      {ra.tase === "normaalne" ? "Normaalne"
+                      {ra.kasitsiMaar ? "Käsitsi määratud"
+                        : ra.tase === "normaalne" ? "Normaalne"
                         : ra.tase === "korgendatud" ? "Tavapärasest kõrgem — põhjendage üldkoosolekul."
                         : ra.tase === "kriitiline" ? "Kaaluge laenurahastust investeeringu katmiseks."
                         : "Määramata"}
@@ -2511,7 +2529,10 @@ export default function App() {
                       <div style={fieldLabel}>Planeeritud kogumine €</div>
                       <EuroInput
                         value={rkKogumine}
-                        onChange={(v) => setPlan(p => ({ ...p, funds: { ...p.funds, reserve: { ...p.funds.reserve, plannedEUR: v } } }))}
+                        onChange={(v) => {
+                          setResKapManual(true);
+                          setPlan(p => ({ ...p, funds: { ...p.funds, reserve: { ...p.funds.reserve, plannedEUR: v } } }));
+                        }}
                         style={numStyle}
                       />
                       <div style={{ fontSize: 14, color: N.dim, marginTop: 8 }}>Soovitus: 1/12 aastakuludest ({euro(reserveMin.noutavMiinimum)})</div>
