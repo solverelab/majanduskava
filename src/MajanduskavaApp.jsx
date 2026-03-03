@@ -1549,45 +1549,42 @@ export default function App() {
     (hasApts && hasPeriod) ? "done" : hasApts ? "partial" : "empty",
   ];
 
-  const statusDot = (status) => {
-    if (status === "done") return { display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#7dab6e", flexShrink: 0 };
-    if (status === "partial") return { display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#c9a96e", flexShrink: 0 };
-    return { display: "inline-block", width: 8, height: 8, borderRadius: "50%", border: "1.5px solid #6b6560", background: "transparent", flexShrink: 0, boxSizing: "border-box" };
-  };
-
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: N.bg, fontSize: 15, color: N.text }}>
-      {/* ── Sidebar navigation ── */}
+    <div style={{ display: "flex", minHeight: "100vh", background: N.bg, fontSize: 14, fontWeight: 400, color: N.text, lineHeight: 1.5, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      {/* -- Sidebar -- */}
       <aside style={{
-        width: 220, minWidth: 220, background: N.sidebar,
+        width: 230, minWidth: 230, background: N.sidebar,
         display: "flex", flexDirection: "column",
-        padding: "16px 0", overflowY: "auto",
         borderRight: `1px solid ${N.border}`,
       }}>
-        {SECS.map((name, i) => (
-          <button
-            key={name}
-            onClick={() => setSec(i)}
-            style={{
-              background: sec === i ? "rgba(255,255,255,0.05)" : "transparent",
-              border: "none", borderLeft: sec === i ? "2px solid #c4b08a" : "2px solid transparent",
-              padding: "12px 16px",
-              fontSize: 14,
-              textAlign: "left",
-              cursor: "pointer",
-              color: sec === i ? "#e8e4df" : "#a39e97",
-              fontWeight: sec === i ? 600 : 400,
-              display: "flex", alignItems: "center", gap: 8,
-            }}
-          >
-            <span style={statusDot(tabStatus[i])} />
-            {name}
-          </button>
-        ))}
+        <div style={{ padding: "24px 16px 24px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#ddd" }}>Majanduskava</div>
+          <div style={{ fontSize: 14, color: "#777", marginTop: 4 }}>{kyData.nimi || "KÜ"} {plan.period.year ? "- " + plan.period.year : ""}</div>
+        </div>
 
+        <div style={{ padding: "8px 0", flex: 1 }}>
+          {SECS.map((name, i) => (
+            <button
+              key={name}
+              onClick={() => setSec(i)}
+              style={{
+                width: "100%", display: "block", textAlign: "left",
+                background: sec === i ? "rgba(255,255,255,0.05)" : "transparent",
+                border: "none",
+                borderLeft: sec === i ? "3px solid #222" : "3px solid transparent",
+                padding: "12px 16px",
+                fontSize: 14, cursor: "pointer",
+                color: sec === i ? "#ddd" : "#888",
+                fontWeight: sec === i ? 600 : 400,
+              }}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
       </aside>
 
-      <main style={{ flex: 1, padding: 24, overflowY: "auto", maxWidth: 1100, boxSizing: "border-box", position: "relative" }}>
+      <main style={{ flex: 1, padding: 32, overflowY: "auto", maxWidth: 880, boxSizing: "border-box", position: "relative" }}>
         {import.meta.env.DEV && (
           <div style={{
             position: "absolute", top: 8, right: 12,
