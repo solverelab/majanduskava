@@ -667,7 +667,8 @@ export default function App() {
     const ra = remondifondiArvutus;
 
     const rfKuuKokku = ra.maarAastasM2 * koguPind / 12;
-    const laenKuuKokku = ra.onLaen ? ra.laenumaksedKuus : 0;
+    // Baasstsenaariumi kuumaksed: olemasolevad laenud alati, planeeritud ainult kui APPROVED
+    const laenKuuKokku = ra.olemasolevLaenumaksedKuus + (ra.loanApproved ? ra.planeeritudLaenumaksedKuus : 0);
     const reservKuuKokku = (plan.funds.reserve.plannedEUR || 0) / 12;
 
     return apts.map(k => {
@@ -681,9 +682,13 @@ export default function App() {
       const reserv = Math.round(reservKuuKokku * osa);
       const kokku = kommunaal + haldus + rf + laen + reserv;
 
-      return { id: k.id, tahis: k.label, pind, osa, kommunaal, haldus, remondifond: rf, laenumakse: laen, reserv, kokku };
+      const laenTingimuslik = Math.round((ra.loanApproved ? 0 : ra.planeeritudLaenumaksedKuus) * osa);
+      const rfLoan = Math.round((ra.loanScenario.maarAastasM2 * koguPind / 12) * osa);
+      const kokkuLoan = kommunaal + haldus + rfLoan + Math.round((ra.olemasolevLaenumaksedKuus + ra.planeeritudLaenumaksedKuus) * osa) + reserv;
+
+      return { id: k.id, tahis: k.label, pind, osa, kommunaal, haldus, remondifond: rf, laenumakse: laen, reserv, kokku, laenTingimuslik, kokkuLoan };
     });
-  }, [plan.building.apartments, derived.building.totAreaM2, remondifondiArvutus, kopiiriondvaade, plan.funds.reserve.plannedEUR]);
+  }, [plan.building.apartments, derived.building.totAreaM2, remondifondiArvutus, kopiiriondvaade, plan.funds.reserve.plannedEUR, loanStatus]);
 
   // Sünkrooni arvutatud remondifondi määr engine'iga
   useEffect(() => {
