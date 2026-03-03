@@ -441,10 +441,12 @@ export default function App() {
   const derived = useMemo(() => computePlan(plan), [plan]);
 
   const reserveMin = useMemo(() => {
-    const aastaKulud = plan.budget.costRows.reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+    const mEq = derived.period.monthEq || 12;
+    const periodiKulud = plan.budget.costRows.reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+    const aastaKulud = Math.round(periodiKulud * 12 / mEq);
     const noutavMiinimum = Math.round(aastaKulud / 12);
     return { aastaKulud, noutavMiinimum };
-  }, [plan.budget.costRows]);
+  }, [plan.budget.costRows, derived.period.monthEq]);
 
   // Auto-täida reserv miinimumiga ainult siis, kui kasutaja pole midagi sisestanud (null/undefined/0).
   useEffect(() => {
@@ -2565,6 +2567,16 @@ export default function App() {
                     )}
                     <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>Hinnang tugineb finantsjuhtimise heale tavale</div>
                   </div>
+                  {(() => {
+                    const vastab = rkSaldoLopp >= reserveMin.noutavMiinimum;
+                    return (
+                      <div style={{ fontSize: 12, marginTop: 4, color: vastab ? STATE.OK.color : STATE.ERROR.color }}>
+                        {vastab
+                          ? `✓ Vastab seaduse miinimumile (${euro(reserveMin.noutavMiinimum)})`
+                          : `⚠ Alla seaduse miinimumi (${euro(reserveMin.noutavMiinimum)})`}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })()}
