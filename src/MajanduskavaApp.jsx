@@ -1344,7 +1344,7 @@ export default function App() {
     const seotud = plan.loans.find(l => l.sepiiriostudInvId === investeeringId);
     if (!seotud) return;
     if (seotud.annualRatePct || seotud.termMonths) {
-      if (!window.confirm("Eemaldada ka seotud laenurida Fondid & laen sektsioonist?")) {
+      if (!window.confirm("Eemaldada ka seotud laenurida Fondid ja laen sektsioonist?")) {
         setPlan(p => ({ ...p, loans: p.loans.map(l =>
           l.sepiiriostudInvId === investeeringId ? { ...l, sepiiriostudInvId: null } : l
         )}));
@@ -1507,7 +1507,7 @@ export default function App() {
     });
   }, [plan.period.year]);
 
-  const SECS = ["Periood & korterid", "Esemed ja investeeringud", "Kulud", "Tulud", "Fondid & laen", "Korterite maksed", "Kontroll & kokkuvõte"];
+  const SECS = ["Üldandmed", "Hoone seisukord ja tööd", "Kavandatud kulud", "Kavandatud tulud", "Fondid ja laen", "Maksed korteritele", "Kokkuvõte"];
 
   const clearSection = (tabIdx) => {
     if (!window.confirm("Kas soovid selle jaotise andmed kustutada? Seda ei saa tagasi võtta.")) return;
@@ -1531,19 +1531,19 @@ export default function App() {
   const hasPeriod = plan.period.start && plan.period.end;
   const hasApts = plan.building.apartments.length > 0;
   const tabStatus = [
-    // 0: Periood & korterid
+    // 0: Üldandmed
     (hasPeriod && hasApts) ? "done" : (plan.period.start || plan.period.end || hasApts) ? "partial" : "empty",
-    // 1: Kaasomandi esemed
+    // 1: Hoone seisukord ja tööd
     seisukord.some(r => r.ese) ? (seisukord.some(r => r.investeering) ? "done" : "partial") : "empty",
-    // 2: Kulud
+    // 2: Kavandatud kulud
     plan.budget.costRows.length > 0 ? "done" : "empty",
-    // 3: Tulud
+    // 3: Kavandatud tulud
     plan.budget.incomeRows.length > 0 ? "done" : "empty",
-    // 4: Fondid & laen
+    // 4: Fondid ja laen
     (plan.loans.length > 0 || plan.funds.repairFund.monthlyRateEurPerM2 > 0) ? "done" : "empty",
-    // 5: Korterite maksed
+    // 5: Maksed korteritele
     (hasApts && hasPeriod) ? "done" : hasApts ? "partial" : "empty",
-    // 6: Kontroll & kokkuvõte
+    // 6: Kokkuvõte
     (hasApts && hasPeriod) ? "done" : hasApts ? "partial" : "empty",
   ];
 
@@ -1787,7 +1787,7 @@ export default function App() {
           <div style={tabStack}>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(1)}</div>
             <div style={card}>
-              <div style={sectionTitle}>Kaasomandi eseme seisukord</div>
+              <div style={sectionTitle}>Kaasomandi esemed</div>
 
               {seisukord.map((rida) => (
                 <div key={rida.id} style={{ border: `1px solid ${N.rule}`, borderRadius: 8, padding: 12, marginBottom: 10 }}>
@@ -1874,7 +1874,7 @@ export default function App() {
                               <button onClick={() => eemaldaRahpiiriRida(rida.id, ri)} style={{ color: "#9ca3af", background: "none", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "2px 4px" }} title="Eemalda rida">{"\u00d7"}</button>
                             {rp.allikas === "Laen" && plan.loans.find(l => l.sepiiriostudInvId === rida.id) && (
                               <button onClick={() => { setSec(4); setTimeout(() => document.getElementById(`laen-${plan.loans.find(l => l.sepiiriostudInvId === rida.id)?.id}`)?.scrollIntoView({ behavior: "smooth" }), 100); }} style={{ color: "#15803d", background: "none", border: "none", cursor: "pointer", fontSize: 12 }}>
-                                {"\u2713"} Laen {euro(parseFloat(rp.summa) || 0)} {"\u2192"} Fondid & laen
+                                {"\u2713"} Laen {euro(parseFloat(rp.summa) || 0)} {"\u2192"} Fondid ja laen
                               </button>
                             )}
                           </div>
@@ -1959,7 +1959,7 @@ export default function App() {
                           <button onClick={() => eemaldaMuuRahpiiriRida(idx, ri)} style={{ color: "#9ca3af", background: "none", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "2px 4px" }} title="Eemalda rida">{"\u00d7"}</button>
                         {rp.allikas === "Laen" && plan.loans.find(l => l.sepiiriostudInvId === inv.id) && (
                           <button onClick={() => { setSec(4); setTimeout(() => document.getElementById(`laen-${plan.loans.find(l => l.sepiiriostudInvId === inv.id)?.id}`)?.scrollIntoView({ behavior: "smooth" }), 100); }} style={{ color: "#15803d", background: "none", border: "none", cursor: "pointer", fontSize: 12 }}>
-                            {"\u2713"} Laen {euro(parseFloat(rp.summa) || 0)} {"\u2192"} Fondid & laen
+                            {"\u2713"} Laen {euro(parseFloat(rp.summa) || 0)} {"\u2192"} Fondid ja laen
                           </button>
                         )}
                       </div>
@@ -2107,7 +2107,7 @@ export default function App() {
               <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(2)}</div>
               <div style={card}>
                 <div style={{ marginBottom: 12 }}>
-                  <div style={sectionTitle}>Kulud</div>
+                  <div style={sectionTitle}>Kavandatud kulud</div>
                 </div>
 
                 <div style={{ padding: 12, background: N.muted, borderRadius: 8, fontSize: 13, color: N.sub, marginBottom: 12 }}>
@@ -2202,7 +2202,7 @@ export default function App() {
               <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(3)}</div>
               <div style={card}>
                 <div style={{ marginBottom: 12 }}>
-                  <div style={sectionTitle}>Tulud</div>
+                  <div style={sectionTitle}>Kavandatud tulud</div>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -2727,7 +2727,8 @@ export default function App() {
           <div style={tabStack}>
             <div style={card}>
               {/* Pealkiri */}
-              <div style={{ ...sectionTitle, marginBottom: 12 }}>Korterite kuumaksed (m² järgi)</div>
+              <div style={{ ...sectionTitle, marginBottom: 4 }}>Maksed korteritele</div>
+              <div style={{ fontSize: 13, color: N.dim, marginBottom: 12 }}>Jaotus m² alusel</div>
 
               {/* Arvutusalused */}
               {derived.building.totAreaM2 > 0 && (() => {
@@ -2905,7 +2906,7 @@ export default function App() {
 
             {/* ── Koondvaade ── */}
             <div style={{ ...card, padding: 24 }}>
-              <div style={{ ...sectionTitle, marginBottom: 16 }}>Koondvaade</div>
+              <div style={{ ...sectionTitle, marginBottom: 16 }}>Kokkuvõte</div>
               {(() => {
                 const kvRow = { display: "flex", justifyContent: "space-between", fontSize: 14, color: N.sub, padding: "4px 0" };
                 const kvBold = { display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 600, color: N.text, padding: "6px 0", borderTop: `1px solid ${N.border}`, marginTop: 4 };
@@ -3373,7 +3374,7 @@ export default function App() {
 
           {/* Periood */}
           <div className="print-section">
-            <h2 className="print-section-title">Periood & korterid</h2>
+            <h2 className="print-section-title">Üldandmed</h2>
             <div style={{ marginBottom: 8 }}>
               <span style={{ fontWeight: 700 }}>Periood:</span> {formatDateEE(plan.period.start)} – {formatDateEE(plan.period.end)}
             </div>
@@ -3462,7 +3463,7 @@ export default function App() {
 
           {/* Kulud */}
           <div className="print-section">
-            <h2 className="print-section-title">Kulud</h2>
+            <h2 className="print-section-title">Kavandatud kulud</h2>
             {plan.budget.costRows.length === 0
               ? <div>Kulusid pole lisatud.</div>
               : plan.budget.costRows.map(r => (
@@ -3481,7 +3482,7 @@ export default function App() {
 
           {/* Tulud */}
           <div className="print-section">
-            <h2 className="print-section-title">Tulud</h2>
+            <h2 className="print-section-title">Kavandatud tulud</h2>
             {(() => {
               const haldusSum = plan.budget.costRows
                 .filter(r => HALDUSTEENUSED.includes(r.category))
@@ -3521,9 +3522,9 @@ export default function App() {
             })()}
           </div>
 
-          {/* Fondid & laen */}
+          {/* Fondid ja laen */}
           <div className="print-section">
-            <h2 className="print-section-title">Fondid & laen</h2>
+            <h2 className="print-section-title">Fondid ja laen</h2>
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 12 }}>
               <div><span style={{ fontWeight: 700 }}>Remondifondi määr:</span> {remondifondiArvutus.maarAastasM2.toFixed(2).replace(".", ",")} €/m² aastas</div>
               <div><span style={{ fontWeight: 700 }}>Laekumine perioodis:</span> {euroEE(derived.funds.repairFundIncomePeriodEUR)}</div>
@@ -3563,7 +3564,7 @@ export default function App() {
 
           {/* Korterite maksed */}
           <div className="print-section">
-            <h2 className="print-section-title">Korterite maksed</h2>
+            <h2 className="print-section-title">Maksed korteritele</h2>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ textAlign: "left", fontSize: 12, borderBottom: "2px solid #000" }}>
