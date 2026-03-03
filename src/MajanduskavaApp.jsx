@@ -2239,6 +2239,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(4)}</div>
             {(() => {
               const ra = remondifondiArvutus;
+              const koikInv = [...seisukord.filter(e => e.investeering), ...muudInvesteeringud];
               const rfCard = { background: N.surface, borderRadius: 8, padding: 16, marginBottom: 12, border: `1px solid ${N.border}` };
               const rfRow = { display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 14 };
               return (
@@ -2270,6 +2271,7 @@ export default function App() {
                               <th style={{ textAlign: "right", padding: "4px 8px", fontWeight: 600 }}>Aasta</th>
                               <th style={{ textAlign: "right", padding: "4px 8px", fontWeight: 600 }}>Summa</th>
                               <th style={{ textAlign: "right", padding: "4px 0 4px 8px", fontWeight: 600 }}>Koguda</th>
+                              <th style={{ textAlign: "center", padding: "4px 8px", fontWeight: 600 }}>Staatus</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -2283,6 +2285,16 @@ export default function App() {
                                     ? <span style={{ background: STATE.OK.bg, color: STATE.OK.color, padding: "1px 6px", borderRadius: 3, fontSize: 12, fontWeight: 600 }}>kaetud</span>
                                     : <span>{euroEE(d.aastasKoguda)} / {d.kogumisaastad}a</span>}
                                 </td>
+                                <td style={{ textAlign: "center", padding: "4px 8px" }}>
+                                  {(() => {
+                                    const inv = koikInv.find(e => (e.invNimetus || e.nimetus || e.ese) === d.nimetus);
+                                    const conditional = inv && (inv.rahpiiri || []).some(rp => rp.allikas === "Laen");
+                                    if (!conditional) return <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 4, background: STATE.OK.bg, color: STATE.OK.color }}>Kindel</span>;
+                                    return loanStatus === "APPROVED"
+                                      ? <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 4, background: STATE.OK.bg, color: STATE.OK.color }}>Kinnitatud</span>
+                                      : <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 4, background: "#fef3c7", color: "#92400e" }}>Tingimuslik</span>;
+                                  })()}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -2291,6 +2303,7 @@ export default function App() {
                               <tr style={{ fontWeight: 600, color: N.text, borderTop: `1px solid ${N.rule}` }}>
                                 <td colSpan={3} style={{ padding: "4px 8px 4px 0" }}>Kokku</td>
                                 <td style={{ textAlign: "right", padding: "4px 0 4px 8px", fontFamily: "monospace" }}>{euroEE(ra.invArvutusread.reduce((s, d) => s + d.aastasKoguda, 0))}/a</td>
+                                <td></td>
                               </tr>
                             </tfoot>
                           )}
@@ -2736,7 +2749,15 @@ export default function App() {
                       </div>
                       {onPlaneeritudLaen && (
                         <div style={aRow}>
-                          <span>Planeeritud pangalaen</span>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            Planeeritud pangalaen
+                            <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 4,
+                              background: loanStatus === "APPROVED" ? STATE.OK.bg : "#fef3c7",
+                              color: loanStatus === "APPROVED" ? STATE.OK.color : "#92400e"
+                            }}>
+                              {loanStatus === "APPROVED" ? "Kinnitatud" : "Tingimuslik"}
+                            </span>
+                          </span>
                           <span style={aMono}>{euro(planeeritudLaenuAasta)}</span>
                         </div>
                       )}
@@ -2759,7 +2780,8 @@ export default function App() {
                     const showLaen = remondifondiArvutus.onLaen;
                     const showReserv = (plan.funds.reserve.plannedEUR || 0) > 0;
                     const rr = { textAlign: "right", fontFamily: "monospace" };
-                    const colCount = 6 + (showLaen ? 1 : 0) + (showReserv ? 1 : 0);
+                    const showLoanCol = loanStatus === "APPLIED" && remondifondiArvutus.loanScenario.onLaen;
+                    const colCount = 6 + (showLaen ? 1 : 0) + (showReserv ? 1 : 0) + (showLoanCol ? 1 : 0);
                     return (
                       <div style={tableWrap}>
                       <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
@@ -2773,6 +2795,9 @@ export default function App() {
                             {showReserv && <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Reservkapital</th>}
                             {showLaen && <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Laenumakse</th>}
                             <th style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>Kokku €/kuu</th>
+                            {showLoanCol && (
+                              <th style={{ ...rr, padding: "8px 0", fontWeight: 700, color: "#92400e" }}>Koos laenuga</th>
+                            )}
                           </tr>
                         </thead>
                         <tbody>
@@ -2792,6 +2817,9 @@ export default function App() {
                                   {showReserv && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.reserv)}</td>}
                                   {showLaen && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.laenumakse)}</td>}
                                   <td style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>{euro(km.kokku)}</td>
+                                  {showLoanCol && (
+                                    <td style={{ ...rr, padding: "8px 0", fontWeight: 700, color: "#92400e" }}>{euro(km.kokkuLoan)}</td>
+                                  )}
                                 </tr>
                                 {isOpen && (
                                   <tr>
@@ -2826,6 +2854,9 @@ export default function App() {
                             {showReserv && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.reserv, 0))}</td>}
                             {showLaen && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.laenumakse, 0))}</td>}
                             <td style={{ ...rr, padding: "8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kokku, 0))}</td>
+                            {showLoanCol && (
+                              <td style={{ ...rr, padding: "8px 0", color: "#92400e" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kokkuLoan, 0))}</td>
+                            )}
                           </tr>
                         </tfoot>
                       </table>
