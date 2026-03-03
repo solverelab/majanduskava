@@ -61,7 +61,7 @@ const N = {
 
 // -- TYPOGRAPHY (4 taset, mitte rohkem) --
 const H1_STYLE = { fontSize: 20, fontWeight: 600, color: N.text, margin: 0, marginBottom: 24 };
-const H2_STYLE = { fontSize: 16, fontWeight: 600, color: N.text, margin: 0, marginTop: 24, marginBottom: 16 };
+const H2_STYLE = { fontSize: 16, fontWeight: 600, color: N.text, margin: 0, marginTop: 84, marginBottom: 16 };
 const H3_STYLE = { fontSize: 14, fontWeight: 600, color: N.text, margin: 0, marginBottom: 8 };
 // Body: fontSize 14, fontWeight 400, lineHeight 1.5 (rakendatakse main div-il)
 
@@ -1858,7 +1858,7 @@ export default function App() {
                             </select>
                             <div style={{ width: 120 }}>
                               <EuroInput value={rp.summa} onChange={(v) => uuendaRahpiiriRida(rida.id, ri, { summa: v })} style={{ ...numStyle, ...(!rp.allikas ? { opacity: 0.45, background: "#f3f4f6" } : {}) }} disabled={!rp.allikas} />
-                              {!rp.allikas && <div style={{ color: N.sub, fontSize: 14, marginTop: 2 }}>Vali rahastusallikas</div>}
+                              {!rp.allikas && <div style={{ color: N.sub, fontSize: 14, marginTop: 8 }}>Vali rahastusallikas</div>}
                             </div>
                               <button onClick={() => eemaldaRahpiiriRida(rida.id, ri)} style={{ color: N.dim, background: "none", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "2px 4px" }} title="Eemalda rida">{"\u00d7"}</button>
                             {rp.allikas === "Laen" && plan.loans.find(l => l.sepiiriostudInvId === rida.id) && (
@@ -1943,7 +1943,7 @@ export default function App() {
                         </select>
                         <div style={{ width: 120 }}>
                           <EuroInput value={rp.summa} onChange={(v) => handleMuuRahpiiriChange(idx, ri, "summa", v)} style={{ ...numStyle, ...(!rp.allikas ? { opacity: 0.45, background: "#f3f4f6" } : {}) }} disabled={!rp.allikas} />
-                          {!rp.allikas && <div style={{ color: N.sub, fontSize: 14, marginTop: 2 }}>Vali rahastusallikas</div>}
+                          {!rp.allikas && <div style={{ color: N.sub, fontSize: 14, marginTop: 8 }}>Vali rahastusallikas</div>}
                         </div>
                           <button onClick={() => eemaldaMuuRahpiiriRida(idx, ri)} style={{ color: N.dim, background: "none", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "2px 4px" }} title="Eemalda rida">{"\u00d7"}</button>
                         {rp.allikas === "Laen" && plan.loans.find(l => l.sepiiriostudInvId === inv.id) && (
@@ -2399,7 +2399,7 @@ export default function App() {
                               onChange={(v) => setRemondifond(p => ({ ...p, pangaKoefitsient: v || 1.15 }))}
                               style={{ ...numStyle, fontSize: 14 }}
                             />
-                            <div style={{ fontSize: 14, color: N.dim, marginTop: 2 }}>Tavaline: 1,10–1,30</div>
+                            <div style={{ fontSize: 14, color: N.dim, marginTop: 8 }}>Tavaline: 1,10–1,30</div>
                           </div>
                           <div style={{ width: 160 }}>
                             <div style={{ ...fieldLabel, fontSize: 14 }}>Käsitsi määr €/m²/a</div>
@@ -2409,7 +2409,7 @@ export default function App() {
                               placeholder="Automaatne"
                               style={{ ...numStyle, fontSize: 14 }}
                             />
-                            <div style={{ fontSize: 14, color: N.dim, marginTop: 2 }}>Tühi = automaatne</div>
+                            <div style={{ fontSize: 14, color: N.dim, marginTop: 8 }}>Tühi = automaatne</div>
                           </div>
                         </div>
                       </>
@@ -2419,7 +2419,7 @@ export default function App() {
                     {/* ── Lõppsaldo ── */}
                     <div style={{ borderTop: `1px solid ${N.border}`, marginTop: 16, paddingTop: 12 }}>
                     <div style={H3_STYLE}>Lõppsaldo</div>
-                    <div style={{ fontFamily: "monospace", fontSize: 14, color: N.sub, display: "flex", flexDirection: "column", gap: 3 }}>
+                    <div style={{ fontFamily: "monospace", fontSize: 14, color: N.sub, display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
                         <span>Algsaldo</span><span>{euro(ra.saldoAlgus)}</span>
                       </div>
@@ -2534,7 +2534,7 @@ export default function App() {
                         style={{ ...inputStyle, width: "100%", fontSize: 14, padding: 8, border: `1px solid ${resKap.pohjendus ? N.border : N.sub}`, borderRadius: 6 }}
                       />
                       {!resKap.pohjendus && (
-                        <div style={{ fontSize: 14, color: N.sub, marginTop: 2 }}>Põhjendus on soovitav</div>
+                        <div style={{ fontSize: 14, color: N.sub, marginTop: 8 }}>Põhjendus on soovitav</div>
                       )}
                     </div>
                   )}
@@ -2722,7 +2722,7 @@ export default function App() {
                 return (
                   <div style={{ marginBottom: 16, padding: 16, background: N.muted, borderRadius: 8, fontSize: 14, color: N.sub }}>
                     <div style={{ fontWeight: 600, color: N.text, marginBottom: 8 }}>Jaotuse alused</div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={aRow}>
                         <span>Kommunaalkulud</span>
                         <span style={aMono}>{euro(kopiiriondvaade.kommunaalPeriood)}</span>
@@ -2732,7 +2732,7 @@ export default function App() {
                         <span style={aMono}>{euro(kopiiriondvaade.haldusPeriood)}</span>
                       </div>
                       <div style={{ ...aRow, alignItems: "center" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                           Remondifondi kogumine
                           <span style={{ fontSize: 14, fontWeight: 500, padding: "1px 8px", borderRadius: 99, background: badgeCfg.bg, color: badgeCfg.color }}>
                             {ra.maarKuusM2.toFixed(2).replace(".", ",")} €/m²/kuu
@@ -2751,7 +2751,7 @@ export default function App() {
                       </div>
                       {onPlaneeritudLaen && (
                         <div style={aRow}>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                             Planeeritud pangalaen
                             <span style={{ fontSize: 14, padding: "1px 6px", borderRadius: 4,
                               background: N.muted, color: N.sub
