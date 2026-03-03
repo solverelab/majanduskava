@@ -58,17 +58,6 @@ const N = {
   sidebar: "#2c2c2c",
 };
 
-// ── STATE BADGES (OK / HOIATUS / RISK) ──
-const STATE = {
-  OK:    { bg: "#f0fdf4", border: "#bbf7d0", color: "#166534" },
-  WARN:  { bg: "#fefce8", border: "#fde68a", color: "#854d0e" },
-  ERROR: { bg: "#fef2f2", border: "#fecaca", color: "#991b1b" },
-};
-const stateBadge = (s) => ({
-  display: "inline-block", fontSize: 14, fontWeight: 700,
-  padding: "2px 10px", borderRadius: 4,
-  background: s.bg, color: s.color,
-});
 
 // -- TYPOGRAPHY (4 taset, mitte rohkem) --
 const H1_STYLE = { fontSize: 20, fontWeight: 600, color: N.text, margin: 0, marginBottom: 24 };
@@ -351,11 +340,10 @@ const thRow = { fontSize: 14, fontWeight: 600, color: N.text, background: N.mute
 const tdSep = { borderBottom: "1px solid #eee" };
 
 function Issue({ it }) {
-  const s = it.severity === "ERROR" ? STATE.ERROR : it.severity === "WARN" ? STATE.WARN : STATE.OK;
   return (
-    <div style={{ background: s.bg, border: `1px solid ${s.border}`, padding: "10px 12px", borderRadius: 10, marginBottom: 8 }}>
+    <div style={{ background: N.muted, border: `1px solid ${N.border}`, padding: "10px 12px", borderRadius: 8, marginBottom: 8 }}>
       <b>{it.severity}</b> · {it.message}
-      <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>{it.code} · {it.section}</div>
+      <div style={{ fontSize: 14, color: N.sub, marginTop: 4 }}>{it.code} · {it.section}</div>
     </div>
   );
 }
@@ -1590,8 +1578,8 @@ export default function App() {
             position: "absolute", top: 8, right: 12,
             fontSize: 10, fontWeight: 700, fontFamily: "monospace",
             padding: "2px 8px", borderRadius: 4,
-            background: STATE.WARN.bg,
-            color: STATE.WARN.color,
+            background: N.muted,
+            color: N.sub,
             letterSpacing: "0.04em",
             userSelect: "none",
           }}>
@@ -2306,17 +2294,17 @@ export default function App() {
                                 <td style={{ textAlign: "right", padding: "3px 8px", fontFamily: "monospace" }}>{euroEE(d.rfSumma)}</td>
                                 <td style={{ textAlign: "right", padding: "3px 0 3px 8px", fontFamily: "monospace" }}>
                                   {d.koguda === 0
-                                    ? <span style={{ background: STATE.OK.bg, color: STATE.OK.color, padding: "1px 6px", borderRadius: 3, fontSize: 12, fontWeight: 600 }}>kaetud</span>
+                                    ? <span style={{ fontSize: 14, fontWeight: 600, color: N.sub }}>kaetud</span>
                                     : <span>{euroEE(d.aastasKoguda)} / {d.kogumisaastad}a</span>}
                                 </td>
                                 <td style={{ textAlign: "center", padding: "4px 8px" }}>
                                   {(() => {
                                     const inv = koikInv.find(e => (e.invNimetus || e.nimetus || e.ese) === d.nimetus);
                                     const conditional = inv && (inv.rahpiiri || []).some(rp => rp.allikas === "Laen");
-                                    if (!conditional) return <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 4, background: STATE.OK.bg, color: STATE.OK.color }}>Kindel</span>;
+                                    if (!conditional) return <span style={{ fontSize: 14, color: N.sub }}>Kindel</span>;
                                     return loanStatus === "APPROVED"
-                                      ? <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 4, background: STATE.OK.bg, color: STATE.OK.color }}>Kinnitatud</span>
-                                      : <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 4, background: "#fef3c7", color: "#92400e" }}>Tingimuslik</span>;
+                                      ? <span style={{ fontSize: 14, color: N.sub }}>Kinnitatud</span>
+                                      : <span style={{ fontSize: 14, color: N.sub }}>Tingimuslik</span>;
                                   })()}
                                 </td>
                               </tr>
@@ -2355,24 +2343,14 @@ export default function App() {
                       </span>
                     </div>
 
-                    {/* Staatus badge */}
-                    {(() => {
-                      const cfg = ra.tase === "normaalne"
-                        ? { bg: STATE.OK.bg, border: STATE.OK.border, color: STATE.OK.color, text: "Normaalne" }
-                        : ra.tase === "korgendatud"
-                        ? { bg: STATE.WARN.bg, border: STATE.WARN.border, color: STATE.WARN.color, text: "Tavapärasest kõrgem — põhjendage üldkoosolekul." }
-                        : ra.tase === "kriitiline"
-                        ? { bg: STATE.ERROR.bg, border: STATE.ERROR.border, color: STATE.ERROR.color, text: "Kaaluge laenurahastust investeeringu katmiseks." }
-                        : { bg: N.muted, border: N.border, color: N.dim, text: "Määramata" };
-                      return (
-                        <div style={{ marginBottom: 8 }}>
-                          <div style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500 }}>
-                            {cfg.text}
-                          </div>
-                          <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>Eesti keskmine 0,5–1,5 €/m²/kuu</div>
-                        </div>
-                      );
-                    })()}
+                    {/* Staatus */}
+                    <div style={{ fontSize: 14, color: N.sub, marginTop: 8, marginBottom: 8 }}>
+                      {ra.tase === "normaalne" ? "Normaalne"
+                        : ra.tase === "korgendatud" ? "Tavapärasest kõrgem — põhjendage üldkoosolekul."
+                        : ra.tase === "kriitiline" ? "Kaaluge laenurahastust investeeringu katmiseks."
+                        : "Määramata"}
+                    </div>
+                    <div style={{ fontSize: 14, color: N.sub }}>Eesti keskmine 0,5–1,5 €/m²/kuu</div>
 
                     {/* Kogumisviisi toggle (ainult ilma laenuta + >1 investeering) */}
                     {!ra.onLaen && ra.invDetail.length > 1 && (
@@ -2519,11 +2497,7 @@ export default function App() {
               const rkSaldoLopp = rkSaldoAlgus + rkKogumine - rkKasutamine;
               const kuuKulud = reserveMin.noutavMiinimum || 1;
               const katvusKuud = kuuKulud > 0 ? rkSaldoLopp / kuuKulud : 0;
-              const katvusCfg = katvusKuud >= 3
-                ? { bg: STATE.OK.bg, border: STATE.OK.border, color: STATE.OK.color, text: "Hea" }
-                : katvusKuud >= 1.5
-                ? { bg: STATE.WARN.bg, border: STATE.WARN.border, color: STATE.WARN.color, text: "Rahuldav" }
-                : { bg: STATE.ERROR.bg, border: STATE.ERROR.border, color: STATE.ERROR.color, text: "Riskantne" };
+              const katvusLabel = katvusKuud >= 3 ? "Hea" : katvusKuud >= 1.5 ? "Rahuldav" : "Riskantne";
               return (
                 <div style={card}>
                   <div style={{ ...sectionTitle, marginBottom: 12 }}>Reservkapital</div>
@@ -2578,21 +2552,19 @@ export default function App() {
                   </div>
 
                   <div style={{ marginBottom: 4 }}>
-                    <div style={{ background: katvusCfg.bg, border: `1px solid ${katvusCfg.border}`, color: katvusCfg.color, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500 }}>
-                      {katvusCfg.text}
-                    </div>
-                    {katvusCfg.text === "Rahuldav" && (
-                      <div style={{ fontSize: 12, color: STATE.WARN.color, marginTop: 4 }}>Reserv katab alla 3 kuu kulusid.</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: N.sub }}>{katvusLabel}</div>
+                    {katvusLabel === "Rahuldav" && (
+                      <div style={{ fontSize: 12, color: N.sub, marginTop: 4 }}>Reserv katab alla 3 kuu kulusid.</div>
                     )}
-                    {katvusCfg.text === "Riskantne" && (
-                      <div style={{ fontSize: 12, color: STATE.ERROR.color, marginTop: 4 }}>Reserv ei kata minimaalselt vajalikku perioodi. Suurendage kogumist.</div>
+                    {katvusLabel === "Riskantne" && (
+                      <div style={{ fontSize: 12, color: N.sub, marginTop: 4 }}>Reserv ei kata minimaalselt vajalikku perioodi. Suurendage kogumist.</div>
                     )}
                     <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>Hinnang tugineb finantsjuhtimise heale tavale</div>
                   </div>
                   {(() => {
                     const vastab = rkSaldoLopp >= reserveMin.noutavMiinimum;
                     return (
-                      <div style={{ fontSize: 12, marginTop: 4, color: vastab ? STATE.OK.color : STATE.ERROR.color }}>
+                      <div style={{ fontSize: 12, marginTop: 4, color: N.sub }}>
                         {vastab
                           ? `✓ Vastab seaduse miinimumile (${euro(reserveMin.noutavMiinimum)})`
                           : `⚠ Alla seaduse miinimumi (${euro(reserveMin.noutavMiinimum)})`}
@@ -2608,7 +2580,7 @@ export default function App() {
 
             {/* Laenu staatus */}
             {[...seisukord, ...muudInvesteeringud].some(inv => (inv.rahpiiri || []).some(rp => rp.allikas === "Laen")) && (
-              <div style={{ marginBottom: 16, padding: 14, background: loanStatus === "APPROVED" ? STATE.OK.bg : "#fffbeb", border: `1px solid ${loanStatus === "APPROVED" ? STATE.OK.border : "#fde68a"}`, borderRadius: 8 }}>
+              <div style={{ marginBottom: 16, padding: 14, background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <div style={fieldLabel}>Laenu staatus</div>
                   <select
@@ -2620,7 +2592,7 @@ export default function App() {
                     <option value="APPROVED">Kinnitatud</option>
                   </select>
                 </div>
-                <div style={{ fontSize: 12, marginTop: 6, color: loanStatus === "APPROVED" ? STATE.OK.color : "#92400e" }}>
+                <div style={{ fontSize: 12, marginTop: 6, color: N.sub }}>
                   {loanStatus === "APPLIED"
                     ? "Laen ei ole kinnitatud. Kohustuslikud kuumaksed arvutatakse ilma laenuta."
                     : "Laen on kinnitatud. Kuumaksed sisaldavad laenumakseid."}
@@ -2641,7 +2613,7 @@ export default function App() {
                 <div key={ln.id} id={`laen-${ln.id}`} style={{
                   ...card,
                   ...(ln.sepiiriostudInvId && loanStatus === "APPLIED"
-                    ? { borderLeft: "3px solid #d97706", background: "#fffbeb" }
+                    ? { borderLeft: `3px solid ${N.sub}` }
                     : {})
                 }}>
 
@@ -2744,13 +2716,7 @@ export default function App() {
                 const planeeritudLaenuAasta = Math.round(plan.loans.filter(l => l.sepiiriostudInvId).reduce((s, l) => s + arvutaKuumakse(l.principalEUR, l.annualRatePct, parseInt(l.termMonths) || 0), 0) * mEq);
                 const onPlaneeritudLaen = ra.onLaen;
                 const kokku = kopiiriondvaade.kommunaalPeriood + kopiiriondvaade.haldusPeriood + rfAasta + reservAasta + olemasolevLaenuAasta + (onPlaneeritudLaen ? planeeritudLaenuAasta : 0);
-                const badgeCfg = ra.tase === "normaalne"
-                  ? { bg: STATE.OK.bg, color: STATE.OK.color }
-                  : ra.tase === "korgendatud"
-                  ? { bg: STATE.WARN.bg, color: STATE.WARN.color }
-                  : ra.tase === "kriitiline"
-                  ? { bg: STATE.ERROR.bg, color: STATE.ERROR.color }
-                  : { bg: N.muted, color: N.dim };
+                const badgeCfg = { bg: N.muted, color: N.dim };
                 const aRow = { display: "flex", justifyContent: "space-between", padding: "3px 0" };
                 const aMono = { fontFamily: "monospace" };
                 return (
@@ -2788,8 +2754,7 @@ export default function App() {
                           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                             Planeeritud pangalaen
                             <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 4,
-                              background: loanStatus === "APPROVED" ? STATE.OK.bg : "#fef3c7",
-                              color: loanStatus === "APPROVED" ? STATE.OK.color : "#92400e"
+                              background: N.muted, color: N.sub
                             }}>
                               {loanStatus === "APPROVED" ? "Kinnitatud" : "Tingimuslik"}
                             </span>
@@ -2832,7 +2797,7 @@ export default function App() {
                             {showLaen && <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Laenumakse</th>}
                             <th style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>Kokku €/kuu</th>
                             {showLoanCol && (
-                              <th style={{ ...rr, padding: "8px 0", fontWeight: 700, color: "#92400e" }}>Koos laenuga</th>
+                              <th style={{ ...rr, padding: "8px 0", fontWeight: 700, color: N.sub }}>Koos laenuga</th>
                             )}
                           </tr>
                         </thead>
@@ -2854,7 +2819,7 @@ export default function App() {
                                   {showLaen && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.laenumakse)}</td>}
                                   <td style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>{euro(km.kokku)}</td>
                                   {showLoanCol && (
-                                    <td style={{ ...rr, padding: "8px 0", fontWeight: 700, color: "#92400e" }}>{euro(km.kokkuLoan)}</td>
+                                    <td style={{ ...rr, padding: "8px 0", fontWeight: 700, color: N.sub }}>{euro(km.kokkuLoan)}</td>
                                   )}
                                 </tr>
                                 {isOpen && (
@@ -2891,7 +2856,7 @@ export default function App() {
                             {showLaen && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.laenumakse, 0))}</td>}
                             <td style={{ ...rr, padding: "8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kokku, 0))}</td>
                             {showLoanCol && (
-                              <td style={{ ...rr, padding: "8px 0", color: "#92400e" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kokkuLoan, 0))}</td>
+                              <td style={{ ...rr, padding: "8px 0", color: N.sub }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kokkuLoan, 0))}</td>
                             )}
                           </tr>
                         </tfoot>
@@ -3057,7 +3022,7 @@ export default function App() {
                   <div style={{ ...card, padding: 20 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <div style={sectionTitle}>Riskitase</div>
-                      <span style={stateBadge(evaluation.risk.level === "low" ? STATE.OK : evaluation.risk.level === "medium" ? STATE.WARN : STATE.ERROR)}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: N.sub }}>
                         {evaluation.risk.level.toUpperCase()}
                       </span>
                     </div>
@@ -3071,15 +3036,15 @@ export default function App() {
 
                 {/* ── UI error ── */}
                 {uiError && (
-                  <div style={{ border: `1px solid ${STATE.ERROR.border}`, borderRadius: 12, padding: 20, background: STATE.ERROR.bg }}>
+                  <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.muted }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <div style={{ ...sectionTitle, color: STATE.ERROR.color }}>Viga</div>
-                      <span style={stateBadge(STATE.ERROR)}>ERROR</span>
+                      <div style={{ ...sectionTitle, color: N.sub }}>Viga</div>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: N.sub }}>ERROR</span>
                     </div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: STATE.ERROR.color }}>Ei saanud muudatust rakendada</div>
-                    <div style={{ marginTop: 4, fontSize: 12, color: STATE.ERROR.color }}>{uiError}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: N.sub }}>Ei saanud muudatust rakendada</div>
+                    <div style={{ marginTop: 4, fontSize: 12, color: N.sub }}>{uiError}</div>
                     <button
-                      style={{ marginTop: 8, fontSize: 12, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", color: STATE.ERROR.color }}
+                      style={{ marginTop: 8, fontSize: 12, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", color: N.sub }}
                       onClick={() => setUiError(null)}
                     >
                       Sulge
@@ -3139,7 +3104,7 @@ export default function App() {
                 </label>
               </div>
               {importError && (
-                <div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 8, background: STATE.ERROR.bg, border: `1px solid ${STATE.ERROR.border}`, fontSize: 13, color: STATE.ERROR.color }}>
+                <div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 8, background: N.muted, border: `1px solid ${N.border}`, fontSize: 13, color: N.sub }}>
                   {importError}
                 </div>
               )}
@@ -3176,7 +3141,7 @@ export default function App() {
                       const reportOk = !solveAllResult?.report || solveAllResult.report.stop.reason === "NO_ACTIONS" || solveAllResult.report.final.riskScore === 0;
                       const allOk = guardOk && reportOk;
                       return (
-                        <span style={stateBadge(allOk ? STATE.OK : STATE.WARN)}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: N.sub }}>
                           {allOk ? "OK" : "Kontrollida"}
                         </span>
                       );
@@ -3190,7 +3155,7 @@ export default function App() {
                       const eligible = candidates.filter(c => c.isEligible).length;
                       const ok = eligible > 0 || candidates.length === 0;
                       return (
-                        <span style={stateBadge(ok ? STATE.OK : STATE.ERROR)}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: N.sub }}>
                           {ok ? "OK" : "BLOCKED"}
                         </span>
                       );
@@ -3206,7 +3171,7 @@ export default function App() {
                       const r = solveAllResult.report;
                       const ok = r.stop.reason === "NO_ACTIONS" || r.final.riskScore === 0;
                       return (
-                        <span style={stateBadge(ok ? STATE.OK : STATE.WARN)}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: N.sub }}>
                           {ok ? "OK" : "Tähelepanu vajab"}
                         </span>
                       );
