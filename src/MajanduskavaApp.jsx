@@ -2258,6 +2258,10 @@ export default function App() {
         {sec === 4 && (
           <div style={tabStack}>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(4)}</div>
+
+            {/* ── Pealkirja rida (ühtne teiste tabidega) ── */}
+            <div style={{ ...sectionTitle, marginBottom: 0 }}>Fondid ja laen</div>
+
             {(() => {
               const ra = remondifondiArvutus;
               const koikInv = [...seisukord.filter(e => e.investeering), ...muudInvesteeringud];
