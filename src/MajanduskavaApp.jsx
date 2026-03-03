@@ -3097,7 +3097,7 @@ export default function App() {
             </div>
 
             {/* ── Ekspordi / impordi (buttons only, no version string) ── */}
-            <div style={{ ...card, padding: 20 }}>
+            {false && (<div style={{ ...card, padding: 20 }}>
               <div style={{ ...sectionTitle, marginBottom: 16 }}>Ekspordi / impordi</div>
               <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                 <button onClick={onExportJSON} style={btnSecondary}>
@@ -3118,7 +3118,7 @@ export default function App() {
                   {importError}
                 </div>
               )}
-            </div>
+            </div>)}
 
             {/* ── Technical details (single conditional container) ── */}
             {showTechnicalInfo && (
