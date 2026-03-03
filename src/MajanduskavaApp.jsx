@@ -1559,7 +1559,7 @@ export default function App() {
       }}>
         <div style={{ padding: "24px 16px 24px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: "#ddd" }}>Majanduskava</div>
-          <div style={{ fontSize: 14, color: "#777", marginTop: 4 }}>{kyData.nimi || "KÜ"} {plan.period.year ? "- " + plan.period.year : ""}</div>
+          <div style={{ fontSize: 14, color: "#777", marginTop: 4 }}>{kyData.nimi || "KÜ"} {plan.period.year ? "· " + plan.period.year : ""}</div>
         </div>
 
         <div style={{ padding: "8px 0", flex: 1 }}>
@@ -2728,10 +2728,11 @@ export default function App() {
 
         {sec === 5 && (
           <div style={tabStack}>
+            <h1 style={H1_STYLE}>Maksed korteritele</h1>
             <div style={card}>
               {/* Pealkiri */}
-              <div style={{ ...sectionTitle, marginBottom: 4 }}>Maksed korteritele</div>
-              <div style={{ fontSize: 13, color: N.dim, marginBottom: 12 }}>Jaotus m² alusel</div>
+              <div style={{ ...H2_STYLE, marginTop: 0 }}>Kuumaksed</div>
+              <div style={{ fontSize: 14, color: N.sub, marginBottom: 16 }}>Jaotus m² alusel</div>
 
               {/* Arvutusalused */}
               {derived.building.totAreaM2 > 0 && (() => {
@@ -2807,7 +2808,7 @@ export default function App() {
 
               {derived.building.totAreaM2 === 0 ? (
                 <div style={{ padding: 16, background: N.muted, borderRadius: 8, fontSize: 14, color: N.sub }}>
-                  Sisesta korterite m² (Tab "Periood & korterid"), et arvutada makseid.
+                  Sisesta korterite m² (Tab "Üldandmed"), et arvutada makseid.
                 </div>
               ) : (
                 <>
@@ -2905,11 +2906,12 @@ export default function App() {
         )}
 
         {sec === 6 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={tabStack}>
+            <h1 style={H1_STYLE}>Kokkuvõte</h1>
 
             {/* ── Koondvaade ── */}
             <div style={{ ...card, padding: 24 }}>
-              <div style={{ ...sectionTitle, marginBottom: 16 }}>Kokkuvõte</div>
+              <div style={{ ...H2_STYLE, marginTop: 0 }}>Kokkuvõte</div>
               {(() => {
                 const kvRow = { display: "flex", justifyContent: "space-between", fontSize: 14, color: N.sub, padding: "4px 0" };
                 const kvBold = { display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 600, color: N.text, padding: "6px 0", borderTop: `1px solid ${N.border}`, marginTop: 4 };
