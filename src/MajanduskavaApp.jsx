@@ -612,7 +612,8 @@ export default function App() {
       const maarAastasM2 = remondifond.maarOverride != null
         ? remondifond.maarOverride * 12
         : onLaen ? maarLaenuga : maarIlmaLaenuta;
-      const laekuminePerioodis = Math.round(maarAastasM2 * koguPind);
+      const mEq = (derived.period.monthEq || 12);
+      const laekuminePerioodis = Math.round(maarAastasM2 * koguPind * mEq / 12);
       const saldoLopp = saldoAlgus + laekuminePerioodis - investRemondifondist;
 
       const maarKuusM2 = maarAastasM2 / 12;
@@ -651,7 +652,7 @@ export default function App() {
     remondifond.saldoAlgus, remondifond.kogumisViis,
     remondifond.pangaKoefitsient, remondifond.pangaMaarOverride,
     remondifond.maarOverride,
-    derived.building.totAreaM2, plan.period.year,
+    derived.building.totAreaM2, derived.period.monthEq, plan.period.year,
     plan.loans, seisukord, muudInvesteeringud, loanStatus,
   ]);
 
@@ -944,6 +945,7 @@ export default function App() {
             kogumisViis: "eraldi",
             pangaKoefitsient: 1.15,
             pangaMaarOverride: null,
+            maarOverride: null,
           });
         }
         if (data.resKap) {
