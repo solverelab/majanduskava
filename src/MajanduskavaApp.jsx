@@ -81,7 +81,7 @@ const fieldLabel   = { fontSize: 14, fontWeight: 400, color: N.sub, marginBottom
 const helperText   = { fontSize: 14, fontWeight: 400, color: N.sub };
 
 // ── INPUTS ──
-const inputBase  = { height: 38, padding: "0 12px", border: `1px solid ${N.border}`, borderRadius: 6, fontSize: 14, background: N.surface, color: N.text, outline: "none", boxSizing: "border-box" };
+const inputBase  = { height: 38, padding: "0 12px", border: "1px solid #dcdcdc", borderRadius: 6, fontSize: 14, background: N.surface, color: N.text, outline: "none", boxSizing: "border-box" };
 const inputStyle = { ...inputBase, width: "100%" };
 const numStyle   = { ...inputStyle, fontFamily: "monospace", textAlign: "right" };
 const selectStyle = { ...inputBase, padding: "0 10px", appearance: "auto" };
@@ -1612,9 +1612,9 @@ export default function App() {
             .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
           const naitaKoondribana = haldusA > 0 || kommunaalA > 0 || laenuA > 0;
           if (!naitaKoondribana) return null;
-          const kvNum = { fontFamily: "monospace", fontWeight: 700, fontSize: 15 };
-          const kvLabel = { fontSize: 12, color: N.dim, minWidth: 110 };
-          const kvSep = { color: N.border, margin: "0 6px", fontSize: 13 };
+          const kvNum = { fontFamily: "monospace", fontWeight: 600, fontSize: 14 };
+          const kvLabel = { fontSize: 14, color: N.sub, minWidth: 110 };
+          const kvSep = { color: N.border, margin: "0 6px", fontSize: 14 };
           const rowStyle = { display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" };
           return (
             <div style={{
@@ -1641,10 +1641,11 @@ export default function App() {
         {sec === 0 && (
           <div style={tabStack}>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(0)}</div>
+            <h1 style={H1_STYLE}>Üldandmed</h1>
 
             {/* KÜ andmed */}
             <div style={card}>
-              <div style={{ ...sectionTitle, marginBottom: 12 }}>Korteriühistu andmed</div>
+              <div style={{ ...H2_STYLE, marginTop: 0 }}>Korteriühistu andmed</div>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ flex: "1 1 240px" }}>
                   <AddressSearch
@@ -1688,7 +1689,7 @@ export default function App() {
             </div>
 
             <div style={card}>
-              <div style={{ ...sectionTitle, marginBottom: 12 }}>Periood</div>
+              <div style={{ ...H2_STYLE, marginTop: 0 }}>Periood</div>
               <div style={{ marginBottom: 12 }}>
                 <div style={fieldLabel}>Majandusaasta</div>
                 <select
@@ -1748,7 +1749,7 @@ export default function App() {
 
             <div style={card}>
               <div style={{ marginBottom: 12 }}>
-                <div style={sectionTitle}>Korterid</div>
+                <div style={{ ...H2_STYLE, marginTop: 0 }}>Korterid</div>
               </div>
               <div style={tableWrap}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1785,8 +1786,9 @@ export default function App() {
         {sec === 1 && (
           <div style={tabStack}>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(1)}</div>
+            <h1 style={H1_STYLE}>Hoone seisukord ja tööd</h1>
             <div style={card}>
-              <div style={sectionTitle}>Kaasomandi esemed</div>
+              <div style={{ ...H2_STYLE, marginTop: 0 }}>Kaasomandi esemed</div>
 
               {seisukord.map((rida) => (
                 <div key={rida.id} style={{ border: `1px solid ${N.rule}`, borderRadius: 8, padding: 12, marginBottom: 10 }}>
@@ -1907,7 +1909,7 @@ export default function App() {
 
             {/* Muud investeeringud */}
             <div style={card}>
-              <div style={{ fontWeight: 700, fontSize: 18, color: N.text, marginBottom: 4 }}>Muud investeeringud</div>
+              <div style={{ ...H2_STYLE, marginTop: 0 }}>Muud investeeringud</div>
               <div style={{ ...helperText, marginBottom: 12 }}>
                 Investeeringud, mis ei ole seotud konkreetse kaasomandi esemega (nt energiaaudit, turvasüsteem, projektijuhtimine).
               </div>
@@ -2099,18 +2101,17 @@ export default function App() {
           const haldusRead = rows.filter(r => HALDUSTEENUSED.includes(r.category));
           const laenuRead = rows.filter(r => LAENUMAKSED.includes(r.category));
           const maaramataRead = rows.filter(r => !r.category || (!KOMMUNAALTEENUSED.includes(r.category) && !HALDUSTEENUSED.includes(r.category) && !LAENUMAKSED.includes(r.category)));
-          const groupLabel = { fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", padding: "8px 0 0", marginTop: 4 };
+          const groupLabel = { fontSize: 12, fontWeight: 600, color: N.sub, textTransform: "uppercase", letterSpacing: "0.04em", padding: "8px 0 0", marginTop: 4 };
 
           return (
             <div style={tabStack}>
               <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(2)}</div>
+              <h1 style={H1_STYLE}>Kavandatud kulud</h1>
               <div style={card}>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={sectionTitle}>Kavandatud kulud</div>
-                </div>
+                <div style={{ ...H2_STYLE, marginTop: 0 }}>Kavandatud kulud</div>
 
-                <div style={{ padding: 12, background: N.muted, borderRadius: 8, fontSize: 13, color: N.sub, marginBottom: 12 }}>
-                  💡 Soovitus: Eesti tarbijahinnaindeks on viimastel aastatel tõusnud 4–10% aastas. Arvestage kulude sisestamisel võimaliku hinnatõusuga.
+                <div style={{ fontSize: 14, color: N.sub, padding: "8px 16px", background: N.muted, borderRadius: 6, marginBottom: 16 }}>
+                  Soovitus: Eesti tarbijahinnaindeks on viimastel aastatel tõusnud 4–10% aastas. Arvestage kulude sisestamisel võimaliku hinnatõusuga.
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -2199,10 +2200,9 @@ export default function App() {
           return (
             <div style={tabStack}>
               <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(3)}</div>
+              <h1 style={H1_STYLE}>Kavandatud tulud</h1>
               <div style={card}>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={sectionTitle}>Kavandatud tulud</div>
-                </div>
+                <div style={{ ...H2_STYLE, marginTop: 0 }}>Kavandatud tulud</div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {/* Haldustasu — readonly */}
@@ -2259,7 +2259,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(4)}</div>
 
             {/* ── Pealkirja rida (ühtne teiste tabidega) ── */}
-            <div style={{ ...sectionTitle, marginBottom: 0 }}>Fondid ja laen</div>
+            <h1 style={H1_STYLE}>Fondid ja laen</h1>
 
             {(() => {
               const ra = remondifondiArvutus;
@@ -2269,7 +2269,7 @@ export default function App() {
               return (
                 <>
                   <div style={rfCard}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: N.text, marginBottom: 8 }}>Algsaldo</div>
+                    <div style={H3_STYLE}>Algsaldo</div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ color: N.sub, fontSize: 14 }}>Saldo perioodi alguses</span>
                       <div style={{ width: 160 }}>
@@ -2283,7 +2283,7 @@ export default function App() {
                     </div>
                     {/* ── Investeeringud ── */}
                     <div style={{ borderTop: `1px solid ${N.border}`, marginTop: 12, paddingTop: 12 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: N.text, marginBottom: 8 }}>Investeeringud</div>
+                    <div style={H3_STYLE}>Investeeringud</div>
 
                     {/* Investeeringute tabel */}
                     {ra.invArvutusread.length > 0 ? (
@@ -2350,7 +2350,7 @@ export default function App() {
                     {/* ── REMONDIFONDI MÄÄR (tugevaim element) ── */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0 8px" }}>
                       <span style={{ fontSize: 14, color: N.sub }}>Remondifondi määr</span>
-                      <span style={{ fontFamily: "monospace", fontWeight: 900, fontSize: 22, color: N.text }}>
+                      <span style={{ fontFamily: "monospace", fontWeight: 600, fontSize: 20, color: N.text }}>
                         {ra.maarKuusM2.toFixed(2).replace(".", ",")} €/m²/kuu
                       </span>
                     </div>
@@ -2440,7 +2440,7 @@ export default function App() {
 
                     {/* ── Lõppsaldo ── */}
                     <div style={{ borderTop: `1px solid ${N.border}`, marginTop: 12, paddingTop: 12 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: N.text, marginBottom: 8 }}>Lõppsaldo</div>
+                    <div style={H3_STYLE}>Lõppsaldo</div>
                     <div style={{ fontFamily: "monospace", fontSize: 14, color: N.sub, display: "flex", flexDirection: "column", gap: 3 }}>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
                         <span>Algsaldo</span><span>{euro(ra.saldoAlgus)}</span>
