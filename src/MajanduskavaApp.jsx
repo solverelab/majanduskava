@@ -341,9 +341,9 @@ const tdSep = { borderBottom: "1px solid #eee" };
 
 function Issue({ it }) {
   return (
-    <div style={{ background: N.muted, border: `1px solid ${N.border}`, padding: "10px 12px", borderRadius: 8, marginBottom: 8 }}>
-      <b>{it.severity}</b> · {it.message}
-      <div style={{ fontSize: 14, color: N.sub, marginTop: 8 }}>{it.code} · {it.section}</div>
+    <div style={{ background: N.muted, border: `1px solid ${N.border}`, padding: "8px 16px", borderRadius: 8, marginBottom: 8 }}>
+      <b>{it.severity}</b> - {it.message}
+      <div style={{ fontSize: 14, color: N.sub, marginTop: 8 }}>{it.code} - {it.section}</div>
     </div>
   );
 }
