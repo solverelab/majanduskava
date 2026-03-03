@@ -61,12 +61,12 @@ const N = {
 
 // -- TYPOGRAPHY (4 taset, mitte rohkem) --
 const H1_STYLE = { fontSize: 20, fontWeight: 600, color: N.text, margin: 0, marginBottom: 24 };
-const H2_STYLE = { fontSize: 16, fontWeight: 600, color: N.text, margin: 0, marginTop: 24, marginBottom: 12 };
+const H2_STYLE = { fontSize: 16, fontWeight: 600, color: N.text, margin: 0, marginTop: 24, marginBottom: 16 };
 const H3_STYLE = { fontSize: 14, fontWeight: 600, color: N.text, margin: 0, marginBottom: 8 };
 // Body: fontSize 14, fontWeight 400, lineHeight 1.5 (rakendatakse main div-il)
 
 const sectionTitle = H2_STYLE;  // tagasiühilduvus
-const fieldLabel   = { fontSize: 14, fontWeight: 400, color: N.sub, marginBottom: 4 };
+const fieldLabel   = { fontSize: 14, fontWeight: 400, color: N.sub, marginBottom: 8 };
 const helperText   = { fontSize: 14, fontWeight: 400, color: N.sub };
 
 // ── INPUTS ──
@@ -343,7 +343,7 @@ function Issue({ it }) {
   return (
     <div style={{ background: N.muted, border: `1px solid ${N.border}`, padding: "10px 12px", borderRadius: 8, marginBottom: 8 }}>
       <b>{it.severity}</b> · {it.message}
-      <div style={{ fontSize: 14, color: N.sub, marginTop: 4 }}>{it.code} · {it.section}</div>
+      <div style={{ fontSize: 14, color: N.sub, marginTop: 8 }}>{it.code} · {it.section}</div>
     </div>
   );
 }
@@ -351,25 +351,25 @@ function Issue({ it }) {
 function Section({ title, items, onApplyAction, showTechnicalInfo }) {
   return (
     <div style={{ marginBottom: 24 }}>
-      <div style={{ ...sectionTitle, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
+      <div style={{ ...sectionTitle, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
         {title}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {items.map(finding => (
           <div
             key={finding.id}
             style={card}
           >
-            <div style={{ fontSize: 14, fontWeight: 700, color: N.text }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: N.text }}>
               {finding.title}
             </div>
             {finding.message && (
-              <div style={{ ...helperText, marginTop: 4 }}>
+              <div style={{ ...helperText, marginTop: 8 }}>
                 {finding.message}
               </div>
             )}
             {finding.actions?.length > 0 && (
-              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
                 {finding.actions.map(action => (
                   <button
                     key={action.id}
@@ -388,7 +388,7 @@ function Section({ title, items, onApplyAction, showTechnicalInfo }) {
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <span>{action.label}</span>
                       {showTechnicalInfo && typeof action.impact?.riskScoreDelta === "number" && (
-                        <span style={{ fontSize: 12, color: N.sub }}>
+                        <span style={{ fontSize: 14, color: N.sub }}>
                           {action.impact.riskScoreDelta < 0
                             ? `Risk ${action.impact.riskScoreDelta}`
                             : `Risk +${action.impact.riskScoreDelta}`}
@@ -1512,7 +1512,7 @@ export default function App() {
     });
   };
   const clearBtn = (tabIdx) => (
-    <button onClick={() => clearSection(tabIdx)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: N.dim, textDecoration: "underline", padding: 0 }}>
+    <button onClick={() => clearSection(tabIdx)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: N.dim, textDecoration: "underline", padding: 0 }}>
       Tühjenda
     </button>
   );
@@ -1547,7 +1547,7 @@ export default function App() {
       }}>
         <div style={{ padding: "24px 16px 24px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: "#ddd" }}>Majanduskava</div>
-          <div style={{ fontSize: 14, color: "#777", marginTop: 4 }}>{kyData.nimi || "KÜ"} {plan.period.year ? "· " + plan.period.year : ""}</div>
+          <div style={{ fontSize: 14, color: N.sub, marginTop: 8 }}>{kyData.nimi || "KÜ"} {plan.period.year ? "· " + plan.period.year : ""}</div>
         </div>
 
         <div style={{ padding: "8px 0", flex: 1 }}>
@@ -1576,7 +1576,7 @@ export default function App() {
         {import.meta.env.DEV && (
           <div style={{
             position: "absolute", top: 8, right: 12,
-            fontSize: 10, fontWeight: 700, fontFamily: "monospace",
+            fontSize: 10, fontWeight: 600, fontFamily: "monospace",
             padding: "2px 8px", borderRadius: 4,
             background: N.muted,
             color: N.sub,
@@ -1634,7 +1634,7 @@ export default function App() {
             {/* KÜ andmed */}
             <div style={card}>
               <div style={{ ...H2_STYLE, marginTop: 0 }}>Korteriühistu andmed</div>
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                 <div style={{ flex: "1 1 240px" }}>
                   <AddressSearch
                     value={kyData.aadress}
@@ -1678,7 +1678,7 @@ export default function App() {
 
             <div style={card}>
               <div style={{ ...H2_STYLE, marginTop: 0 }}>Periood</div>
-              <div style={{ marginBottom: 12 }}>
+              <div style={{ marginBottom: 16 }}>
                 <div style={fieldLabel}>Majandusaasta</div>
                 <select
                   value={(() => {
@@ -1729,14 +1729,14 @@ export default function App() {
               )}
               {plan.period.start && plan.period.end &&
                 plan.period.start > plan.period.end && (
-                <div style={{ marginTop: 6, fontSize: 13, color: "#dc2626" }}>
+                <div style={{ marginTop: 8, fontSize: 14, color: "#c53030" }}>
                   Alguskuupäev on hilisem kui lõppkuupäev
                 </div>
               )}
             </div>
 
             <div style={card}>
-              <div style={{ marginBottom: 12 }}>
+              <div style={{ marginBottom: 16 }}>
                 <div style={{ ...H2_STYLE, marginTop: 0 }}>Korterid</div>
               </div>
               <div style={tableWrap}>
@@ -1761,7 +1761,7 @@ export default function App() {
                 </tbody>
               </table>
               </div>
-              <div style={{ marginTop: 12, fontSize: 14, color: N.sub }}>
+              <div style={{ marginTop: 16, fontSize: 14, color: N.sub }}>
                 Kortereid: {derived.building.apartmentsCount} | Kogupind: {derived.building.totAreaM2.toFixed(1)} m²
               </div>
               <div style={{ marginTop: 8 }}>
@@ -1779,8 +1779,8 @@ export default function App() {
               <div style={{ ...H2_STYLE, marginTop: 0 }}>Kaasomandi esemed</div>
 
               {seisukord.map((rida) => (
-                <div key={rida.id} style={{ border: `1px solid ${N.rule}`, borderRadius: 8, padding: 12, marginBottom: 10 }}>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+                <div key={rida.id} style={{ border: `1px solid ${N.rule}`, borderRadius: 8, padding: 12, marginBottom: 8 }}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                     <div style={{ flex: 1, minWidth: 160 }}>
                       <div style={fieldLabel}>Nimetus</div>
                       <select value={rida.ese} onChange={(e) => uuendaSeisukord(rida.id, "ese", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
@@ -1803,7 +1803,7 @@ export default function App() {
                       </select>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                     <div style={{ flex: 2, minWidth: 180 }}>
                       <div style={fieldLabel}>Puudused</div>
                       <input type="text" placeholder={PUUDUSED_PLACEHOLDERS[rida.ese] || "Kirjelda puudused"} value={rida.puudused} onChange={(e) => uuendaSeisukord(rida.id, "puudused", e.target.value)} style={inputStyle} />
@@ -1823,16 +1823,16 @@ export default function App() {
                       </select>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <button style={btnRemove} onClick={() => eemaldaSeisukordRida(rida.id)}>Eemalda</button>
                     {rida.ese && (rida.eeldatavKulu > 0 || rida.tegevus) && !rida.investeering && (
-                      <button style={{ fontSize: 13, color: "#2563eb", background: "none", border: "1px solid #2563eb", borderRadius: 4, padding: "2px 8px", cursor: "pointer" }} onClick={() => handleLooInvesteering(rida)}>Loo investeering</button>
+                      <button style={{ fontSize: 14, color: "#2563eb", background: "none", border: "1px solid #2563eb", borderRadius: 4, padding: "2px 8px", cursor: "pointer" }} onClick={() => handleLooInvesteering(rida)}>Loo investeering</button>
                     )}
                   </div>
 
                   {rida.investeering && (
-                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${N.rule}` }}>
-                      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: N.text }}>Investeering</div>
+                    <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${N.rule}` }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, color: N.text }}>Investeering</div>
                       <div style={{ display: "flex", gap: 16, alignItems: "baseline" }}>
                         <div style={{ flex: 1 }}>
                           <span style={{ fontSize: 14, color: N.text }}>{rida.invNimetus || "\u2014"}</span>
@@ -1843,12 +1843,12 @@ export default function App() {
                       </div>
 
                       <div style={{ marginTop: 8 }}>
-                        <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 4, color: N.sub }}>Rahastusplaan</div>
+                        <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 8, color: N.sub }}>Rahastusplaan</div>
                         {rida.rahpiiri.length === 0 && (
-                          <p style={{ color: N.dim, fontSize: 13 }}>Rahastusridu pole lisatud.</p>
+                          <p style={{ color: N.dim, fontSize: 14 }}>Rahastusridu pole lisatud.</p>
                         )}
                         {rida.rahpiiri.map((rp, ri) => (
-                          <div key={ri} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
+                          <div key={ri} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
                             <select value={rp.allikas} onChange={(e) => uuendaRahpiiriRida(rida.id, ri, { allikas: e.target.value })} style={{ ...selectStyle, width: 150 }}>
                               <option value="" disabled>Vali allikas…</option>
                               {["Remondifond", "Laen", "Toetus", "Sihtmakse"].map(a => {
@@ -1858,11 +1858,11 @@ export default function App() {
                             </select>
                             <div style={{ width: 120 }}>
                               <EuroInput value={rp.summa} onChange={(v) => uuendaRahpiiriRida(rida.id, ri, { summa: v })} style={{ ...numStyle, ...(!rp.allikas ? { opacity: 0.45, background: "#f3f4f6" } : {}) }} disabled={!rp.allikas} />
-                              {!rp.allikas && <div style={{ color: "#d97706", fontSize: 12, marginTop: 2 }}>Vali rahastusallikas</div>}
+                              {!rp.allikas && <div style={{ color: N.sub, fontSize: 14, marginTop: 2 }}>Vali rahastusallikas</div>}
                             </div>
-                              <button onClick={() => eemaldaRahpiiriRida(rida.id, ri)} style={{ color: "#9ca3af", background: "none", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "2px 4px" }} title="Eemalda rida">{"\u00d7"}</button>
+                              <button onClick={() => eemaldaRahpiiriRida(rida.id, ri)} style={{ color: N.dim, background: "none", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "2px 4px" }} title="Eemalda rida">{"\u00d7"}</button>
                             {rp.allikas === "Laen" && plan.loans.find(l => l.sepiiriostudInvId === rida.id) && (
-                              <button onClick={() => { setSec(4); setTimeout(() => document.getElementById(`laen-${plan.loans.find(l => l.sepiiriostudInvId === rida.id)?.id}`)?.scrollIntoView({ behavior: "smooth" }), 100); }} style={{ color: "#15803d", background: "none", border: "none", cursor: "pointer", fontSize: 12 }}>
+                              <button onClick={() => { setSec(4); setTimeout(() => document.getElementById(`laen-${plan.loans.find(l => l.sepiiriostudInvId === rida.id)?.id}`)?.scrollIntoView({ behavior: "smooth" }), 100); }} style={{ color: N.text, background: "none", border: "none", cursor: "pointer", fontSize: 14 }}>
                                 {"\u2713"} Laen {euro(parseFloat(rp.summa) || 0)} {"\u2192"} Fondid ja laen
                               </button>
                             )}
@@ -1874,17 +1874,17 @@ export default function App() {
                           const vahe = maksumus - kaetud;
                           if (maksumus <= 0) return null;
                           return (
-                            <div style={{ fontSize: 13, marginTop: 4, color: vahe === 0 ? "#15803d" : "#d97706" }}>
+                            <div style={{ fontSize: 14, marginTop: 8, color: vahe === 0 ? N.text : N.sub }}>
                               {vahe === 0 ? "✓ Täielikult kaetud" : vahe > 0 ? `Kaetud: ${euro(kaetud)} / ${euro(maksumus)} · katmata: ${euro(vahe)}` : `Kaetud: ${euro(kaetud)} / ${euro(maksumus)} · ületab ${euro(Math.abs(vahe))}`}
                             </div>
                           );
                         })()}
                         {rida.rahpiiri.length < 4 && (
-                          <button onClick={() => lisaRahpiiriRida(rida.id)} style={{ ...btnAdd, fontSize: 13, padding: "4px 10px", marginTop: 4 }}>+ Lisa rahastusrida</button>
+                          <button onClick={() => lisaRahpiiriRida(rida.id)} style={{ ...btnAdd, fontSize: 14, padding: "4px 10px", marginTop: 8 }}>+ Lisa rahastusrida</button>
                         )}
                       </div>
 
-                      <button onClick={() => eemaldaInvesteering(rida.id)} style={{ color: "#dc2626", fontSize: 13, background: "none", border: "none", cursor: "pointer", marginTop: 8 }}>Eemalda investeering</button>
+                      <button onClick={() => eemaldaInvesteering(rida.id)} style={{ color: "#c53030", fontSize: 14, background: "none", border: "none", cursor: "pointer", marginTop: 8 }}>Eemalda investeering</button>
                     </div>
                   )}
                 </div>
@@ -1898,7 +1898,7 @@ export default function App() {
             {/* Muud investeeringud */}
             <div style={card}>
               <div style={{ ...H2_STYLE, marginTop: 0 }}>Muud investeeringud</div>
-              <div style={{ ...helperText, marginBottom: 12 }}>
+              <div style={{ ...helperText, marginBottom: 16 }}>
                 Investeeringud, mis ei ole seotud konkreetse kaasomandi esemega (nt energiaaudit, turvasüsteem, projektijuhtimine).
               </div>
 
@@ -1907,7 +1907,7 @@ export default function App() {
               )}
 
               {muudInvesteeringud.map((inv, idx) => (
-                <div key={inv.id} style={{ border: `1px solid ${N.rule}`, borderRadius: 8, padding: 12, marginBottom: 10 }}>
+                <div key={inv.id} style={{ border: `1px solid ${N.rule}`, borderRadius: 8, padding: 12, marginBottom: 8 }}>
                   <div style={{ display: "flex", gap: 16, alignItems: "end" }}>
                     <div style={{ flex: 1 }}>
                       <div style={fieldLabel}>Nimetus</div>
@@ -1918,7 +1918,7 @@ export default function App() {
                       <EuroInput value={inv.maksumus} onChange={(v) => handleMuuInvChange(idx, "maksumus", v)} style={numStyle} />
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap", alignItems: "end" }}>
+                  <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", alignItems: "end" }}>
                     <div style={{ width: 100 }}>
                       <div style={fieldLabel}>Aasta</div>
                       <select value={inv.aasta || String(plan.period.year || new Date().getFullYear())} onChange={(e) => handleMuuInvChange(idx, "aasta", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
@@ -1928,12 +1928,12 @@ export default function App() {
                   </div>
 
                   <div style={{ marginTop: 8 }}>
-                    <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 4, color: N.sub }}>Rahastusplaan</div>
+                    <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 8, color: N.sub }}>Rahastusplaan</div>
                     {inv.rahpiiri.length === 0 && (
-                      <p style={{ color: N.dim, fontSize: 13 }}>Rahastusridu pole lisatud.</p>
+                      <p style={{ color: N.dim, fontSize: 14 }}>Rahastusridu pole lisatud.</p>
                     )}
                     {inv.rahpiiri.map((rp, ri) => (
-                      <div key={ri} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
+                      <div key={ri} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
                         <select value={rp.allikas} onChange={(e) => handleMuuRahpiiriChange(idx, ri, "allikas", e.target.value)} style={{ ...selectStyle, width: 150 }}>
                           <option value="" disabled>Vali allikas…</option>
                           {["Remondifond", "Laen", "Toetus", "Sihtmakse"].map(a => {
@@ -1943,11 +1943,11 @@ export default function App() {
                         </select>
                         <div style={{ width: 120 }}>
                           <EuroInput value={rp.summa} onChange={(v) => handleMuuRahpiiriChange(idx, ri, "summa", v)} style={{ ...numStyle, ...(!rp.allikas ? { opacity: 0.45, background: "#f3f4f6" } : {}) }} disabled={!rp.allikas} />
-                          {!rp.allikas && <div style={{ color: "#d97706", fontSize: 12, marginTop: 2 }}>Vali rahastusallikas</div>}
+                          {!rp.allikas && <div style={{ color: N.sub, fontSize: 14, marginTop: 2 }}>Vali rahastusallikas</div>}
                         </div>
-                          <button onClick={() => eemaldaMuuRahpiiriRida(idx, ri)} style={{ color: "#9ca3af", background: "none", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "2px 4px" }} title="Eemalda rida">{"\u00d7"}</button>
+                          <button onClick={() => eemaldaMuuRahpiiriRida(idx, ri)} style={{ color: N.dim, background: "none", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "2px 4px" }} title="Eemalda rida">{"\u00d7"}</button>
                         {rp.allikas === "Laen" && plan.loans.find(l => l.sepiiriostudInvId === inv.id) && (
-                          <button onClick={() => { setSec(4); setTimeout(() => document.getElementById(`laen-${plan.loans.find(l => l.sepiiriostudInvId === inv.id)?.id}`)?.scrollIntoView({ behavior: "smooth" }), 100); }} style={{ color: "#15803d", background: "none", border: "none", cursor: "pointer", fontSize: 12 }}>
+                          <button onClick={() => { setSec(4); setTimeout(() => document.getElementById(`laen-${plan.loans.find(l => l.sepiiriostudInvId === inv.id)?.id}`)?.scrollIntoView({ behavior: "smooth" }), 100); }} style={{ color: N.text, background: "none", border: "none", cursor: "pointer", fontSize: 14 }}>
                             {"\u2713"} Laen {euro(parseFloat(rp.summa) || 0)} {"\u2192"} Fondid ja laen
                           </button>
                         )}
@@ -1959,17 +1959,17 @@ export default function App() {
                       const vahe = maksumus - kaetud;
                       if (maksumus <= 0) return null;
                       return (
-                        <div style={{ fontSize: 13, marginTop: 4, color: vahe === 0 ? "#15803d" : "#d97706" }}>
+                        <div style={{ fontSize: 14, marginTop: 8, color: vahe === 0 ? N.text : N.sub }}>
                           {vahe === 0 ? "✓ Täielikult kaetud" : vahe > 0 ? `Kaetud: ${euro(kaetud)} / ${euro(maksumus)} · katmata: ${euro(vahe)}` : `Kaetud: ${euro(kaetud)} / ${euro(maksumus)} · ületab ${euro(Math.abs(vahe))}`}
                         </div>
                       );
                     })()}
                     {inv.rahpiiri.length < 4 && (
-                      <button onClick={() => lisaMuuRahpiiriRida(idx)} style={{ ...btnAdd, fontSize: 13, padding: "4px 10px", marginTop: 4 }}>+ Lisa rahastusrida</button>
+                      <button onClick={() => lisaMuuRahpiiriRida(idx)} style={{ ...btnAdd, fontSize: 14, padding: "4px 10px", marginTop: 8 }}>+ Lisa rahastusrida</button>
                     )}
                   </div>
 
-                  <button onClick={() => eemaldaMuuInvesteering(idx)} style={{ color: "#dc2626", fontSize: 13, background: "none", border: "none", cursor: "pointer", marginTop: 8 }}>Eemalda</button>
+                  <button onClick={() => eemaldaMuuInvesteering(idx)} style={{ color: "#c53030", fontSize: 14, background: "none", border: "none", cursor: "pointer", marginTop: 8 }}>Eemalda</button>
                 </div>
               ))}
 
@@ -1993,7 +1993,7 @@ export default function App() {
                 <div style={{ fontSize: 14, color: N.sub, marginTop: 16 }}>
                   Investeeringud kokku: {koguarv} · maksumus {euro(koguMaksumus)}
                   {" · "}kaetud {euro(koguKaetud)}
-                  {katmata > 0 && <span style={{ color: "#d97706" }}> · katmata {euro(katmata)}</span>}
+                  {katmata > 0 && <span style={{ color: N.sub }}> · katmata {euro(katmata)}</span>}
                 </div>
               );
             })()}
@@ -2004,7 +2004,7 @@ export default function App() {
           const rows = plan.budget.costRows;
           const renderRow = (r) => (
             <div key={r.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ width: 180 }}>
                   <div style={fieldLabel}>Kategooria</div>
                   <select value={r.category || ""} onChange={(e) => handleKuluKategooriaChange(r.id, e.target.value)} style={{ ...selectStyle, width: "100%" }}>
@@ -2075,11 +2075,11 @@ export default function App() {
                 const onKindlustus = (parseFloat(r.summaInput) || 0) > 0;
                 const onPlaneeritudLaen = remondifondiArvutus.onLaen;
                 if (onKindlustus && onPlaneeritudLaen)
-                  return <div style={{ fontSize: 12, color: "#d97706", marginTop: 4 }}>Uue pangalaenu kavandamisel on soovitatav planeerida kindlustuskulud vähemalt 20% kõrgemana, kuna pank nõuab üldjuhul laiendatud koguriskikindlustust.</div>;
+                  return <div style={{ fontSize: 14, color: N.sub, marginTop: 8 }}>Uue pangalaenu kavandamisel on soovitatav planeerida kindlustuskulud vähemalt 20% kõrgemana, kuna pank nõuab üldjuhul laiendatud koguriskikindlustust.</div>;
                 if (!onKindlustus && onPlaneeritudLaen)
-                  return <div style={{ fontSize: 12, color: "#dc2626", fontWeight: 500, marginTop: 4 }}>Pangalaenu taotlemisel on kindlustus kohustuslik. Lisage kindlustuskulu.</div>;
+                  return <div style={{ fontSize: 14, color: "#c53030", fontWeight: 500, marginTop: 8 }}>Pangalaenu taotlemisel on kindlustus kohustuslik. Lisage kindlustuskulu.</div>;
                 if (!onKindlustus && !onPlaneeritudLaen)
-                  return <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>Kindlustus on korteriühistu vara kaitseks soovitatav.</div>;
+                  return <div style={{ fontSize: 14, color: N.dim, marginTop: 8 }}>Kindlustus on korteriühistu vara kaitseks soovitatav.</div>;
                 return null;
               })()}
             </div>
@@ -2089,7 +2089,7 @@ export default function App() {
           const haldusRead = rows.filter(r => HALDUSTEENUSED.includes(r.category));
           const laenuRead = rows.filter(r => LAENUMAKSED.includes(r.category));
           const maaramataRead = rows.filter(r => !r.category || (!KOMMUNAALTEENUSED.includes(r.category) && !HALDUSTEENUSED.includes(r.category) && !LAENUMAKSED.includes(r.category)));
-          const groupLabel = { fontSize: 12, fontWeight: 600, color: N.sub, textTransform: "uppercase", letterSpacing: "0.04em", padding: "8px 0 0", marginTop: 4 };
+          const groupLabel = { fontSize: 12, fontWeight: 600, color: N.sub, textTransform: "uppercase", letterSpacing: "0.04em", padding: "8px 0 0", marginTop: 8 };
 
           return (
             <div style={tabStack}>
@@ -2102,7 +2102,7 @@ export default function App() {
                   Soovitus: Eesti tarbijahinnaindeks on viimastel aastatel tõusnud 4–10% aastas. Arvestage kulude sisestamisel võimaliku hinnatõusuga.
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   {kommunaalRead.length > 0 && (
                     <>
                       <div style={groupLabel}>Kommunaalteenused</div>
@@ -2127,7 +2127,7 @@ export default function App() {
                 <div style={{ marginTop: 8 }}>
                   <button style={btnAdd} onClick={() => addRow("COST")}>+ Lisa rida</button>
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginTop: 12, fontFamily: "monospace" }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginTop: 16, fontFamily: "monospace" }}>
                   {(() => {
                     const komSum = plan.budget.costRows
                       .filter(r => KOMMUNAALTEENUSED.includes(r.category))
@@ -2144,7 +2144,7 @@ export default function App() {
                         <div>Kommunaalteenused perioodis: {euro(komSum)}</div>
                         <div>Haldusteenused perioodis: {euro(halSum)}</div>
                         <div>Laenumaksed perioodis: {euro(laenuSum)}</div>
-                        <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 4, marginTop: 4 }}>Kulud kokku perioodis: {euro(kokku)}</div>
+                        <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 4, marginTop: 8 }}>Kulud kokku perioodis: {euro(kokku)}</div>
                       </>
                     );
                   })()}
@@ -2168,7 +2168,7 @@ export default function App() {
 
           const readonlyRow = (label, value) => (
             <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "baseline" }}>
                 <div style={{ width: 220 }}>
                   <div style={fieldLabel}>Kategooria</div>
                   <div style={{ ...inputBase, width: "100%", background: N.muted, color: N.text, fontWeight: 600 }}>
@@ -2192,7 +2192,7 @@ export default function App() {
               <div style={card}>
                 <div style={{ ...H2_STYLE, marginTop: 0 }}>Kavandatud tulud</div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   {/* Haldustasu — readonly */}
                   {readonlyRow("Haldustasu", haldusSum)}
 
@@ -2202,7 +2202,7 @@ export default function App() {
                   {/* Muu tulu read — muudetav nimetus + summa */}
                   {muudTulud.map(r => (
                     <div key={r.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <div style={{ width: 220 }}>
                           <div style={fieldLabel}>Kategooria</div>
                           <div style={{ ...inputBase, width: "100%", background: N.muted, color: N.text, fontWeight: 600 }}>
@@ -2230,11 +2230,11 @@ export default function App() {
                 </div>
 
                 {/* Kokkuvõte */}
-                <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginTop: 12, fontFamily: "monospace" }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginTop: 16, fontFamily: "monospace" }}>
                   <div>Haldustasu perioodis: {euro(haldusSum)}</div>
                   {laenuSum > 0 && <div>Laenumakse perioodis: {euro(laenuSum)}</div>}
                   {muudTuludSum > 0 && <div>Muu tulu perioodis: {euro(muudTuludSum)}</div>}
-                  <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 4, marginTop: 4 }}>Tulud kokku perioodis: {euro(tuludKokku)}</div>
+                  <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 4, marginTop: 8 }}>Tulud kokku perioodis: {euro(tuludKokku)}</div>
                 </div>
 
               </div>
@@ -2252,7 +2252,7 @@ export default function App() {
             {(() => {
               const ra = remondifondiArvutus;
               const koikInv = [...seisukord.filter(e => e.investeering), ...muudInvesteeringud];
-              const rfCard = { background: N.surface, borderRadius: 8, padding: 16, marginBottom: 12, border: `1px solid ${N.border}` };
+              const rfCard = { background: N.surface, borderRadius: 8, padding: 16, marginBottom: 16, border: `1px solid ${N.border}` };
               const rfRow = { display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 14 };
               return (
                 <>
@@ -2270,13 +2270,13 @@ export default function App() {
                       </div>
                     </div>
                     {/* ── Investeeringud ── */}
-                    <div style={{ borderTop: `1px solid ${N.border}`, marginTop: 12, paddingTop: 12 }}>
+                    <div style={{ borderTop: `1px solid ${N.border}`, marginTop: 16, paddingTop: 12 }}>
                     <div style={H3_STYLE}>Investeeringud</div>
 
                     {/* Investeeringute tabel */}
                     {ra.invArvutusread.length > 0 ? (
-                      <div style={{ marginBottom: 12 }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <div style={{ marginBottom: 16 }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                           <thead>
                             <tr style={{ color: N.dim, borderBottom: `1px solid ${N.rule}` }}>
                               <th style={{ textAlign: "left", padding: "4px 8px 4px 0", fontWeight: 600 }}>Objekt</th>
@@ -2322,14 +2322,14 @@ export default function App() {
                         </table>
                       </div>
                     ) : (
-                      <div style={{ padding: 12, background: N.muted, borderRadius: 6, fontSize: 13, color: N.dim, marginBottom: 12 }}>
+                      <div style={{ padding: 12, background: N.muted, borderRadius: 6, fontSize: 14, color: N.dim, marginBottom: 16 }}>
                         Investeeringuid pole lisatud.
                       </div>
                     )}
 
                     {/* Kogumisvajadus */}
                     {ra.invArvutusread.length > 0 && (
-                      <div style={{ ...rfRow, color: N.sub, marginBottom: 4 }}>
+                      <div style={{ ...rfRow, color: N.sub, marginBottom: 8 }}>
                         <span>Kogumisvajadus</span>
                         <span style={{ fontFamily: "monospace" }}>{euroEE(ra.invArvutusread.reduce((s, d) => s + d.aastasKoguda, 0))} /a</span>
                       </div>
@@ -2356,7 +2356,7 @@ export default function App() {
                     {!ra.onLaen && ra.invDetail.length > 1 && (
                       <>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0" }}>
-                          <span style={{ color: N.sub, fontSize: 13 }}>Kogumisviis</span>
+                          <span style={{ color: N.sub, fontSize: 14 }}>Kogumisviis</span>
                           <div style={{ display: "flex", gap: 0, border: `1px solid ${N.border}`, borderRadius: 6, overflow: "hidden" }}>
                             {[
                               { value: "eraldi", label: "Eraldi" },
@@ -2366,7 +2366,7 @@ export default function App() {
                                 key={opt.value}
                                 onClick={() => setRemondifond(p => ({ ...p, kogumisViis: opt.value }))}
                                 style={{
-                                  padding: "4px 12px", fontSize: 13, border: "none", cursor: "pointer",
+                                  padding: "4px 12px", fontSize: 14, border: "none", cursor: "pointer",
                                   background: remondifond.kogumisViis === opt.value ? N.accent : N.surface,
                                   color: remondifond.kogumisViis === opt.value ? "#fff" : N.sub,
                                   fontWeight: remondifond.kogumisViis === opt.value ? 600 : 400,
@@ -2377,7 +2377,7 @@ export default function App() {
                             ))}
                           </div>
                         </div>
-                        <div style={{ fontSize: 12, color: N.dim, marginBottom: 4 }}>
+                        <div style={{ fontSize: 14, color: N.dim, marginBottom: 8 }}>
                           {remondifond.kogumisViis === "eraldi"
                             ? "Eraldi: iga investeering kogub oma perioodi järgi."
                             : "Ühine: kogutakse pikima investeeringu perioodi järgi."}
@@ -2388,28 +2388,28 @@ export default function App() {
                     {/* Laenuga: panga soovituse info + koefitsiendi väljad */}
                     {ra.onLaen && (
                       <>
-                        <div style={{ fontSize: 13, color: N.dim, background: N.muted, borderRadius: 6, padding: "8px 10px", marginBottom: 8 }}>
+                        <div style={{ fontSize: 14, color: N.dim, background: N.muted, borderRadius: 6, padding: "8px 10px", marginBottom: 8 }}>
                           Panga nõue: remondifond ≥ {(remondifond.pangaKoefitsient || 1.15).toFixed(2).replace(".", ",")}× laenumakse. Lõplik kinnitamine pärast laenu heakskiitu.
                         </div>
-                        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                           <div style={{ width: 160 }}>
-                            <div style={{ ...fieldLabel, fontSize: 12 }}>Pangakoefitsient</div>
+                            <div style={{ ...fieldLabel, fontSize: 14 }}>Pangakoefitsient</div>
                             <NumberInput
                               value={remondifond.pangaKoefitsient}
                               onChange={(v) => setRemondifond(p => ({ ...p, pangaKoefitsient: v || 1.15 }))}
                               style={{ ...numStyle, fontSize: 14 }}
                             />
-                            <div style={{ fontSize: 11, color: N.dim, marginTop: 2 }}>Tavaline: 1,10–1,30</div>
+                            <div style={{ fontSize: 14, color: N.dim, marginTop: 2 }}>Tavaline: 1,10–1,30</div>
                           </div>
                           <div style={{ width: 160 }}>
-                            <div style={{ ...fieldLabel, fontSize: 12 }}>Käsitsi määr €/m²/a</div>
+                            <div style={{ ...fieldLabel, fontSize: 14 }}>Käsitsi määr €/m²/a</div>
                             <NumberInput
                               value={remondifond.pangaMaarOverride ?? ""}
                               onChange={(v) => setRemondifond(p => ({ ...p, pangaMaarOverride: v > 0 ? v : null }))}
                               placeholder="Automaatne"
                               style={{ ...numStyle, fontSize: 14 }}
                             />
-                            <div style={{ fontSize: 11, color: N.dim, marginTop: 2 }}>Tühi = automaatne</div>
+                            <div style={{ fontSize: 14, color: N.dim, marginTop: 2 }}>Tühi = automaatne</div>
                           </div>
                         </div>
                       </>
@@ -2417,7 +2417,7 @@ export default function App() {
                     </div>
 
                     {/* ── Lõppsaldo ── */}
-                    <div style={{ borderTop: `1px solid ${N.border}`, marginTop: 12, paddingTop: 12 }}>
+                    <div style={{ borderTop: `1px solid ${N.border}`, marginTop: 16, paddingTop: 12 }}>
                     <div style={H3_STYLE}>Lõppsaldo</div>
                     <div style={{ fontFamily: "monospace", fontSize: 14, color: N.sub, display: "flex", flexDirection: "column", gap: 3 }}>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -2431,9 +2431,9 @@ export default function App() {
                       </div>
                       <div style={{
                         display: "flex", justifyContent: "space-between",
-                        borderTop: `1px solid ${N.border}`, paddingTop: 6, marginTop: 4,
-                        fontWeight: 700, fontSize: 15,
-                        color: ra.saldoLopp >= 0 ? N.text : "#dc2626",
+                        borderTop: `1px solid ${N.border}`, paddingTop: 6, marginTop: 8,
+                        fontWeight: 600, fontSize: 14,
+                        color: ra.saldoLopp >= 0 ? N.text : "#c53030",
                       }}>
                         <span>= Lõppseis</span><span>{euro(ra.saldoLopp)}</span>
                       </div>
@@ -2441,12 +2441,12 @@ export default function App() {
 
                     {/* Kokkuvolditav lisainfo */}
                     <details style={{ marginTop: 16 }}>
-                      <summary style={{ cursor: "pointer", fontSize: 13, color: N.dim, userSelect: "none" }}>
+                      <summary style={{ cursor: "pointer", fontSize: 14, color: N.dim, userSelect: "none" }}>
                         Arvutuse detail
                       </summary>
-                      <div style={{ marginTop: 8, padding: 12, background: N.muted, borderRadius: 8, fontSize: 12, color: N.sub }}>
+                      <div style={{ marginTop: 8, padding: 12, background: N.muted, borderRadius: 8, fontSize: 14, color: N.sub }}>
                         <div style={{ marginBottom: 8 }}>
-                          <div style={{ fontWeight: 600, marginBottom: 4 }}>Arvutusvalem</div>
+                          <div style={{ fontWeight: 600, marginBottom: 8 }}>Arvutusvalem</div>
                           <div style={{ fontFamily: "monospace" }}>
                             <div>Kogupind: {ra.koguPind.toFixed(2).replace(".", ",")} m²</div>
                             <div>Määr: {ra.maarKuusM2.toFixed(4).replace(".", ",")} €/m²/kuu ({ra.maarAastasM2.toFixed(4).replace(".", ",")} €/m²/a)</div>
@@ -2455,8 +2455,8 @@ export default function App() {
                         </div>
                         {ra.invArvutusread.length > 0 && (
                           <div>
-                            <div style={{ fontWeight: 600, marginBottom: 4 }}>Kronoloogiline saldo jaotus</div>
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 11 }}>
+                            <div style={{ fontWeight: 600, marginBottom: 8 }}>Kronoloogiline saldo jaotus</div>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "monospace", fontSize: 14 }}>
                               <thead>
                                 <tr style={{ borderBottom: `1px solid ${N.border}`, color: N.dim }}>
                                   <th style={{ textAlign: "left", padding: "2px 6px 2px 0" }}>Objekt</th>
@@ -2500,9 +2500,9 @@ export default function App() {
               const katvusLabel = katvusKuud >= 3 ? "Hea" : katvusKuud >= 1.5 ? "Rahuldav" : "Riskantne";
               return (
                 <div style={card}>
-                  <div style={{ ...sectionTitle, marginBottom: 12 }}>Reservkapital</div>
+                  <div style={{ ...sectionTitle, marginBottom: 16 }}>Reservkapital</div>
 
-                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12 }}>
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
                     <div style={{ width: 200 }}>
                       <div style={fieldLabel}>Saldo perioodi alguses €</div>
                       <EuroInput value={resKap.saldoAlgus} onChange={(v) => setResKap(p => ({ ...p, saldoAlgus: v }))} style={numStyle} />
@@ -2514,57 +2514,57 @@ export default function App() {
                         onChange={(v) => setPlan(p => ({ ...p, funds: { ...p.funds, reserve: { ...p.funds.reserve, plannedEUR: v } } }))}
                         style={numStyle}
                       />
-                      <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>Soovitus: 1/12 aastakuludest ({euro(reserveMin.noutavMiinimum)})</div>
+                      <div style={{ fontSize: 14, color: N.dim, marginTop: 8 }}>Soovitus: 1/12 aastakuludest ({euro(reserveMin.noutavMiinimum)})</div>
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12 }}>
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
                     <div style={{ width: 200 }}>
                       <div style={fieldLabel}>Kasutamine €</div>
                       <EuroInput value={resKap.kasutamine} onChange={(v) => setResKap(p => ({ ...p, kasutamine: v }))} style={numStyle} />
                     </div>
                   </div>
                   {rkKasutamine > 0 && (
-                    <div style={{ marginBottom: 12 }}>
+                    <div style={{ marginBottom: 16 }}>
                       <textarea
                         value={resKap.pohjendus}
                         onChange={(e) => setResKap(p => ({ ...p, pohjendus: e.target.value }))}
                         placeholder="Põhjendage erakorralised kulud"
                         rows={2}
-                        style={{ ...inputStyle, width: "100%", fontSize: 13, padding: 8, border: `1px solid ${resKap.pohjendus ? N.border : "#d97706"}`, borderRadius: 6 }}
+                        style={{ ...inputStyle, width: "100%", fontSize: 14, padding: 8, border: `1px solid ${resKap.pohjendus ? N.border : N.sub}`, borderRadius: 6 }}
                       />
                       {!resKap.pohjendus && (
-                        <div style={{ fontSize: 12, color: "#d97706", marginTop: 2 }}>Põhjendus on soovitav</div>
+                        <div style={{ fontSize: 14, color: N.sub, marginTop: 2 }}>Põhjendus on soovitav</div>
                       )}
                     </div>
                   )}
 
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "8px 0", borderTop: `1px solid ${N.border}`, marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "8px 0", borderTop: `1px solid ${N.border}`, marginBottom: 16 }}>
                     <span style={{ fontSize: 14, color: N.sub }}>Saldo perioodi lõpus</span>
-                    <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 18, color: rkSaldoLopp < 0 ? "#dc2626" : N.text }}>
+                    <span style={{ fontFamily: "monospace", fontWeight: 600, fontSize: 16, color: rkSaldoLopp < 0 ? "#c53030" : N.text }}>
                       {euroEE(rkSaldoLopp)}
                     </span>
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, color: N.sub }}>Katvus</span>
+                    <span style={{ fontSize: 14, color: N.sub }}>Katvus</span>
                     <span style={{ fontFamily: "monospace", fontSize: 14, color: N.text }}>{katvusKuud.toFixed(1).replace(".", ",")} kuud</span>
                   </div>
 
-                  <div style={{ marginBottom: 4 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: N.sub }}>{katvusLabel}</div>
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: N.sub }}>{katvusLabel}</div>
                     {katvusLabel === "Rahuldav" && (
-                      <div style={{ fontSize: 12, color: N.sub, marginTop: 4 }}>Reserv katab alla 3 kuu kulusid.</div>
+                      <div style={{ fontSize: 14, color: N.sub, marginTop: 8 }}>Reserv katab alla 3 kuu kulusid.</div>
                     )}
                     {katvusLabel === "Riskantne" && (
-                      <div style={{ fontSize: 12, color: N.sub, marginTop: 4 }}>Reserv ei kata minimaalselt vajalikku perioodi. Suurendage kogumist.</div>
+                      <div style={{ fontSize: 14, color: N.sub, marginTop: 8 }}>Reserv ei kata minimaalselt vajalikku perioodi. Suurendage kogumist.</div>
                     )}
-                    <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>Hinnang tugineb finantsjuhtimise heale tavale</div>
+                    <div style={{ fontSize: 14, color: N.dim, marginTop: 8 }}>Hinnang tugineb finantsjuhtimise heale tavale</div>
                   </div>
                   {(() => {
                     const vastab = rkSaldoLopp >= reserveMin.noutavMiinimum;
                     return (
-                      <div style={{ fontSize: 12, marginTop: 4, color: N.sub }}>
+                      <div style={{ fontSize: 14, marginTop: 8, color: N.sub }}>
                         {vastab
                           ? `✓ Vastab seaduse miinimumile (${euro(reserveMin.noutavMiinimum)})`
                           : `⚠ Alla seaduse miinimumi (${euro(reserveMin.noutavMiinimum)})`}
@@ -2576,12 +2576,12 @@ export default function App() {
             })()}
 
             {[...seisukord, ...muudInvesteeringud].some(inv => (inv.rahpiiri || []).some(rp => rp.allikas === "Laen")) && (<>
-            <div style={{ ...sectionTitle, marginBottom: 4 }}>Laenud</div>
+            <div style={{ ...sectionTitle, marginBottom: 8 }}>Laenud</div>
 
             {/* Laenu staatus */}
             {[...seisukord, ...muudInvesteeringud].some(inv => (inv.rahpiiri || []).some(rp => rp.allikas === "Laen")) && (
-              <div style={{ marginBottom: 16, padding: 14, background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ marginBottom: 16, padding: 16, background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
                   <div style={fieldLabel}>Laenu staatus</div>
                   <select
                     value={loanStatus}
@@ -2592,7 +2592,7 @@ export default function App() {
                     <option value="APPROVED">Kinnitatud</option>
                   </select>
                 </div>
-                <div style={{ fontSize: 12, marginTop: 6, color: N.sub }}>
+                <div style={{ fontSize: 14, marginTop: 8, color: N.sub }}>
                   {loanStatus === "APPLIED"
                     ? "Laen ei ole kinnitatud. Kohustuslikud kuumaksed arvutatakse ilma laenuta."
                     : "Laen on kinnitatud. Kuumaksed sisaldavad laenumakseid."}
@@ -2601,14 +2601,14 @@ export default function App() {
             )}
 
             {plan.loans.length > 0 && (
-              <div style={{ fontSize: 13, color: N.dim, marginBottom: 12 }}>Indikatiivsed arvutused. Täpsed tingimused sõltuvad laenuandjast.</div>
+              <div style={{ fontSize: 14, color: N.dim, marginBottom: 16 }}>Indikatiivsed arvutused. Täpsed tingimused sõltuvad laenuandjast.</div>
             )}
             {plan.loans.length === 0 && (
               <div style={{ padding: 16, background: N.muted, borderRadius: 8, fontSize: 14, color: N.sub }}>
                 Laenud tekivad investeeringute rahastusplaanist. Praegu ühtegi laenu planeeritud ei ole.
               </div>
             )}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {plan.loans.map(ln => (
                 <div key={ln.id} id={`laen-${ln.id}`} style={{
                   ...card,
@@ -2621,7 +2621,7 @@ export default function App() {
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ ...fieldLabel, display: "flex", alignItems: "center" }}>
                       Laenusumma
-                      <span title="Investeeringu rahastusplaanist või käsitsi sisestatud" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", border: `1px solid ${N.border}`, fontSize: 11, color: N.dim, cursor: "help", marginLeft: 6 }}>?</span>
+                      <span title="Investeeringu rahastusplaanist või käsitsi sisestatud" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", border: `1px solid ${N.border}`, fontSize: 14, color: N.dim, cursor: "help", marginLeft: 6 }}>?</span>
                     </div>
                     {ln.sepiiriostudInvId ? (
                       <>
@@ -2632,7 +2632,7 @@ export default function App() {
                           return (
                             <button
                               onClick={() => { setSec(1); setTimeout(() => document.getElementById(`inv-${ln.sepiiriostudInvId}`)?.scrollIntoView({ behavior: "smooth" }), 100); }}
-                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#6366f1", marginTop: 4, padding: 0 }}
+                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#6366f1", marginTop: 8, padding: 0 }}
                             >
                               {"\u2197"} {nimi} {"\u00B7"} rahastusplaanist
                             </button>
@@ -2648,7 +2648,7 @@ export default function App() {
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ ...fieldLabel, display: "flex", alignItems: "center" }}>
                       Periood
-                      <span title="Laenu tagasimaksmise periood" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", border: `1px solid ${N.border}`, fontSize: 11, color: N.dim, cursor: "help", marginLeft: 6 }}>?</span>
+                      <span title="Laenu tagasimaksmise periood" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", border: `1px solid ${N.border}`, fontSize: 14, color: N.dim, cursor: "help", marginLeft: 6 }}>?</span>
                     </div>
                     {(() => {
                       const total = parseInt(ln.termMonths) || 0;
@@ -2656,10 +2656,10 @@ export default function App() {
                       const mm = total % 12;
                       return (
                         <div style={{ display: "flex", gap: 8 }}>
-                          <select value={yy} onChange={(e) => { const v = parseInt(e.target.value); updateLoan(ln.id, { termMonths: v * 12 + mm }); }} style={{ ...selectStyle, flex: 2, padding: "10px 12px", fontSize: 15 }}>
+                          <select value={yy} onChange={(e) => { const v = parseInt(e.target.value); updateLoan(ln.id, { termMonths: v * 12 + mm }); }} style={{ ...selectStyle, flex: 2, padding: "10px 12px", fontSize: 14 }}>
                             {Array.from({ length: 31 }, (_, i) => <option key={i} value={i}>{i} {i === 1 ? "aasta" : "aastat"}</option>)}
                           </select>
-                          <select value={mm} onChange={(e) => updateLoan(ln.id, { termMonths: yy * 12 + parseInt(e.target.value) })} style={{ ...selectStyle, flex: 1, padding: "10px 12px", fontSize: 15 }}>
+                          <select value={mm} onChange={(e) => updateLoan(ln.id, { termMonths: yy * 12 + parseInt(e.target.value) })} style={{ ...selectStyle, flex: 1, padding: "10px 12px", fontSize: 14 }}>
                             {Array.from({ length: 12 }, (_, i) => <option key={i} value={i}>{i} {i === 1 ? "kuu" : "kuud"}</option>)}
                           </select>
                         </div>
@@ -2671,18 +2671,18 @@ export default function App() {
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ ...fieldLabel, display: "flex", alignItems: "center" }}>
                       Intress
-                      <span title="Aastane intressimäär" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", border: `1px solid ${N.border}`, fontSize: 11, color: N.dim, cursor: "help", marginLeft: 6 }}>?</span>
+                      <span title="Aastane intressimäär" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", border: `1px solid ${N.border}`, fontSize: 14, color: N.dim, cursor: "help", marginLeft: 6 }}>?</span>
                     </div>
                     <div style={{ position: "relative" }}>
                       <NumberInput value={ln.annualRatePct} onChange={(v) => updateLoan(ln.id, { annualRatePct: v })} style={{ ...numStyle, paddingRight: 32 }} />
-                      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", fontSize: 15, color: N.dim, pointerEvents: "none" }}>%</span>
+                      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: N.dim, pointerEvents: "none" }}>%</span>
                     </div>
                   </div>
 
                   {/* 4. Laenumakse perioodis — readonly, arvutatud */}
                   <div style={{ marginBottom: 16 }}>
                     <div style={fieldLabel}>Laenumakse perioodis</div>
-                    <div style={{ ...numStyle, padding: "10px 12px", background: N.muted, color: N.text, fontWeight: 700 }}>
+                    <div style={{ ...numStyle, padding: "10px 12px", background: N.muted, color: N.text, fontWeight: 600 }}>
                       {euroEE(arvutaKuumakse(ln.principalEUR, ln.annualRatePct, parseInt(ln.termMonths) || 0) * (derived.period.monthEq || 12))}
                     </div>
                   </div>
@@ -2720,7 +2720,7 @@ export default function App() {
                 const aRow = { display: "flex", justifyContent: "space-between", padding: "3px 0" };
                 const aMono = { fontFamily: "monospace" };
                 return (
-                  <div style={{ marginBottom: 16, padding: 14, background: N.muted, borderRadius: 8, fontSize: 13, color: N.sub }}>
+                  <div style={{ marginBottom: 16, padding: 16, background: N.muted, borderRadius: 8, fontSize: 14, color: N.sub }}>
                     <div style={{ fontWeight: 600, color: N.text, marginBottom: 8 }}>Jaotuse alused</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                       <div style={aRow}>
@@ -2734,10 +2734,10 @@ export default function App() {
                       <div style={{ ...aRow, alignItems: "center" }}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                           Remondifondi kogumine
-                          <span style={{ fontSize: 11, fontWeight: 500, padding: "1px 8px", borderRadius: 99, background: badgeCfg.bg, color: badgeCfg.color }}>
+                          <span style={{ fontSize: 14, fontWeight: 500, padding: "1px 8px", borderRadius: 99, background: badgeCfg.bg, color: badgeCfg.color }}>
                             {ra.maarKuusM2.toFixed(2).replace(".", ",")} €/m²/kuu
                           </span>
-                          <span style={{ fontSize: 11, color: "#9ca3af", marginLeft: 2 }}>Eesti keskmine 0,5–1,5</span>
+                          <span style={{ fontSize: 14, color: N.dim, marginLeft: 2 }}>Eesti keskmine 0,5–1,5</span>
                         </span>
                         <span style={aMono}>{euro(rfAasta)}</span>
                       </div>
@@ -2753,7 +2753,7 @@ export default function App() {
                         <div style={aRow}>
                           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                             Planeeritud pangalaen
-                            <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 4,
+                            <span style={{ fontSize: 14, padding: "1px 6px", borderRadius: 4,
                               background: N.muted, color: N.sub
                             }}>
                               {loanStatus === "APPROVED" ? "Kinnitatud" : "Tingimuslik"}
@@ -2762,7 +2762,7 @@ export default function App() {
                           <span style={aMono}>{euro(planeeritudLaenuAasta)}</span>
                         </div>
                       )}
-                      <div style={{ ...aRow, borderTop: `1px solid ${N.border}`, paddingTop: 4, marginTop: 4, fontWeight: 600, color: N.text }}>
+                      <div style={{ ...aRow, borderTop: `1px solid ${N.border}`, paddingTop: 4, marginTop: 8, fontWeight: 600, color: N.text }}>
                         <span>Kokku</span>
                         <span style={aMono}>{euro(kokku)}</span>
                       </div>
@@ -2795,9 +2795,9 @@ export default function App() {
                             <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Remondifond</th>
                             {showReserv && <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Reservkapital</th>}
                             {showLaen && <th style={{ ...rr, padding: "8px 12px 8px 0" }}>Laenumakse</th>}
-                            <th style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>Kokku €/kuu</th>
+                            <th style={{ ...rr, padding: "8px 0", fontWeight: 600 }}>Kokku €/kuu</th>
                             {showLoanCol && (
-                              <th style={{ ...rr, padding: "8px 0", fontWeight: 700, color: N.sub }}>Koos laenuga</th>
+                              <th style={{ ...rr, padding: "8px 0", fontWeight: 600, color: N.sub }}>Koos laenuga</th>
                             )}
                           </tr>
                         </thead>
@@ -2809,7 +2809,7 @@ export default function App() {
                                 <tr style={{ ...tdSep, cursor: "pointer" }} onClick={() => setAvaKorterDetail(p => ({ ...p, [km.id]: !p[km.id] }))}>
                                   <td style={{ padding: "8px 12px 8px 0" }}>
                                     <b>{km.tahis}</b>{" "}
-                                    <span style={{ fontSize: 11, color: N.dim }}>{isOpen ? "\u25B2" : "\u25BC"}</span>
+                                    <span style={{ fontSize: 14, color: N.dim }}>{isOpen ? "\u25B2" : "\u25BC"}</span>
                                   </td>
                                   <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{km.pind.toFixed(2)} m²</td>
                                   <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.kommunaal)}</td>
@@ -2817,14 +2817,14 @@ export default function App() {
                                   <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.remondifond)}</td>
                                   {showReserv && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.reserv)}</td>}
                                   {showLaen && <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(km.laenumakse)}</td>}
-                                  <td style={{ ...rr, padding: "8px 0", fontWeight: 700 }}>{euro(km.kokku)}</td>
+                                  <td style={{ ...rr, padding: "8px 0", fontWeight: 600 }}>{euro(km.kokku)}</td>
                                   {showLoanCol && (
-                                    <td style={{ ...rr, padding: "8px 0", fontWeight: 700, color: N.sub }}>{euro(km.kokkuLoan)}</td>
+                                    <td style={{ ...rr, padding: "8px 0", fontWeight: 600, color: N.sub }}>{euro(km.kokkuLoan)}</td>
                                   )}
                                 </tr>
                                 {isOpen && (
                                   <tr>
-                                    <td colSpan={colCount} style={{ padding: "4px 0 8px 24px", fontSize: 12, color: N.dim }}>
+                                    <td colSpan={colCount} style={{ padding: "4px 0 8px 24px", fontSize: 14, color: N.dim }}>
                                       Kommunaal: {euro(kopiiriondvaade.kommunaalKokku)} × {(km.osa * 100).toFixed(1)}% = {euro(km.kommunaal)}
                                       {" · "}
                                       Haldus: {euro(kopiiriondvaade.haldusKokku)} × {(km.osa * 100).toFixed(1)}% = {euro(km.haldus)}
@@ -2846,7 +2846,7 @@ export default function App() {
                           })}
                         </tbody>
                         <tfoot>
-                          <tr style={{ ...thRow, fontWeight: 700 }}>
+                          <tr style={{ ...thRow, fontWeight: 600 }}>
                             <td style={{ padding: "8px 12px 8px 0" }}>Kokku</td>
                             <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{korteriteKuumaksed.reduce((s, k) => s + k.pind, 0).toFixed(2)} m²</td>
                             <td style={{ ...rr, padding: "8px 12px 8px 0" }}>{euro(korteriteKuumaksed.reduce((s, k) => s + k.kommunaal, 0))}</td>
@@ -2879,8 +2879,8 @@ export default function App() {
               <div style={{ ...H2_STYLE, marginTop: 0 }}>Kokkuvõte</div>
               {(() => {
                 const kvRow = { display: "flex", justifyContent: "space-between", fontSize: 14, color: N.sub, padding: "4px 0" };
-                const kvBold = { display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 600, color: N.text, padding: "6px 0", borderTop: `1px solid ${N.border}`, marginTop: 4 };
-                const kvHr = { display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 700, padding: "8px 0", borderTop: `2px solid ${N.border}`, marginTop: 8 };
+                const kvBold = { display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 600, color: N.text, padding: "6px 0", borderTop: `1px solid ${N.border}`, marginTop: 8 };
+                const kvHr = { display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 600, padding: "8px 0", borderTop: `2px solid ${N.border}`, marginTop: 8 };
                 const mono = { fontFamily: "monospace" };
                 const mEq = derived.period.monthEq || 12;
 
@@ -2908,7 +2908,7 @@ export default function App() {
                   <div style={{ display: "flex", flexDirection: "column" }}>
 
                     {/* ── Perioodi kulud ── */}
-                    <div style={{ fontWeight: 700, fontSize: 15, color: N.text, marginBottom: 4 }}>Perioodi kulud</div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: N.text, marginBottom: 8 }}>Perioodi kulud</div>
                     <div style={{ ...kvRow, paddingLeft: 16 }}>
                       <span>Kommunaalteenused</span>
                       <span style={mono}>{euroEE(kommunaalPeriood)}</span>
@@ -2927,7 +2927,7 @@ export default function App() {
                     </div>
 
                     {/* ── Perioodi tulud ── */}
-                    <div style={{ fontWeight: 700, fontSize: 15, color: N.text, marginTop: 16, marginBottom: 4 }}>Perioodi tulud</div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: N.text, marginTop: 16, marginBottom: 8 }}>Perioodi tulud</div>
                     <div style={{ ...kvRow, paddingLeft: 16 }}>
                       <span>Haldustasu</span>
                       <span style={mono}>{euroEE(haldustasuPeriood)}</span>
@@ -2942,27 +2942,27 @@ export default function App() {
                     </div>
 
                     {/* ── VAHE ── */}
-                    <div style={{ ...kvHr, color: vahePeriood >= 0 ? "#15803d" : "#dc2626" }}>
+                    <div style={{ ...kvHr, color: vahePeriood >= 0 ? N.text : "#c53030" }}>
                       <span>{vahePeriood >= 0 ? "Ülejääk" : "Puudujääk"}</span>
                       <span style={mono}>
                         {vahePeriood >= 0 ? "+" : ""}{euroEE(vahePeriood)}
-                        <span style={{ fontSize: 13 }}> · {vahePeriood >= 0 ? "+" : ""}{euro(Math.round(vahePeriood / mEq))}/kuu</span>
+                        <span style={{ fontSize: 14 }}> · {vahePeriood >= 0 ? "+" : ""}{euro(Math.round(vahePeriood / mEq))}/kuu</span>
                         {vahePeriood >= 0 ? " ✓" : " ⚠"}
                       </span>
                     </div>
 
                     {vahePeriood < 0 && (
-                      <div style={{ marginTop: 8, padding: 12, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, fontSize: 13, color: "#991b1b" }}>
+                      <div style={{ marginTop: 8, padding: 12, background: N.muted, border: `1px solid ${N.border}`, borderRadius: 8, fontSize: 14, color: "#c53030" }}>
                         Tulud ei kata väljaminekuid. Puudujääk {euroEE(Math.abs(vahePeriood))} perioodis.
                       </div>
                     )}
 
                     {/* ── REMONDIFOND ── */}
-                    <div style={{ fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 16, marginBottom: 4 }}>Remondifond</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 16, marginBottom: 8 }}>Remondifond</div>
                     <div style={kvRow}><span>Saldo perioodi alguses</span><span style={mono}>{euroEE(rf.saldoAlgus)}</span></div>
                     <div style={kvRow}><span>Laekumine perioodis</span><span style={mono}>{euroEE(rf.laekuminePerioodis)}</span></div>
                     <div style={kvRow}><span>Investeeringud perioodis</span><span style={mono}>{rf.investRemondifondist > 0 ? "−" : ""}{euroEE(rf.investRemondifondist)}</span></div>
-                    <div style={{ ...kvBold, color: rf.saldoLopp < 0 ? "#dc2626" : N.text }}>
+                    <div style={{ ...kvBold, color: rf.saldoLopp < 0 ? "#c53030" : N.text }}>
                       <span>Saldo perioodi lõpus</span>
                       <span style={mono}>{euroEE(rf.saldoLopp)}</span>
                     </div>
@@ -2970,7 +2970,7 @@ export default function App() {
                     {/* ── RESERVKAPITAL ── */}
                     {reservPeriood > 0 && (
                       <>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 16, marginBottom: 4 }}>Reservkapital</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 16, marginBottom: 8 }}>Reservkapital</div>
                         <div style={kvRow}><span>Kavandatud reserv</span><span style={mono}>{euroEE(reservPeriood)}</span></div>
                         <div style={kvRow}><span>Kuumakse</span><span style={mono}>{euro(Math.round(reservPeriood / 12))}/kuu</span></div>
                       </>
@@ -3003,7 +3003,7 @@ export default function App() {
                     </select>
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                     <button
                       onClick={onSolveAll}
                       disabled={isSolving || !allActions.length}
@@ -3012,7 +3012,7 @@ export default function App() {
                       {isSolving ? "Rakendan…" : "Rakenda soovitused"}
                     </button>
                     {solveStatus ? (
-                      <span style={{ fontSize: 12, opacity: 0.75 }}>{solveStatus}</span>
+                      <span style={{ fontSize: 14, opacity: 0.75 }}>{solveStatus}</span>
                     ) : null}
                   </div>
                 </div>
@@ -3022,7 +3022,7 @@ export default function App() {
                   <div style={{ ...card, padding: 20 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <div style={sectionTitle}>Riskitase</div>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: N.sub }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: N.sub }}>
                         {evaluation.risk.level.toUpperCase()}
                       </span>
                     </div>
@@ -3036,15 +3036,15 @@ export default function App() {
 
                 {/* ── UI error ── */}
                 {uiError && (
-                  <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.muted }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <div style={{ border: `1px solid ${N.border}`, borderRadius: 8, padding: 20, background: N.muted }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                       <div style={{ ...sectionTitle, color: N.sub }}>Viga</div>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: N.sub }}>ERROR</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: N.sub }}>ERROR</span>
                     </div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: N.sub }}>Ei saanud muudatust rakendada</div>
-                    <div style={{ marginTop: 4, fontSize: 12, color: N.sub }}>{uiError}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: N.sub }}>Ei saanud muudatust rakendada</div>
+                    <div style={{ marginTop: 8, fontSize: 14, color: N.sub }}>{uiError}</div>
                     <button
-                      style={{ marginTop: 8, fontSize: 12, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", color: N.sub }}
+                      style={{ marginTop: 8, fontSize: 14, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", color: N.sub }}
                       onClick={() => setUiError(null)}
                     >
                       Sulge
@@ -3075,7 +3075,7 @@ export default function App() {
             )}
 
             {/* ── Prindi + Ekspordi nupud (always visible) ── */}
-            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
               <button
                 style={{ ...btnSecondary, padding: "10px 16px", opacity: derived.controls.hasErrors ? 0.5 : 1 }}
                 disabled={derived.controls.hasErrors}
@@ -3089,7 +3089,7 @@ export default function App() {
             {/* ── Ekspordi / impordi (buttons only, no version string) ── */}
             {false && (<div style={{ ...card, padding: 20 }}>
               <div style={{ ...sectionTitle, marginBottom: 16 }}>Ekspordi / impordi</div>
-              <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                 <button onClick={onExportJSON} style={btnSecondary}>
                   Salvesta fail
                 </button>
@@ -3104,7 +3104,7 @@ export default function App() {
                 </label>
               </div>
               {importError && (
-                <div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 8, background: N.muted, border: `1px solid ${N.border}`, fontSize: 13, color: N.sub }}>
+                <div style={{ marginTop: 16, padding: "8px 12px", borderRadius: 8, background: N.muted, border: `1px solid ${N.border}`, fontSize: 14, color: N.sub }}>
                   {importError}
                 </div>
               )}
@@ -3113,15 +3113,15 @@ export default function App() {
             {/* ── Technical details (single conditional container) ── */}
             {showTechnicalInfo && (
               <div style={{ display: "flex", flexDirection: "column", gap: 16, borderTop: `2px dashed ${N.border}`, paddingTop: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: N.dim }}>
+                <div style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: N.dim }}>
                   Technical details
                 </div>
 
                 {/* Risk score */}
                 {evaluation?.risk && (
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ fontSize: 12, color: N.sub }}>Riskiskoor:</span>
-                    <span style={{ fontSize: 24, fontWeight: 700 }}>{evaluation.risk.score}</span>
+                    <span style={{ fontSize: 14, color: N.sub }}>Riskiskoor:</span>
+                    <span style={{ fontSize: 24, fontWeight: 600 }}>{evaluation.risk.score}</span>
                   </div>
                 )}
 
@@ -3129,9 +3129,9 @@ export default function App() {
                 <TracePanel evaluation={evaluation} steps={solveAllResult?.steps} stop={solveAllResult?.stop} />
 
                 {/* Vastavuse kokkuvõte */}
-                <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.surface }}>
+                <div style={{ border: `1px solid ${N.border}`, borderRadius: 8, padding: 20, background: N.surface }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.sub }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: N.sub }}>
                       Vastavuse kokkuvõte
                     </div>
                     {(() => {
@@ -3141,37 +3141,37 @@ export default function App() {
                       const reportOk = !solveAllResult?.report || solveAllResult.report.stop.reason === "NO_ACTIONS" || solveAllResult.report.final.riskScore === 0;
                       const allOk = guardOk && reportOk;
                       return (
-                        <span style={{ fontSize: 14, fontWeight: 700, color: N.sub }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: N.sub }}>
                           {allOk ? "OK" : "Kontrollida"}
                         </span>
                       );
                     })()}
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                    <span style={{ fontSize: 13, color: N.sub, minWidth: 90 }}>loopGuard</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                    <span style={{ fontSize: 14, color: N.sub, minWidth: 90 }}>loopGuard</span>
                     {(() => {
                       const candidates = evaluation?.actionCandidates ?? [];
                       const eligible = candidates.filter(c => c.isEligible).length;
                       const ok = eligible > 0 || candidates.length === 0;
                       return (
-                        <span style={{ fontSize: 14, fontWeight: 700, color: N.sub }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: N.sub }}>
                           {ok ? "OK" : "BLOCKED"}
                         </span>
                       );
                     })()}
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 13, color: N.sub, minWidth: 90 }}>RunReport</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 14, color: N.sub, minWidth: 90 }}>RunReport</span>
                     {(() => {
                       if (!solveAllResult?.report) {
-                        return <span style={{ fontSize: 12, color: N.dim }}>Andmed puuduvad (Solve tegemata)</span>;
+                        return <span style={{ fontSize: 14, color: N.dim }}>Andmed puuduvad (Solve tegemata)</span>;
                       }
                       const r = solveAllResult.report;
                       const ok = r.stop.reason === "NO_ACTIONS" || r.final.riskScore === 0;
                       return (
-                        <span style={{ fontSize: 14, fontWeight: 700, color: N.sub }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: N.sub }}>
                           {ok ? "OK" : "Tähelepanu vajab"}
                         </span>
                       );
@@ -3180,13 +3180,13 @@ export default function App() {
                 </div>
 
                 {/* Ekspordi versioon */}
-                <div style={{ fontSize: 11, fontFamily: "monospace", color: N.dim }}>
+                <div style={{ fontSize: 14, fontFamily: "monospace", color: N.dim }}>
                   majanduskavaExport/v1
                 </div>
 
                 {/* Süsteemi info */}
-                <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.muted }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.dim, marginBottom: 16 }}>
+                <div style={{ border: `1px solid ${N.border}`, borderRadius: 8, padding: 20, background: N.muted }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: N.dim, marginBottom: 16 }}>
                     Süsteemi info
                   </div>
                   {[
@@ -3197,8 +3197,8 @@ export default function App() {
                     { label: "Build", value: typeof __BUILD_COMMIT__ !== "undefined" ? __BUILD_COMMIT__ : "unknown" },
                   ].map(({ label, value }) => (
                     <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${N.border}` }}>
-                      <span style={{ fontSize: 12, color: N.sub }}>{label}</span>
-                      <span style={{ fontSize: 12, fontFamily: "monospace", color: value ? N.sub : N.dim }}>
+                      <span style={{ fontSize: 14, color: N.sub }}>{label}</span>
+                      <span style={{ fontSize: 14, fontFamily: "monospace", color: value ? N.sub : N.dim }}>
                         {value || "—"}
                       </span>
                     </div>
@@ -3206,8 +3206,8 @@ export default function App() {
                 </div>
 
                 {/* Pilot checklist */}
-                <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.surface }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.sub, marginBottom: 16 }}>
+                <div style={{ border: `1px solid ${N.border}`, borderRadius: 8, padding: 20, background: N.surface }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: N.sub, marginBottom: 16 }}>
                     Pilot launch checklist
                   </div>
                   {[
@@ -3226,14 +3226,14 @@ export default function App() {
                   <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12, marginTop: 8 }}>
                     <span
                       onClick={() => setPilotFeedbackOpen(v => !v)}
-                      style={{ fontSize: 13, color: "#2563eb", cursor: "pointer", textDecoration: "underline" }}
+                      style={{ fontSize: 14, color: "#2563eb", cursor: "pointer", textDecoration: "underline" }}
                     >
                       {pilotFeedbackOpen ? "Peida juhis" : "Piloodi tagasiside — mida täpselt kirja panna"}
                     </span>
                     {pilotFeedbackOpen && (
-                      <div style={{ marginTop: 8, fontSize: 13, color: N.sub, lineHeight: 1.6 }}>
+                      <div style={{ marginTop: 8, fontSize: 14, color: N.sub, lineHeight: 1.6 }}>
                         <b>Kirjuta üles:</b>
-                        <ul style={{ marginTop: 4, paddingLeft: 20 }}>
+                        <ul style={{ marginTop: 8, paddingLeft: 20 }}>
                           <li>Mis andmed sisestasid (korterite arv, pind, kulud, tulud, laenud)</li>
                           <li>Kas "Rakenda soovitused" töötas ootuspäraselt — mitu sammu tehti, mis muutus</li>
                           <li>Kas JSON export/import säilitas kõik andmed</li>
@@ -3271,19 +3271,19 @@ export default function App() {
                   ].join("\n");
 
                   return (
-                    <div style={{ border: `1px solid ${N.border}`, borderRadius: 12, padding: 20, background: N.muted }}>
+                    <div style={{ border: `1px solid ${N.border}`, borderRadius: 8, padding: 20, background: N.muted }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: N.dim }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: N.dim }}>
                           Kasutustest — tagasiside mall
                         </div>
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 4, background: N.bg, color: N.dim }}>DEV</span>
+                        <span style={{ fontSize: 14, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: N.bg, color: N.dim }}>DEV</span>
                       </div>
                       <pre style={{
                         background: N.surface,
                         border: `1px solid ${N.border}`,
                         borderRadius: 8,
-                        padding: 14,
-                        fontSize: 13,
+                        padding: 16,
+                        fontSize: 14,
                         fontFamily: "monospace",
                         whiteSpace: "pre-wrap",
                         lineHeight: 1.7,
@@ -3292,7 +3292,7 @@ export default function App() {
                       }}>
                         {template}
                       </pre>
-                      <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 16 }}>
                         <button
                           style={btn}
                           onClick={() => {
@@ -3303,7 +3303,7 @@ export default function App() {
                         >
                           Kopeeri tagasiside mall
                         </button>
-                        <span style={{ fontSize: 12, color: N.dim }}>
+                        <span style={{ fontSize: 14, color: N.dim }}>
                           Kui kopeerimine ei tööta, märgista tekst ja kopeeri käsitsi.
                         </span>
                       </div>
@@ -3317,7 +3317,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "center", paddingTop: 8 }}>
               <button
                 onClick={() => setShowTechnicalInfo(v => !v)}
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: N.dim, textDecoration: "underline", padding: "4px 8px" }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: N.dim, textDecoration: "underline", padding: "4px 8px" }}
               >
                 {showTechnicalInfo ? "Peida tehniline info" : "Näita tehnilist infot"}
               </button>
@@ -3331,26 +3331,26 @@ export default function App() {
         <div className="print-content">
           {(kyData.nimi || kyData.registrikood || kyData.aadress) && (
             <div style={{ textAlign: "center", marginBottom: 16 }}>
-              {kyData.nimi && <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{kyData.nimi}</h1>}
+              {kyData.nimi && <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>{kyData.nimi}</h1>}
               {kyData.registrikood && (
-                <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>{kyData.registrikood}</div>
+                <div style={{ fontSize: 14, color: N.sub, marginTop: 4 }}>{kyData.registrikood}</div>
               )}
               {kyData.aadress && (
-                <div style={{ fontSize: 12, color: "#555", marginTop: kyData.registrikood ? 2 : 4 }}>{kyData.aadress}</div>
+                <div style={{ fontSize: 14, color: N.sub, marginTop: kyData.registrikood ? 2 : 4 }}>{kyData.aadress}</div>
               )}
             </div>
           )}
-          <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 24 }}>Majanduskava</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 24 }}>Majanduskava</h1>
 
           {/* Periood */}
           <div className="print-section">
             <h2 className="print-section-title">Üldandmed</h2>
             <div style={{ marginBottom: 8 }}>
-              <span style={{ fontWeight: 700 }}>Periood:</span> {formatDateEE(plan.period.start)} – {formatDateEE(plan.period.end)}
+              <span style={{ fontWeight: 600 }}>Periood:</span> {formatDateEE(plan.period.start)} – {formatDateEE(plan.period.end)}
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ textAlign: "left", fontSize: 12, borderBottom: "2px solid #000" }}>
+                <tr style={{ textAlign: "left", fontSize: 14, borderBottom: "2px solid #000" }}>
                   <th style={{ padding: "4px 8px" }}>Nr</th>
                   <th style={{ padding: "4px 8px", textAlign: "right" }}>m²</th>
                 </tr>
@@ -3364,7 +3364,7 @@ export default function App() {
                 ))}
               </tbody>
             </table>
-            <div style={{ marginTop: 8, fontSize: 13 }}>
+            <div style={{ marginTop: 8, fontSize: 14 }}>
               Kortereid: {derived.building.apartmentsCount} | Kogupind: {derived.building.totAreaM2.toFixed(1)} m²
             </div>
           </div>
@@ -3375,7 +3375,7 @@ export default function App() {
               <h2 className="print-section-title">Kaasomandi esemed</h2>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ textAlign: "left", fontSize: 12, borderBottom: "2px solid #000" }}>
+                  <tr style={{ textAlign: "left", fontSize: 14, borderBottom: "2px solid #000" }}>
                     <th style={{ padding: "4px 8px" }}>Ese</th>
                     <th style={{ padding: "4px 8px" }}>Seisukord</th>
                     <th style={{ padding: "4px 8px" }}>Prioriteet</th>
@@ -3410,7 +3410,7 @@ export default function App() {
               <h2 className="print-section-title">Muud investeeringud</h2>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ textAlign: "left", fontSize: 12, borderBottom: "2px solid #000" }}>
+                  <tr style={{ textAlign: "left", fontSize: 14, borderBottom: "2px solid #000" }}>
                     <th style={{ padding: "4px 8px" }}>Nimetus</th>
                     <th style={{ padding: "4px 8px" }}>Aasta</th>
                     <th style={{ padding: "4px 8px", textAlign: "right" }}>Maksumus</th>
@@ -3445,7 +3445,7 @@ export default function App() {
                 </div>
               ))
             }
-            <div style={{ marginTop: 8, fontWeight: 700, fontFamily: "monospace" }}>
+            <div style={{ marginTop: 8, fontWeight: 600, fontFamily: "monospace" }}>
               Kokku: {euroEE(derived.totals.costPeriodEUR)} · {euroEE(derived.totals.costMonthlyEUR)}/kuu
             </div>
           </div>
@@ -3484,7 +3484,7 @@ export default function App() {
                       </span>
                     </div>
                   ))}
-                  <div style={{ marginTop: 8, fontWeight: 700, fontFamily: "monospace" }}>
+                  <div style={{ marginTop: 8, fontWeight: 600, fontFamily: "monospace" }}>
                     Kokku: {euroEE(kokku)} · {euroEE(kokku / mEq)}/kuu
                   </div>
                 </>
@@ -3496,15 +3496,15 @@ export default function App() {
           <div className="print-section">
             <h2 className="print-section-title">Fondid ja laen</h2>
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 12 }}>
-              <div><span style={{ fontWeight: 700 }}>Remondifondi määr:</span> {remondifondiArvutus.maarAastasM2.toFixed(2).replace(".", ",")} €/m² aastas</div>
-              <div><span style={{ fontWeight: 700 }}>Laekumine perioodis:</span> {euroEE(derived.funds.repairFundIncomePeriodEUR)}</div>
-              <div><span style={{ fontWeight: 700 }}>Planeeritud reserv:</span> {euroEE(plan.funds.reserve.plannedEUR)}</div>
-              <div><span style={{ fontWeight: 700 }}>Nõutav reserv:</span> {euroEE(Math.round(plan.budget.costRows.reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0) / 12))}</div>
+              <div><span style={{ fontWeight: 600 }}>Remondifondi määr:</span> {remondifondiArvutus.maarAastasM2.toFixed(2).replace(".", ",")} €/m² aastas</div>
+              <div><span style={{ fontWeight: 600 }}>Laekumine perioodis:</span> {euroEE(derived.funds.repairFundIncomePeriodEUR)}</div>
+              <div><span style={{ fontWeight: 600 }}>Planeeritud reserv:</span> {euroEE(plan.funds.reserve.plannedEUR)}</div>
+              <div><span style={{ fontWeight: 600 }}>Nõutav reserv:</span> {euroEE(Math.round(plan.budget.costRows.reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0) / 12))}</div>
             </div>
             {plan.loans.length > 0 && (
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ textAlign: "left", fontSize: 12, borderBottom: "2px solid #000" }}>
+                  <tr style={{ textAlign: "left", fontSize: 14, borderBottom: "2px solid #000" }}>
                     <th style={{ padding: "4px 8px" }}>Liik</th>
                     <th style={{ padding: "4px 8px", textAlign: "right" }}>Summa</th>
                     <th style={{ padding: "4px 8px", textAlign: "right" }}>Intress</th>
@@ -3537,7 +3537,7 @@ export default function App() {
             <h2 className="print-section-title">Maksed korteritele</h2>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ textAlign: "left", fontSize: 12, borderBottom: "2px solid #000" }}>
+                <tr style={{ textAlign: "left", fontSize: 14, borderBottom: "2px solid #000" }}>
                   <th style={{ padding: "4px 8px" }}>Korter</th>
                   <th style={{ padding: "4px 8px", textAlign: "right" }}>m²</th>
                   <th style={{ padding: "4px 8px", textAlign: "right" }}>Osa</th>
@@ -3549,12 +3549,12 @@ export default function App() {
               <tbody>
                 {derived.apartmentPayments.map(pmt => (
                   <tr key={pmt.aptId} style={{ borderBottom: "1px solid #ccc" }}>
-                    <td style={{ padding: "4px 8px", fontWeight: 700 }}>{pmt.label}</td>
+                    <td style={{ padding: "4px 8px", fontWeight: 600 }}>{pmt.label}</td>
                     <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{pmt.areaM2.toFixed(2)}</td>
                     <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{(pmt.share * 100).toFixed(2)}%</td>
                     <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{euroEE(pmt.operationalMonthlyEUR)}</td>
                     <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{euroEE(pmt.repairFundMonthlyEUR)}</td>
-                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace", fontWeight: 900 }}>{euroEE(pmt.totalMonthlyEUR)}</td>
+                    <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{euroEE(pmt.totalMonthlyEUR)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -3574,14 +3574,14 @@ export default function App() {
                 ].map(([label, value]) => (
                   <tr key={label} style={{ borderBottom: "1px solid #ccc" }}>
                     <td style={{ padding: "6px 8px" }}>{label}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right", fontFamily: "monospace", fontWeight: 700 }}>{value}</td>
+                    <td style={{ padding: "6px 8px", textAlign: "right", fontFamily: "monospace", fontWeight: 600 }}>{value}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {evaluation?.risk && (
               <div style={{ marginTop: 12 }}>
-                <span style={{ fontWeight: 700 }}>Riskitase: </span>
+                <span style={{ fontWeight: 600 }}>Riskitase: </span>
                 {evaluation.risk.level === "low" ? "OK" : evaluation.risk.level === "medium" ? "HOIATUS" : "RISK"}
                 {evaluation.risk.reason && <span> — {evaluation.risk.reason}</span>}
               </div>
