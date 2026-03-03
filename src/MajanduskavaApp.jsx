@@ -1164,10 +1164,10 @@ export default function App() {
   };
 
   const eemaldaInvesteering = (id) => {
-    // Eemalda seotud laen enne rahpiiri tühjendamist
+    if (!window.confirm("Kas soovid investeeringu eemaldada?")) return;
     const rida = seisukord.find(r => r.id === id);
     if (rida?.rahpiiri?.some(rp => rp.allikas === "Laen")) {
-      eemaldaSeostudLaen(id);
+      setPlan(p => ({ ...p, loans: p.loans.filter(l => l.sepiiriostudInvId !== id) }));
     }
     setSeisukord(prev => prev.map(r => r.id === id ? {
       ...r, investeering: false, invNimetus: "", invMaksumus: 0, rahpiiri: [],
@@ -1838,9 +1838,7 @@ export default function App() {
                               <EuroInput value={rp.summa} onChange={(v) => uuendaRahpiiriRida(rida.id, ri, { summa: v })} style={{ ...numStyle, ...(!rp.allikas ? { opacity: 0.45, background: "#f3f4f6" } : {}) }} disabled={!rp.allikas} />
                               {!rp.allikas && <div style={{ color: "#d97706", fontSize: 12, marginTop: 2 }}>Vali rahastusallikas</div>}
                             </div>
-                            {rida.rahpiiri.length > 1 && (
                               <button onClick={() => eemaldaRahpiiriRida(rida.id, ri)} style={{ color: "#9ca3af", background: "none", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "2px 4px" }} title="Eemalda rida">{"\u00d7"}</button>
-                            )}
                             {rp.allikas === "Laen" && plan.loans.find(l => l.sepiiriostudInvId === rida.id) && (
                               <button onClick={() => { setSec(4); setTimeout(() => document.getElementById(`laen-${plan.loans.find(l => l.sepiiriostudInvId === rida.id)?.id}`)?.scrollIntoView({ behavior: "smooth" }), 100); }} style={{ color: "#15803d", background: "none", border: "none", cursor: "pointer", fontSize: 12 }}>
                                 {"\u2713"} Laen {euro(parseFloat(rp.summa) || 0)} {"\u2192"} Fondid & laen
@@ -1925,9 +1923,7 @@ export default function App() {
                           <EuroInput value={rp.summa} onChange={(v) => handleMuuRahpiiriChange(idx, ri, "summa", v)} style={{ ...numStyle, ...(!rp.allikas ? { opacity: 0.45, background: "#f3f4f6" } : {}) }} disabled={!rp.allikas} />
                           {!rp.allikas && <div style={{ color: "#d97706", fontSize: 12, marginTop: 2 }}>Vali rahastusallikas</div>}
                         </div>
-                        {inv.rahpiiri.length > 1 && (
                           <button onClick={() => eemaldaMuuRahpiiriRida(idx, ri)} style={{ color: "#9ca3af", background: "none", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "2px 4px" }} title="Eemalda rida">{"\u00d7"}</button>
-                        )}
                         {rp.allikas === "Laen" && plan.loans.find(l => l.sepiiriostudInvId === inv.id) && (
                           <button onClick={() => { setSec(4); setTimeout(() => document.getElementById(`laen-${plan.loans.find(l => l.sepiiriostudInvId === inv.id)?.id}`)?.scrollIntoView({ behavior: "smooth" }), 100); }} style={{ color: "#15803d", background: "none", border: "none", cursor: "pointer", fontSize: 12 }}>
                             {"\u2713"} Laen {euro(parseFloat(rp.summa) || 0)} {"\u2192"} Fondid & laen
@@ -2235,9 +2231,8 @@ export default function App() {
               const rfRow = { display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 14 };
               return (
                 <>
-                  {/* ══ A-KAART: ALGSEIS ══ */}
                   <div style={rfCard}>
-                    <div style={{ ...sectionTitle, marginBottom: 8 }}>Algseis</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: N.text, marginBottom: 8 }}>Algsaldo</div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ color: N.sub, fontSize: 14 }}>Saldo perioodi alguses</span>
                       <div style={{ width: 160 }}>
@@ -2249,11 +2244,9 @@ export default function App() {
                         />
                       </div>
                     </div>
-                  </div>
-
-                  {/* ══ B-KAART: INVESTEERINGUD + MÄÄR + STAATUS ══ */}
-                  <div style={rfCard}>
-                    <div style={{ ...sectionTitle, marginBottom: 8 }}>Perioodi investeeringud</div>
+                    {/* ── Investeeringud ── */}
+                    <div style={{ borderTop: `1px solid ${N.border}`, marginTop: 12, paddingTop: 12 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: N.text, marginBottom: 8 }}>Investeeringud</div>
 
                     {/* Investeeringute tabel */}
                     {ra.invArvutusread.length > 0 ? (
@@ -2394,14 +2387,14 @@ export default function App() {
                         </div>
                       </>
                     )}
-                  </div>
+                    </div>
 
-                  {/* ══ C-KAART: LÕPPSALDO KUJUNEMINE ══ */}
-                  <div style={rfCard}>
-                    <div style={{ ...sectionTitle, marginBottom: 8 }}>Lõppsaldo kujunemine</div>
+                    {/* ── Lõppsaldo ── */}
+                    <div style={{ borderTop: `1px solid ${N.border}`, marginTop: 12, paddingTop: 12 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: N.text, marginBottom: 8 }}>Lõppsaldo</div>
                     <div style={{ fontFamily: "monospace", fontSize: 14, color: N.sub, display: "flex", flexDirection: "column", gap: 3 }}>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span>Algseis</span><span>{euro(ra.saldoAlgus)}</span>
+                        <span>Algsaldo</span><span>{euro(ra.saldoAlgus)}</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
                         <span>+ Laekumine</span><span>{euro(ra.laekuminePerioodis)}</span>
@@ -2464,6 +2457,7 @@ export default function App() {
                         )}
                       </div>
                     </details>
+                    </div>
                   </div>
                 </>
               );
@@ -2654,12 +2648,13 @@ export default function App() {
               {/* Arvutusalused */}
               {derived.building.totAreaM2 > 0 && (() => {
                 const ra = remondifondiArvutus;
-                const rfKuu = Math.round(ra.maarAastasM2 * ra.koguPind / 12);
-                const reservKuu = Math.round((plan.funds.reserve.plannedEUR || 0) / 12);
-                const olemasolevLaenuKuu = Math.round(plan.loans.filter(l => !l.sepiiriostudInvId).reduce((s, l) => s + arvutaKuumakse(l.principalEUR, l.annualRatePct, parseInt(l.termMonths) || 0), 0));
-                const planeeritudLaenuKuu = Math.round(plan.loans.filter(l => l.sepiiriostudInvId).reduce((s, l) => s + arvutaKuumakse(l.principalEUR, l.annualRatePct, parseInt(l.termMonths) || 0), 0));
+                const mEq = derived.period.monthEq || 12;
+                const rfAasta = Math.round(ra.maarAastasM2 * ra.koguPind);
+                const reservAasta = Math.round(plan.funds.reserve.plannedEUR || 0);
+                const olemasolevLaenuAasta = Math.round(plan.loans.filter(l => !l.sepiiriostudInvId).reduce((s, l) => s + arvutaKuumakse(l.principalEUR, l.annualRatePct, parseInt(l.termMonths) || 0), 0) * mEq);
+                const planeeritudLaenuAasta = Math.round(plan.loans.filter(l => l.sepiiriostudInvId).reduce((s, l) => s + arvutaKuumakse(l.principalEUR, l.annualRatePct, parseInt(l.termMonths) || 0), 0) * mEq);
                 const onPlaneeritudLaen = ra.onLaen;
-                const kokku = kopiiriondvaade.kommunaalKokku + kopiiriondvaade.haldusKokku + rfKuu + reservKuu + olemasolevLaenuKuu + (onPlaneeritudLaen ? planeeritudLaenuKuu : 0);
+                const kokku = kopiiriondvaade.kommunaalPeriood + kopiiriondvaade.haldusPeriood + rfAasta + reservAasta + olemasolevLaenuAasta + (onPlaneeritudLaen ? planeeritudLaenuAasta : 0);
                 const badgeCfg = ra.tase === "normaalne"
                   ? { bg: STATE.OK.bg, color: STATE.OK.color }
                   : ra.tase === "korgendatud"
@@ -2675,11 +2670,11 @@ export default function App() {
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                       <div style={aRow}>
                         <span>Kommunaalkulud</span>
-                        <span style={aMono}>{euro(kopiiriondvaade.kommunaalKokku)}</span>
+                        <span style={aMono}>{euro(kopiiriondvaade.kommunaalPeriood)}</span>
                       </div>
                       <div style={aRow}>
                         <span>Halduskulud</span>
-                        <span style={aMono}>{euro(kopiiriondvaade.haldusKokku)}</span>
+                        <span style={aMono}>{euro(kopiiriondvaade.haldusPeriood)}</span>
                       </div>
                       <div style={{ ...aRow, alignItems: "center" }}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -2689,20 +2684,20 @@ export default function App() {
                           </span>
                           <span style={{ fontSize: 11, color: "#9ca3af", marginLeft: 2 }}>Eesti keskmine 0,5–1,5</span>
                         </span>
-                        <span style={aMono}>{euro(rfKuu)}</span>
+                        <span style={aMono}>{euro(rfAasta)}</span>
                       </div>
                       <div style={aRow}>
                         <span>Reservkapitali kogumine</span>
-                        <span style={aMono}>{euro(reservKuu)}</span>
+                        <span style={aMono}>{euro(reservAasta)}</span>
                       </div>
                       <div style={aRow}>
                         <span>Laenumakse</span>
-                        <span style={aMono}>{euro(olemasolevLaenuKuu)}</span>
+                        <span style={aMono}>{euro(olemasolevLaenuAasta)}</span>
                       </div>
                       {onPlaneeritudLaen && (
                         <div style={aRow}>
                           <span>Planeeritud pangalaen</span>
-                          <span style={aMono}>{euro(planeeritudLaenuKuu)}</span>
+                          <span style={aMono}>{euro(planeeritudLaenuAasta)}</span>
                         </div>
                       )}
                       <div style={{ ...aRow, borderTop: `1px solid ${N.border}`, paddingTop: 4, marginTop: 4, fontWeight: 600, color: N.text }}>

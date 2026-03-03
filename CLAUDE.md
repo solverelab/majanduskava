@@ -76,3 +76,10 @@ All state is local React `useState` in MajanduskavaApp.jsx — no Redux, Context
 - Actions are declarative JSON patches, not imperative mutations
 - Policy rules are defined in YAML, not hardcoded in logic
 - All user-facing text is in Estonian
+
+## Õiguslik raamistik (KrtS)
+
+- **Reservkapital**: minimaalselt 1/12 aastakuludest (KrtS § 8), katab kõiki kulusid
+- **Remondifond**: pikaajalised suuremad tööd, kogumisperiood planeeritud üle kava perioodi
+- **Laenu tingimuslikkus**: kui laen pole kinnitatud, on see "taotlusel" ja omanike maksed peavad toimima ka ilma laenuta (KrtS § 41)
+- **Juriidiline kaitseklausel**: kava peab sisaldama selgitust, et omanike kohustused ei muutu kui laenu ei saada
