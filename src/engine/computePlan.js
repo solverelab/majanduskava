@@ -2,6 +2,9 @@
 
 const round2 = (n) => Math.round(((Number(n) || 0) + Number.EPSILON) * 100) / 100;
 const N = (v) => Number(v) || 0;
+import { compareInvestmentsCanonical } from "../utils/sortInvestments";
+import { isInvestmentReady } from "../utils/investmentInclusion";
+import { getEffectiveAllocationBasis } from "../domain/planSchema";
 
 const RISK_LIMITS = {
   loanWarnPerM2: 0.5,
@@ -110,7 +113,7 @@ export function computePlan(plan) {
   const period = p.period || {};
   const building = p.building || {};
   const budget = p.budget || { costRows: [], incomeRows: [] };
-  const investmentsPipeline = p.investmentsPipeline || { items: [] };
+  const investmentsPipeline = p.investments || p.investmentsPipeline || { items: [] };
   const funds = p.funds || { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } };
   const loans = p.loans || [];
 
@@ -158,15 +161,18 @@ export function computePlan(plan) {
   const year = N(period.year);
   const items = investmentsPipeline.items || [];
   const thisYearItems = items.filter(it => N(it?.plannedYear) === year);
-  const thisYearCount = thisYearItems.length;
+  const readyThisYear = thisYearItems
+    .filter(isInvestmentReady)
+    .sort(compareInvestmentsCanonical);
+  const thisYearCount = readyThisYear.length;
   const costThisYearEUR = round2(thisYearItems.reduce((s, it) => s + N(it?.totalCostEUR), 0));
 
   // outflows for simplified fund closings (Tee 1)
-  const rfOutflowThisYearEUR = round2(thisYearItems.reduce((s, it) => s + sumFundingBySource(it?.fundingPlan, "REPAIR_FUND"), 0));
+  const rfOutflowThisYearEUR = round2(thisYearItems.reduce((s, it) => s + sumFundingBySource(it?.fundingPlan, "Remondifond"), 0));
   const reserveOutflowThisYearEUR = round2(thisYearItems.reduce((s, it) => s + sumFundingBySource(it?.fundingPlan, "RESERVE"), 0));
   const loanOutflowThisYearEUR = round2(
     thisYearItems.reduce((s, it) => s + ((it.fundingPlan || [])
-      .filter(r => r.source === "LOAN")
+      .filter(r => r.source === "Laen")
       .reduce((ss, r) => ss + (r.amountEUR || 0), 0)
     ), 0)
   );
@@ -219,16 +225,27 @@ export function computePlan(plan) {
     ? round2((rfShortfallEUR / (totAreaM2 * monthEq)) * 100) / 100 + rfRate
     : rfRate;
   const rfSuggestedOneOffTotalEUR = rfShortfallEUR;
+
+  const maintenanceBasis = getEffectiveAllocationBasis(p.allocationPolicies?.maintenance);
+  const repairFundBasis = getEffectiveAllocationBasis(p.allocationPolicies?.remondifond);
+  const shareFor = (basis, apt) => {
+    if (basis === "korter") return apartmentsCount > 0 ? 1 / apartmentsCount : 0;
+    return totAreaM2 > 0 ? N(apt.areaM2) / totAreaM2 : 0;
+  };
+
   const rfOneOffByApartment = apartments.map(a => {
-    const share = totAreaM2 > 0 ? N(a.areaM2) / totAreaM2 : 0;
+    const share = shareFor(repairFundBasis, a);
     return { aptId: a.id, label: a.label, amountEUR: round2(rfShortfallEUR * share) };
   });
 
   // --- Apartment payments ---
+  const rfMonthlyTotalEUR = rfRate * totAreaM2;
   const apartmentPayments = apartments.map(a => {
     const share = totAreaM2 > 0 ? N(a.areaM2) / totAreaM2 : 0;
-    const operationalMonthlyEUR = round2(ownersNeedMonthlyEUR * share);
-    const repairFundMonthlyEUR = round2(rfRate * N(a.areaM2));
+    const maintShare = shareFor(maintenanceBasis, a);
+    const rfShare = shareFor(repairFundBasis, a);
+    const operationalMonthlyEUR = round2(ownersNeedMonthlyEUR * maintShare);
+    const repairFundMonthlyEUR = round2(rfMonthlyTotalEUR * rfShare);
     const totalMonthlyEUR = round2(operationalMonthlyEUR + repairFundMonthlyEUR);
     return {
       aptId: a.id, label: a.label, areaM2: N(a.areaM2), share,
@@ -271,11 +288,12 @@ export function computePlan(plan) {
 
   // Investeeringud – kui sellel aastal pole, lisa “dokumendilausena” info
   if (thisYearCount === 0) {
-    issues.push(issue("INFO", "Perioodil investeeringuid ei ole kavandatud.", "INV_NONE_THIS_YEAR", "Investeeringud"));
+    issues.push(issue("INFO", "Perioodil ei ole valideeritud investeeringuid.", "INV_NONE_THIS_YEAR", "Investeeringud"));
   }
 
   // Investeeringute miinimumkontrollid (Tee 1)
-  for (const it of thisYearItems) {
+  // readyThisYear on juba filtreeritud (ainult READY) ja sorteeritud (plannedYear ASC, totalCostEUR DESC, name ASC)
+  for (const it of readyThisYear) {
     const name = String(it?.name || "").trim();
     const cost = N(it?.totalCostEUR);
     const fp = (it?.fundingPlan || []);
@@ -293,21 +311,6 @@ export function computePlan(plan) {
     if (cost > 0 && funded > cost)
       issues.push(issue("WARN", `"${name || "?"}" rahastus (${euro(funded)}) > maksumus (${euro(cost)})`, "INV_OVER", "Investeeringud"));
 
-    // --- LOAN kontrollid ---
-    fp.filter(r => r.source === "LOAN" && N(r.amountEUR) > 0).forEach(r => {
-      if (!r.loanId) {
-        issues.push(issue("ERROR", `"${name || "?"}" laenurahastus: laen valimata`, "INV_LOAN_NO_ID", "Investeeringud"));
-        return;
-      }
-      const ln = loans.find(x => x.id === r.loanId);
-      if (!ln) {
-        issues.push(issue("ERROR", `"${name || "?"}" laenurahastus: laenu ei leitud (${r.loanId})`, "INV_LOAN_NOT_FOUND", "Investeeringud"));
-        return;
-      }
-      if (N(r.amountEUR) > N(ln.principalEUR)) {
-        issues.push(issue("ERROR", `"${name || "?"}" laenurahastus (${euro(r.amountEUR)}) > laenusumma (${euro(ln.principalEUR || 0)})`, "INV_LOAN_OVER_PRINCIPAL", "Investeeringud"));
-      }
-    });
   }
 
   // Reserve check (Tee 1)
@@ -380,7 +383,7 @@ export function computePlan(plan) {
       reserveOutflowThisYearEUR,
       loanOutflowThisYearEUR,
       // UI jaoks: “dokumendilausena”
-      noteThisYear: thisYearCount === 0 ? "Perioodil investeeringuid ei ole kavandatud." : null,
+      noteThisYear: thisYearCount === 0 ? "Perioodil ei ole valideeritud investeeringuid." : null,
     },
 
     totals: {

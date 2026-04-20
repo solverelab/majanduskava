@@ -46,7 +46,7 @@
         "plannedYear": 2026,
         "totalCostEUR": 2000,
         "fundingPlan": [
-          { "source": "REPAIR_FUND", "amountEUR": 1800 },
+          { "source": "Remondifond", "amountEUR": 1800 },
           { "source": "RESERVE", "amountEUR": 200 }
         ]
       }

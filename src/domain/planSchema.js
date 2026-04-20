@@ -9,26 +9,24 @@ export function mkCashflowRow({
   side = "COST",
   name = "",
   category = "",
+  jaotusalus = "m2",
+  utilityType = null,
   legal = { bucket: "OPERATIONAL", category: "MAINTENANCE", targetedFund: null },
   calc = { type: "FIXED_PERIOD", params: { amountEUR: 0 } },
 } = {}) {
-  return { id: uid(), side, name, category, legal, calc };
+  return { id: uid(), side, name, category, jaotusalus, utilityType, legal, calc };
 }
 
 export function mkInvestmentItem({
   name = "",
-  plannedYear = 2026,
-  quarter = 1,
+  plannedYear = 0,
   totalCostEUR = 0,
-  notes = "",
 } = {}) {
   return {
     id: uid(),
     name,
     plannedYear,
-    quarter,
     totalCostEUR,
-    notes,
     fundingPlan: [],
   };
 }
@@ -45,7 +43,7 @@ export function mkLoan({
   return { id: uid(), name, principalEUR, annualRatePct, termMonths, type, startYM, reservePct };
 }
 
-export function defaultPlan({ year = 2026 } = {}) {
+export function defaultPlan({ year = new Date().getFullYear() } = {}) {
   return {
     profile: { name: "Korteriühistu majanduskava" },
     period: {
@@ -60,7 +58,10 @@ export function defaultPlan({ year = 2026 } = {}) {
       costRows: [],
       incomeRows: [],
     },
-    investmentsPipeline: {
+    investments: {
+      items: [],
+    },
+    assetCondition: {
       items: [],
     },
     funds: {
@@ -71,6 +72,74 @@ export function defaultPlan({ year = 2026 } = {}) {
     openingBalances: {
       repairFundEUR: 0,
       reserveEUR: 0,
+    },
+    draftApproval: {
+      isLocked: false,
+      lockedAt: null,
+      stateSignature: null,
+    },
+    materialsPackage: {
+      isCreated: false,
+      createdAt: null,
+      stateSignature: null,
+      items: [],
+    },
+    writtenVotingPackage: {
+      isCreated: false,
+      createdAt: null,
+      stateSignature: null,
+      deadline: null,
+      agendaItems: [],
+      materialItems: [],
+    },
+    allocationPolicies: {
+      maintenance: {
+        defaultBasis: "m2",
+        overrideBasis: null,
+        legalBasis: null,
+        legalBasisNote: "",
+        legalBasisType: "DEFAULT_KRTS40_1",
+        legalBasisText: "",
+      },
+      remondifond: {
+        defaultBasis: "m2",
+        overrideBasis: null,
+        legalBasis: null,
+        legalBasisNote: "",
+        legalBasisType: "DEFAULT_KRTS40_1",
+        legalBasisText: "",
+      },
+      reserve: {
+        defaultBasis: "m2",
+        overrideBasis: null,
+        legalBasis: null,
+        legalBasisNote: "",
+        legalBasisType: "DEFAULT_KRTS40_1",
+        legalBasisText: "",
+      },
+    },
+  };
+}
+
+export function deriveLegalBasisType(policy) {
+  return (policy?.overrideBasis && policy?.legalBasis) ? "BYLAWS_EXCEPTION" : "DEFAULT_KRTS40_1";
+}
+
+export function getEffectiveAllocationBasis(policy) {
+  if (!policy) return "m2";
+  if (policy.overrideBasis && policy.legalBasis) return policy.overrideBasis;
+  return policy.defaultBasis || "m2";
+}
+
+export function patchAllocationPolicy(plan, key, patch) {
+  const current = plan?.allocationPolicies?.[key] || {
+    defaultBasis: "m2", overrideBasis: null, legalBasis: null, legalBasisNote: "",
+  };
+  return {
+    ...plan,
+    allocationPolicies: {
+      ...(plan?.allocationPolicies || {}),
+      [key]: { ...current, ...patch },
     },
   };
 }
