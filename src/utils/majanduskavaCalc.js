@@ -34,15 +34,19 @@ export function utilityRowStatus(row) {
 
 // Jaotusaluse kasutajasõbralik silt.
 // Kanoniline tõekoht: UI, print ja kokkuvõte kasutavad seda.
+// Aktsepteerib MÕLEMAT sõnastikku ajutiselt: legacy "korter" (allocationPolicies kaudu)
+// ja canonical "apartment" (rea-mudel allocationBasis). Backward-compat kiht, mitte
+// uus paralleelne canonical mudel — eemaldatakse, kui allocationPolicies migreeritud.
 export function jaotusalusSilt(jaotusalus) {
-  if (jaotusalus === "korter") return "korterite vahel võrdselt";
+  if (jaotusalus === "korter" || jaotusalus === "apartment") return "korterite vahel võrdselt";
   return "m² järgi";
 }
 
 // Kulurea jaotusaluse osakaalu arvutus.
 // Kanoniline tõekoht: kõik korteritele jaotamised kasutavad seda.
+// Aktsepteerib mõlemat sõnastikku — vt jaotusalusSilt kommentaari.
 export function kulureaOsa(jaotusalus, pind, koguPind, aptCount) {
-  if (jaotusalus === "korter") return aptCount > 0 ? 1 / aptCount : 0;
+  if (jaotusalus === "korter" || jaotusalus === "apartment") return aptCount > 0 ? 1 / aptCount : 0;
   return koguPind > 0 ? pind / koguPind : 0;
 }
 

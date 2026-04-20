@@ -567,7 +567,7 @@ export default function App() {
         : v;
       const jaotusalus = HALDUSTEENUSED.includes(r.category)
         ? maintenanceBasis
-        : (r.jaotusalus || "m2");
+        : r.allocationBasis;
       return { category: r.category, kuus, jaotusalus };
     });
 
@@ -2497,15 +2497,15 @@ export default function App() {
                     })() : (
                       <>
                         <select
-                          value={r.jaotusalus || "m2"}
-                          onChange={(e) => updateRow("COST", r.id, { jaotusalus: e.target.value })}
+                          value={r.allocationBasis}
+                          onChange={(e) => updateRow("COST", r.id, { allocationBasis: e.target.value })}
                           style={{ ...selectStyle, width: "100%" }}
                         >
                           <option value="m2">m²</option>
-                          <option value="korter">korter</option>
+                          <option value="apartment">korter</option>
                         </select>
                         <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>
-                          {r.jaotusalus === "korter" ? "Jaotatakse võrdselt korterite vahel" : "Jaotatakse korteri pindala järgi"}
+                          {r.allocationBasis === "apartment" ? "Jaotatakse võrdselt korterite vahel" : "Jaotatakse korteri pindala järgi"}
                         </div>
                       </>
                     )}
@@ -4328,7 +4328,7 @@ export default function App() {
                       {" "}<span style={{ fontSize: 12, color: "#999" }}>({jaotusalusSilt(
                         HALDUSTEENUSED.includes(r.category)
                           ? getEffectiveAllocationBasis(plan.allocationPolicies?.maintenance)
-                          : r.jaotusalus
+                          : r.allocationBasis
                       )})</span>
                     </span>
                     <span style={{ fontFamily: "monospace" }}>
