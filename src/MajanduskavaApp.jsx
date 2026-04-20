@@ -1002,6 +1002,16 @@ export default function App() {
               : { arvutus: "perioodis", summaInput: r.calc?.params?.amountEUR || 0, selgitus: "", ...r };
           });
         }
+        // Migrate cost rows — lisa puuduvad forecast-väljad (backward compatibility)
+        if (candidateState.budget?.costRows) {
+          candidateState.budget.costRows = candidateState.budget.costRows.map(r => ({
+            forecastAdjustmentEnabled: false,
+            forecastAdjustmentType: null,
+            forecastAdjustmentPercent: null,
+            forecastAdjustmentNote: "",
+            ...r,
+          }));
+        }
         // Migrate allocationPolicies — lisa puuduv legalBasisType / legalBasisText
         if (candidateState.allocationPolicies) {
           for (const key of ["maintenance", "remondifond", "reserve"]) {
@@ -1155,6 +1165,17 @@ export default function App() {
         // Alati normaliseeri investments väli (ka ilma migratsioonita)
         normalizeInvestmentsField(candidateState);
 
+        // Migrate investments — lisa puuduvad contingency-väljad (backward compatibility)
+        if (Array.isArray(candidateState.investments?.items)) {
+          candidateState.investments.items = candidateState.investments.items.map(inv => ({
+            contingencyEnabled: false,
+            contingencyType: null,
+            contingencyPercent: null,
+            contingencyNote: "",
+            ...inv,
+          }));
+        }
+
         // Puhasta seisukord — eemalda inv väljad (need elavad nüüd investments-s)
         const cleanSeisukord = cleanAssetConditionInvestmentFields(importedSeisukord);
 
@@ -1273,7 +1294,7 @@ export default function App() {
         calc: { type: "FIXED_PERIOD", params: { amountEUR: 0 } },
       }),
       ...(side === "COST"
-        ? { category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0, jaotusalus: "m2", selgitus: "" }
+        ? { category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0, jaotusalus: "m2", selgitus: "", forecastAdjustmentEnabled: false, forecastAdjustmentType: null, forecastAdjustmentPercent: null, forecastAdjustmentNote: "" }
         : { category: "Muu tulu", arvutus: "aastas", summaInput: "" }),
     };
     setPlan(p => ({
@@ -1439,6 +1460,10 @@ export default function App() {
         sourceType: "condition_item",
         sourceRefId: rida.id,
         fundingPlan: [],
+        contingencyEnabled: false,
+        contingencyType: null,
+        contingencyPercent: null,
+        contingencyNote: "",
       };
       return { ...p, investments: { ...p.investments, items: [...p.investments.items, newInv] } };
     });
@@ -1529,6 +1554,10 @@ export default function App() {
       sourceType: "standalone",
       sourceRefId: null,
       fundingPlan: [],
+      contingencyEnabled: false,
+      contingencyType: null,
+      contingencyPercent: null,
+      contingencyNote: "",
     };
     setPlan(p => ({ ...p, investments: { ...p.investments, items: [...p.investments.items, newInv] } }));
   };
@@ -1684,7 +1713,7 @@ export default function App() {
   // Auto-add one empty row when section is empty (setPlan, not addX — idempotent even if effect fires twice)
   useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [mkApartment({ label: "1" })] } })); }, [plan.building.apartments.length]);
   // Investeeringud algavad tühjana — luuakse ainult "Loo investeering" või "+ Lisa investeering" kaudu
-  useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0, selgitus: "" }] } })); }, [plan.budget.costRows.length]);
+  useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0, selgitus: "", forecastAdjustmentEnabled: false, forecastAdjustmentType: null, forecastAdjustmentPercent: null, forecastAdjustmentNote: "" }] } })); }, [plan.budget.costRows.length]);
   useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME" }), category: "Muu tulu", arvutus: "aastas", summaInput: "" }] } })); }, [plan.budget.incomeRows.length]);
 
   // Migreeri vanad tulukategooriad → Muu tulu või eemalda
