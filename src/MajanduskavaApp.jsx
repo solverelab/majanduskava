@@ -3428,8 +3428,9 @@ export default function App() {
               </div>
             </div>
 
-            {/* ── Koondvaade ── */}
+            {/* ── Plokk 3: Kavandatavad tulud ja kulud ── */}
             <div style={{ ...card, padding: 24 }}>
+              <div style={H3_STYLE}>Kavandatavad tulud ja kulud</div>
               {(() => {
                 const kvRow = { display: "flex", justifyContent: "space-between", fontSize: 14, color: N.sub, padding: "4px 0" };
                 const kvBold = { display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 600, color: N.text, padding: "6px 0", borderTop: `1px solid ${N.border}`, marginTop: 8 };
@@ -3469,36 +3470,10 @@ export default function App() {
 
                     <KokkuvoteKihistus data={kokkuvoteKihistus} />
 
-                    {valjaminekudPeriood > 0 && (
-                      <>
-                        {/* ── Perioodi väljaminekud ── */}
-                        <div style={{ fontWeight: 600, fontSize: 14, color: N.text, marginBottom: 8 }}>Perioodi väljaminekud</div>
-                        <div style={{ ...kvRow, paddingLeft: 16 }}>
-                          <span>Kommunaalteenused</span>
-                          <span style={mono}>{euroEE(kommunaalPeriood)}</span>
-                        </div>
-                        <div style={{ ...kvRow, paddingLeft: 16 }}>
-                          <span>Haldusteenused</span>
-                          <span style={mono}>{euroEE(haldusPeriood)}</span>
-                        </div>
-                        <div style={{ fontSize: 12, color: N.dim, paddingLeft: 16, marginTop: -2, marginBottom: 4 }}>
-                          {summarizeAllocationPolicy(plan.allocationPolicies?.maintenance)}
-                        </div>
-                        <div style={{ ...kvRow, paddingLeft: 16 }}>
-                          <span>Laenumaksed</span>
-                          <span style={mono}>{euroEE(laenumaksedPeriood)}</span>
-                        </div>
-                        <div style={{ ...kvBold, paddingLeft: 16 }}>
-                          <span>Kokku</span>
-                          <span style={mono}>{euroEE(valjaminekudPeriood)}</span>
-                        </div>
-                      </>
-                    )}
-
                     {tuludPeriood > 0 && (
                       <>
-                        {/* ── Perioodi tulud ── */}
-                        <div style={{ fontWeight: 600, fontSize: 14, color: N.text, marginTop: 16, marginBottom: 8 }}>Perioodi tulud</div>
+                        {/* ── Kavandatavad tulud (kategooriate kaupa) ── */}
+                        <div style={{ fontWeight: 600, fontSize: 14, color: N.text, marginBottom: 8 }}>Tulud</div>
                         <div style={{ ...kvRow, paddingLeft: 16 }}>
                           <span><span style={{ color: N.dim }}>Arvutatud kulude põhjal · </span>Kommunaalmaksed</span>
                           <span style={mono}>{euroEE(kommunaalTuluPeriood)}</span>
@@ -3518,22 +3493,32 @@ export default function App() {
                       </>
                     )}
 
-                    {/* ── VAHE ── */}
-                    {(valjaminekudPeriood > 0 || tuludPeriood > 0) && (
-                      <div style={{ ...kvHr, color: vahePeriood >= 0 ? N.text : "#c53030" }}>
-                        <span>{vahePeriood >= 0 ? "Ülejääk" : "Puudujääk"}</span>
-                        <span style={mono}>
-                          {vahePeriood >= 0 ? "+" : ""}{euroEE(vahePeriood)}
-                          <span style={{ fontSize: 14 }}> · {vahePeriood >= 0 ? "+" : ""}{euro(Math.round(vahePeriood / mEq))}/kuu</span>
-                          {vahePeriood >= 0 ? " ✓" : " ⚠"}
-                        </span>
-                      </div>
-                    )}
-
-                    {vahePeriood < 0 && (
-                      <div style={{ marginTop: 8, padding: 12, background: N.muted, border: `1px solid ${N.border}`, borderRadius: 8, fontSize: 14, color: "#c53030" }}>
-                        Tulud ei kata väljaminekuid. Puudujääk {euroEE(Math.abs(vahePeriood))} perioodis.
-                      </div>
+                    {valjaminekudPeriood > 0 && (
+                      <>
+                        {/* ── Kavandatavad kulud (gruppide kaupa) ── */}
+                        <div style={{ fontWeight: 600, fontSize: 14, color: N.text, marginTop: 16, marginBottom: 8 }}>Kulud</div>
+                        <div style={{ ...kvRow, paddingLeft: 16 }}>
+                          <span>Kommunaalkulud</span>
+                          <span style={mono}>{euroEE(kommunaalPeriood)}</span>
+                        </div>
+                        <div style={{ ...kvRow, paddingLeft: 16 }}>
+                          <span>Halduskulud</span>
+                          <span style={mono}>{euroEE(haldusPeriood)}</span>
+                        </div>
+                        <div style={{ fontSize: 12, color: N.dim, paddingLeft: 16, marginTop: -2, marginBottom: 4 }}>
+                          {summarizeAllocationPolicy(plan.allocationPolicies?.maintenance)}
+                        </div>
+                        {laenumaksedPeriood > 0 && (
+                          <div style={{ ...kvRow, paddingLeft: 16 }}>
+                            <span>Olemasolevad laenukohustused</span>
+                            <span style={mono}>{euroEE(laenumaksedPeriood)}</span>
+                          </div>
+                        )}
+                        <div style={{ ...kvBold, paddingLeft: 16 }}>
+                          <span>Kokku</span>
+                          <span style={mono}>{euroEE(valjaminekudPeriood)}</span>
+                        </div>
+                      </>
                     )}
 
                     {(rf.saldoAlgus || rf.laekuminePerioodis || rf.investRemondifondist || rf.saldoLopp) !== 0 && (
