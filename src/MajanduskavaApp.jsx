@@ -3477,7 +3477,6 @@ export default function App() {
               {(() => {
                 const kvRow = { display: "flex", justifyContent: "space-between", fontSize: 14, color: N.sub, padding: "4px 0" };
                 const kvBold = { display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 600, color: N.text, padding: "6px 0", borderTop: `1px solid ${N.border}`, marginTop: 8 };
-                const kvHr = { display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 600, padding: "8px 0", borderTop: `2px solid ${N.border}`, marginTop: 8 };
                 const mono = { fontFamily: "monospace" };
                 const mEq = derived.period.monthEq || 12;
 
@@ -3496,8 +3495,6 @@ export default function App() {
                 const laenumakseTuluPeriood = laenumaksedPeriood;
                 const muudTuludPeriood = Math.round(kopiiriondvaade.muudTuludKokku * mEq);
                 const tuludPeriood = kommunaalTuluPeriood + haldustasuPeriood + laenumakseTuluPeriood + muudTuludPeriood;
-
-                const vahePeriood = tuludPeriood - valjaminekudPeriood;
 
                 // Remondifond
                 const rf = remondifondiArvutus;
