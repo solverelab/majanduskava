@@ -3407,6 +3407,27 @@ export default function App() {
           <div style={tabStack}>
             <h1 style={H1_STYLE}>Majanduskava kokkuvõte ja print</h1>
 
+            {/* ── Päis: KÜ + periood + koostamise kuupäev ── */}
+            <div style={{ ...card, padding: 24 }}>
+              <div style={H3_STYLE}>Päis</div>
+              {kyData.nimi && <div style={{ padding: "4px 0" }}>{kyData.nimi}</div>}
+              {kyData.registrikood && <div style={{ padding: "4px 0", color: N.sub }}>{kyData.registrikood}</div>}
+              {kyData.aadress && <div style={{ padding: "4px 0", color: N.sub }}>{kyData.aadress}</div>}
+              <div style={{ padding: "4px 0" }}>
+                <span style={{ color: N.sub }}>Periood: </span>
+                {formatDateEE(plan.period.start)} – {formatDateEE(plan.period.end)}
+              </div>
+              <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ ...fieldLabel, marginBottom: 0, minWidth: 160 }}>Koostamise kuupäev</div>
+                <input
+                  type="date"
+                  value={plan.preparedAt || ""}
+                  onChange={(e) => setPlan(p => ({ ...p, preparedAt: e.target.value }))}
+                  style={{ ...inputStyle, width: 180 }}
+                />
+              </div>
+            </div>
+
             {/* ── Koondvaade ── */}
             <div style={{ ...card, padding: 24 }}>
               {(() => {
