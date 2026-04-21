@@ -1810,7 +1810,7 @@ export default function App() {
     setPlan(p => syncConditionItemPlannedYears(p));
   }, [plan.assetCondition?.items, plan.investments?.items]);
 
-  const SECS = ["Üldandmed", "Hoone seisukord ja tööd", "Kavandatud kulud", "Kavandatud tulud", "Fondid ja laen", "Maksed korteritele", "Kokkuvõte"];
+  const SECS = ["Üldandmed", "Hoone seisukord ja tööd", "Kavandatud kulud", "Kavandatud tulud", "Fondid ja laen", "Maksed korteritele", "Majanduskava kokkuvõte ja print"];
 
   const clearSection = (tabIdx) => {
     if (!window.confirm("Kas soovid selle jaotise andmed kustutada? Seda ei saa tagasi võtta.")) return;
@@ -3405,7 +3405,7 @@ export default function App() {
 
         {sec === 6 && (
           <div style={tabStack}>
-            <h1 style={H1_STYLE}>Kokkuvõte</h1>
+            <h1 style={H1_STYLE}>Majanduskava kokkuvõte ja print</h1>
 
             {/* ── Koondvaade ── */}
             <div style={{ ...card, padding: 24 }}>
