@@ -1,6 +1,11 @@
 // src/domain/planSchema.js
 const uid = () => Math.random().toString(36).slice(2, 9);
 
+export function todayYmd() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function mkApartment({ label = "", areaM2 = 0, notes = "" } = {}) {
   return { id: uid(), label, areaM2, notes };
 }
@@ -45,6 +50,7 @@ export function mkLoan({
 export function defaultPlan({ year = new Date().getFullYear() } = {}) {
   return {
     profile: { name: "Korteriühistu majanduskava" },
+    preparedAt: todayYmd(),
     period: {
       year,
       start: "",

@@ -1,6 +1,6 @@
 // src/App.jsx
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { defaultPlan, mkApartment, mkCashflowRow, mkInvestmentItem, mkLoan, getEffectiveAllocationBasis, patchAllocationPolicy, deriveLegalBasisType } from "./domain/planSchema";
+import { defaultPlan, mkApartment, mkCashflowRow, mkInvestmentItem, mkLoan, getEffectiveAllocationBasis, patchAllocationPolicy, deriveLegalBasisType, todayYmd } from "./domain/planSchema";
 import { describeAllocationPolicy, summarizeAllocationPolicy } from "./domain/allocationBasisDisplay";
 import { buildMeetingMaterials, formatMeetingMaterialsText, formatWrittenVotingPackageText, isWrittenVotingDeadlineSoon } from "./domain/meetingMaterials";
 import { syncLoan } from "./utils/syncLoan";
@@ -1022,6 +1022,8 @@ export default function App() {
             allocationExplanation: r.allocationExplanation ?? "",
           }));
         }
+        // Migrate preparedAt — backward-compat: täida tänase kuupäevaga kui puudub
+        candidateState.preparedAt = candidateState.preparedAt ?? todayYmd();
         // Migrate allocationPolicies — lisa puuduv legalBasisType / legalBasisText
         if (candidateState.allocationPolicies) {
           for (const key of ["maintenance", "remondifond", "reserve"]) {
