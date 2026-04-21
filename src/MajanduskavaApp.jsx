@@ -638,8 +638,8 @@ export default function App() {
   const [avaKorterDetail, setAvaKorterDetail] = useState({});
   const [ehrTotalAreaM2, setEhrTotalAreaM2] = useState(null); // EHR pindalade summa, null = pole laetud
 
-  const onPrint = () => {
-    setPrintMode("full");
+  const onPrint = (mode = "full") => {
+    setPrintMode(mode);
     // Wait one frame for React to render all sections
     requestAnimationFrame(() => {
       document.body.classList.add("print-mode");
@@ -3859,10 +3859,18 @@ export default function App() {
               <button
                 style={{ ...btnSecondary, padding: "10px 16px", opacity: derived.controls.hasErrors ? 0.5 : 1 }}
                 disabled={derived.controls.hasErrors}
-                onClick={onPrint}
-                title={derived.controls.hasErrors ? "Paranda vead enne printimist" : "Prindi"}
+                onClick={() => onPrint("full")}
+                title={derived.controls.hasErrors ? "Paranda vead enne printimist" : "Prindi majanduskava"}
               >
-                Prindi kokkuvõte
+                Prindi majanduskava
+              </button>
+              <button
+                style={{ ...btnSecondary, padding: "10px 16px", opacity: derived.controls.hasErrors ? 0.5 : 1 }}
+                disabled={derived.controls.hasErrors}
+                onClick={() => onPrint("apartments")}
+                title={derived.controls.hasErrors ? "Paranda vead enne printimist" : "Prindi korteripõhine maksete lisa"}
+              >
+                Prindi korteripõhine maksete lisa
               </button>
               {(() => {
                 const puudulikud = plan.budget.costRows.filter(r => {
@@ -4090,8 +4098,9 @@ export default function App() {
               )}
             </div>
           )}
-          <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 24 }}>Majanduskava eelnõu</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 24 }}>{printMode === "apartments" ? "Korteripõhine maksete lisa" : "Majanduskava eelnõu"}</h1>
 
+          {printMode === "full" && (<>
           {(plan.draftApproval?.isLocked || plan.materialsPackage?.isCreated || plan.writtenVotingPackage?.isCreated) && (
             <div style={{ fontSize: 12, color: "#444", marginBottom: 16 }}>
               {plan.draftApproval?.isLocked && (
@@ -4358,6 +4367,8 @@ export default function App() {
             )}
           </div>
 
+          </>)}
+
           {/* Korterite maksed */}
           <div className="print-section">
             <h2 className="print-section-title">Korteriomanike kuumaksed</h2>
@@ -4401,6 +4412,7 @@ export default function App() {
             })()}
           </div>
 
+          {printMode === "full" && (<>
           {/* Kokkuvõte */}
           <div className="print-section">
             <h2 className="print-section-title">Kokkuvõte</h2>
@@ -4507,6 +4519,7 @@ export default function App() {
               );
             })()}
           </div>
+          </>)}
         </div>
       )}
       </main>
