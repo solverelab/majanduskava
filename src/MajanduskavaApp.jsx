@@ -2,7 +2,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { defaultPlan, mkApartment, mkCashflowRow, mkInvestmentItem, mkLoan, getEffectiveAllocationBasis, patchAllocationPolicy, deriveLegalBasisType, todayYmd } from "./domain/planSchema";
 import { describeAllocationPolicy, summarizeAllocationPolicy } from "./domain/allocationBasisDisplay";
-import { buildMeetingMaterials } from "./domain/meetingMaterials";
 import { syncLoan } from "./utils/syncLoan";
 import { normalizeInvestmentsField, cleanAssetConditionInvestmentFields } from "./utils/importNormalize";
 import { cleanupOrphanLinkedLoans } from "./utils/planCleanup";
@@ -728,42 +727,6 @@ export default function App() {
     }
   };
 
-  // Plaani sisu signatuur: jätame välja mõlemad meta-kihid (draftApproval + materialsPackage),
-  // et mõlemad saaksid enda signatuuri arvutada sama plaani-sisu aluselt ja teineteist ei mõjutaks.
-  const planSignatureForApproval = (p) => buildStateSignature({ ...p, draftApproval: undefined, materialsPackage: undefined, writtenVotingPackage: undefined });
-
-  const onApproveDraft = () => {
-    setPlan(p => ({
-      ...p,
-      draftApproval: {
-        isLocked: true,
-        lockedAt: new Date().toISOString(),
-        stateSignature: planSignatureForApproval(p),
-      },
-    }));
-  };
-
-  const onMarkMaterialsReady = () => {
-    setPlan(p => {
-      const da = p.draftApproval || { isLocked: false, stateSignature: null };
-      const approvalStatus = !da.isLocked
-        ? "unlocked"
-        : (da.stateSignature === planSignatureForApproval(p) ? "match" : "mismatch");
-      const items = buildMeetingMaterials(p, { approvalStatus }).materials;
-      return {
-        ...p,
-        materialsPackage: {
-          isCreated: true,
-          createdAt: new Date().toISOString(),
-          stateSignature: planSignatureForApproval(p),
-          items,
-        },
-      };
-    });
-  };
-
-  const [writtenVotingDeadline, setWrittenVotingDeadline] = useState("");
-
   // Grammatikakontrolli UI-state — AINULT vabatekstiväljade tarbeks.
   // Ei sisalda summasid, kategooriaid, fundingPlani, nimetusi ega jaotusi.
   // Canonical tekst plaani peal jääb puutumata, kuni kasutaja kinnitab ettepaneku.
@@ -891,28 +854,6 @@ export default function App() {
       </div>
     );
   };
-  const onCreateWrittenVotingPackage = () => {
-    if (!writtenVotingDeadline) return; // deadline kohustuslik
-    setPlan(p => {
-      const da = p.draftApproval || { isLocked: false, stateSignature: null };
-      const approvalStatus = !da.isLocked
-        ? "unlocked"
-        : (da.stateSignature === planSignatureForApproval(p) ? "match" : "mismatch");
-      const m = buildMeetingMaterials(p, { approvalStatus });
-      return {
-        ...p,
-        writtenVotingPackage: {
-          isCreated: true,
-          createdAt: new Date().toISOString(),
-          stateSignature: planSignatureForApproval(p),
-          deadline: writtenVotingDeadline,
-          agendaItems: m.agenda,
-          materialItems: m.materials,
-        },
-      };
-    });
-  };
-
   const onExportJSON = () => {
     const bundle = {
       schemaVersion: "majanduskavaExport/v2",
