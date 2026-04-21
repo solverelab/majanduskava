@@ -3659,6 +3659,41 @@ export default function App() {
               </div>
             </div>
 
+            {/* ── Plokk 5: Kütus / soojus / vesi ja kanalisatsioon / elekter ── */}
+            {(() => {
+              const utilityRows = plan.budget.costRows.filter(r => utilityTypeForRow(r) && (parseFloat(r.summaInput) || 0) > 0);
+              if (utilityRows.length === 0) return null;
+              return (
+                <div style={{ ...card, padding: 24 }}>
+                  <div style={H3_STYLE}>Kütus / soojus / vesi ja kanalisatsioon / elekter</div>
+                  <div style={tableWrap}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                      <thead>
+                        <tr style={thRow}>
+                          <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Liik</th>
+                          <th style={{ padding: "8px 12px 8px 0", textAlign: "right" }}>Prognoositav kogus</th>
+                          <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Ühik</th>
+                          <th style={{ padding: "8px 0", textAlign: "right" }}>Maksumus</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {utilityRows.map(r => (
+                          <tr key={r.id} style={tdSep}>
+                            <td style={{ padding: "8px 12px 8px 0" }}>
+                              {r.category}{r.name ? <> · <span style={{ color: N.sub }}>{r.name}</span></> : null}
+                            </td>
+                            <td style={{ padding: "8px 12px 8px 0", textAlign: "right", fontFamily: "monospace" }}>{r.kogus || ""}</td>
+                            <td style={{ padding: "8px 12px 8px 0" }}>{r.uhik || ""}</td>
+                            <td style={{ padding: "8px 0", textAlign: "right", fontFamily: "monospace" }}>{euroEE(r.calc?.params?.amountEUR || 0)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
+
             {showTechnicalInfo && (
               <>
                 {/* ── Poliitika & soovitused ── */}
