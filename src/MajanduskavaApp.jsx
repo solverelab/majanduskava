@@ -3428,6 +3428,49 @@ export default function App() {
               </div>
             </div>
 
+            {/* ── Plokk 2: Kaasomandi eseme seisukord ja kavandatavad toimingud ── */}
+            {seisukord.length > 0 && seisukord.some(r => r.ese) && (
+              <div style={{ ...card, padding: 24 }}>
+                <div style={H3_STYLE}>Kaasomandi eseme seisukord ja kavandatavad toimingud</div>
+                <div style={tableWrap}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                    <thead>
+                      <tr style={thRow}>
+                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Objekt</th>
+                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Seisukorra lühiselgitus</th>
+                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Kavandatav tegevus</th>
+                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Periood</th>
+                        <th style={{ padding: "8px 12px 8px 0", textAlign: "right" }}>Maksumus</th>
+                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Muud investeeringud</th>
+                        <th style={{ padding: "8px 0", textAlign: "left" }}>Finantseerimisallikas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {seisukord.filter(r => r.ese).map(s => {
+                        const inv = plan.investments.items.find(i => i.sourceRefId === s.id);
+                        const invCounted = inv && isInvestmentCounted(inv);
+                        const maksumus = invCounted ? euroEE(inv.totalCostEUR) : (s.eeldatavKulu ? euroEE(s.eeldatavKulu) : "");
+                        const allikad = invCounted
+                          ? (inv.fundingPlan || []).filter(fp => (fp.source || "").trim()).map(fp => `${fp.source}: ${euroEE(fp.amountEUR)}`).join(", ")
+                          : "";
+                        return (
+                          <tr key={s.id} style={tdSep}>
+                            <td style={{ padding: "8px 12px 8px 0" }}>{s.ese}</td>
+                            <td style={{ padding: "8px 12px 8px 0" }}>{s.seisukordVal || ""}</td>
+                            <td style={{ padding: "8px 12px 8px 0" }}>{s.tegevus || ""}</td>
+                            <td style={{ padding: "8px 12px 8px 0" }}>{s.tegevusAasta || ""}</td>
+                            <td style={{ padding: "8px 12px 8px 0", textAlign: "right", fontFamily: "monospace" }}>{maksumus}</td>
+                            <td style={{ padding: "8px 12px 8px 0" }}>{invCounted ? (inv.name || "—") : ""}</td>
+                            <td style={{ padding: "8px 0" }}>{allikad}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* ── Plokk 3: Kavandatavad tulud ja kulud ── */}
             <div style={{ ...card, padding: 24 }}>
               <div style={H3_STYLE}>Kavandatavad tulud ja kulud</div>
