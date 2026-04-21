@@ -2,7 +2,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { defaultPlan, mkApartment, mkCashflowRow, mkInvestmentItem, mkLoan, getEffectiveAllocationBasis, patchAllocationPolicy, deriveLegalBasisType, todayYmd } from "./domain/planSchema";
 import { describeAllocationPolicy, summarizeAllocationPolicy } from "./domain/allocationBasisDisplay";
-import { buildMeetingMaterials, formatMeetingMaterialsText, formatWrittenVotingPackageText, isWrittenVotingDeadlineSoon } from "./domain/meetingMaterials";
+import { buildMeetingMaterials } from "./domain/meetingMaterials";
 import { syncLoan } from "./utils/syncLoan";
 import { normalizeInvestmentsField, cleanAssetConditionInvestmentFields } from "./utils/importNormalize";
 import { cleanupOrphanLinkedLoans } from "./utils/planCleanup";
