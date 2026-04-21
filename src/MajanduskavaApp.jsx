@@ -3598,6 +3598,67 @@ export default function App() {
               })()}
             </div>
 
+            {/* ── Plokk 4: Korteriomanike kohustuste jaotus majandamiskulude kandmisel ── */}
+            <div style={{ ...card, padding: 24 }}>
+              <div style={H3_STYLE}>Korteriomanike kohustuste jaotus majandamiskulude kandmisel</div>
+              <div style={tableWrap}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                  <thead>
+                    <tr style={thRow}>
+                      <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Kululiik</th>
+                      <th style={{ padding: "8px 12px 8px 0", textAlign: "right" }}>Makse</th>
+                      <th style={{ padding: "8px 0", textAlign: "left" }}>Jaotamise alus</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {plan.budget.costRows.filter(r => (parseFloat(r.summaInput) || 0) > 0).map(r => {
+                      const basis = r.allocationBasis || "m2";
+                      const alus = basis === "m2" ? "" : jaotusalusSilt(basis);
+                      return (
+                        <tr key={r.id} style={tdSep}>
+                          <td style={{ padding: "8px 12px 8px 0" }}>
+                            {r.category ? <span style={{ color: N.sub }}>{r.category}{r.name ? " · " : ""}</span> : null}
+                            {r.name || (!r.category ? "—" : "")}
+                          </td>
+                          <td style={{ padding: "8px 12px 8px 0", textAlign: "right", fontFamily: "monospace" }}>
+                            {euroEE(r.calc?.params?.amountEUR || 0)}
+                          </td>
+                          <td style={{ padding: "8px 0" }}>{alus}</td>
+                        </tr>
+                      );
+                    })}
+                    {remondifondiArvutus.laekuminePerioodis > 0 && (() => {
+                      const basis = getEffectiveAllocationBasis(plan.allocationPolicies?.remondifond);
+                      const alus = basis === "m2" ? "" : jaotusalusSilt(basis);
+                      return (
+                        <tr style={tdSep}>
+                          <td style={{ padding: "8px 12px 8px 0" }}>Remondifondi makse</td>
+                          <td style={{ padding: "8px 12px 8px 0", textAlign: "right", fontFamily: "monospace" }}>{euroEE(remondifondiArvutus.laekuminePerioodis)}</td>
+                          <td style={{ padding: "8px 0" }}>{alus}</td>
+                        </tr>
+                      );
+                    })()}
+                    {(plan.funds.reserve.plannedEUR || 0) > 0 && (() => {
+                      const basis = getEffectiveAllocationBasis(plan.allocationPolicies?.reserve);
+                      const alus = basis === "m2" ? "" : jaotusalusSilt(basis);
+                      return (
+                        <tr style={tdSep}>
+                          <td style={{ padding: "8px 12px 8px 0" }}>Reservkapitali makse</td>
+                          <td style={{ padding: "8px 12px 8px 0", textAlign: "right", fontFamily: "monospace" }}>{euroEE(plan.funds.reserve.plannedEUR)}</td>
+                          <td style={{ padding: "8px 0" }}>{alus}</td>
+                        </tr>
+                      );
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <button style={btnSecondary} onClick={() => setSec(5)}>
+                  Ava korteripõhine maksete lisa
+                </button>
+              </div>
+            </div>
+
             {showTechnicalInfo && (
               <>
                 {/* ── Poliitika & soovitused ── */}
