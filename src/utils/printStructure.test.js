@@ -7,15 +7,15 @@ import { describe, it, expect, beforeAll } from "vitest";
 // ja et pealkirjad ei muutu kogemata.
 // ══════════════════════════════════════════════════════════════════════
 
-const EXPECTED_SECTIONS = [
-  "Üldandmed",
+// Pärast summary/print ümbertõstmist on print struktuur jagatud kahele haru:
+// - printMode === "full": Kaasomandi (tingimuslik), Kavandatud tulud, Kavandatud kulud
+// - printMode === "apartments": Korteriomanike kuumaksed
+// Plokid 4, 5, 6 lisanduvad järgnevate slice'ide kaupa.
+
+const FULL_MODE_SECTIONS_IN_ORDER = [
   "Kaasomandi eseme seisukord ja kavandatavad toimingud",
-  "Muud investeeringud",
-  "Kavandatud kulud",
   "Kavandatud tulud",
-  "Remondifond, reservkapital ja laen",
-  "Korteriomanike kuumaksed",
-  "Kokkuvõte",
+  "Kavandatud kulud",
 ];
 
 describe("print/PDF sektsioonide struktuur", () => {
@@ -30,60 +30,34 @@ describe("print/PDF sektsioonide struktuur", () => {
     );
   });
 
-  it("kõik 8 sektsiooni on olemas print-section-title klassiga", () => {
-    for (const title of EXPECTED_SECTIONS) {
-      const pattern = `print-section-title">${title}`;
-      expect(src).toContain(pattern);
-    }
-  });
-
-  it("sektsioonid on õiges järjekorras", () => {
-    const positions = EXPECTED_SECTIONS.map(title => {
+  it("full-mode sektsioonid on olemas õiges järjekorras", () => {
+    const positions = FULL_MODE_SECTIONS_IN_ORDER.map(title => {
       const idx = src.indexOf(`print-section-title">${title}`);
       expect(idx).toBeGreaterThan(-1);
       return idx;
     });
-
     for (let i = 1; i < positions.length; i++) {
       expect(positions[i]).toBeGreaterThan(positions[i - 1]);
     }
   });
 
-  it("alati-nähtavad sektsioonid ei ole tingimuslikus plokis", () => {
-    // Need sektsioonid peavad alati renderduma (ilma && tingimuseta)
-    const alwaysVisible = [
-      "Üldandmed",
-      "Kavandatud kulud",
-      "Kavandatud tulud",
-      "Remondifond, reservkapital ja laen",
-      "Korteriomanike kuumaksed",
-      "Kokkuvõte",
-    ];
-
-    for (const title of alwaysVisible) {
-      const idx = src.indexOf(`print-section-title">${title}`);
-      // Otsime tagasi lähima <div — see peab olema <div className="print-section">
-      // mitte tingimusliku && sees
-      const before = src.lastIndexOf("<div", idx);
-      const line = src.substring(before, idx);
-      expect(line).toContain('className="print-section"');
-    }
+  it("Korteriomanike kuumaksed sektsioon on olemas (apartments-mode)", () => {
+    expect(src).toContain('print-section-title">Korteriomanike kuumaksed');
   });
 
-  it("tingimuslikud sektsioonid on korrektse tingimusega", () => {
-    // Kaasomandi eseme seisukord ja kavandatavad toimingud: nähtav ainult kui seisukord on olemas
+  it("Kaasomandi sektsioon on tingimuslik (seisukord)", () => {
     const kaasomandIdx = src.indexOf('print-section-title">Kaasomandi eseme seisukord ja kavandatavad toimingud');
     const beforeKaasomand = src.substring(Math.max(0, kaasomandIdx - 200), kaasomandIdx);
     expect(beforeKaasomand).toMatch(/seisukord.*&&/);
-
-    // Muud investeeringud: nähtav ainult kui standalone investeeringud on olemas
-    const muudIdx = src.indexOf('print-section-title">Muud investeeringud');
-    const beforeMuud = src.substring(Math.max(0, muudIdx - 200), muudIdx);
-    expect(beforeMuud).toMatch(/standalone.*&&|investments.*&&/);
   });
 
   it("print-content plokk on isPrinting tingimusega", () => {
     expect(src).toMatch(/isPrinting && \(/);
     expect(src).toContain('className="print-content"');
+  });
+
+  it("print harud on gate'itud printMode järgi", () => {
+    expect(src).toContain('printMode === "full"');
+    expect(src).toContain('printMode === "apartments"');
   });
 });
