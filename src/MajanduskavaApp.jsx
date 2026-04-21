@@ -4249,6 +4249,115 @@ export default function App() {
             </div>
           </div>
 
+          {/* Plokk 4: Korteriomanike kohustuste jaotus majandamiskulude kandmisel */}
+          <div className="print-section">
+            <h2 className="print-section-title">Korteriomanike kohustuste jaotus majandamiskulude kandmisel</h2>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ textAlign: "left", fontSize: 14, borderBottom: "2px solid #000" }}>
+                  <th style={{ padding: "4px 8px" }}>Kululiik</th>
+                  <th style={{ padding: "4px 8px", textAlign: "right" }}>Makse</th>
+                  <th style={{ padding: "4px 8px" }}>Jaotamise alus</th>
+                </tr>
+              </thead>
+              <tbody>
+                {plan.budget.costRows.filter(r => (parseFloat(r.summaInput) || 0) > 0).map(r => {
+                  const basis = r.allocationBasis || "m2";
+                  const alus = basis === "m2" ? "" : jaotusalusSilt(basis);
+                  return (
+                    <tr key={r.id} style={{ borderBottom: "1px solid #ccc" }}>
+                      <td style={{ padding: "4px 8px" }}>
+                        {r.category ? <span style={{ color: "#666" }}>{r.category}{r.name ? " · " : ""}</span> : null}
+                        {r.name || (!r.category ? "—" : "")}
+                      </td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{euroEE(r.calc?.params?.amountEUR || 0)}</td>
+                      <td style={{ padding: "4px 8px" }}>{alus}</td>
+                    </tr>
+                  );
+                })}
+                {remondifondiArvutus.laekuminePerioodis > 0 && (() => {
+                  const basis = getEffectiveAllocationBasis(plan.allocationPolicies?.remondifond);
+                  const alus = basis === "m2" ? "" : jaotusalusSilt(basis);
+                  return (
+                    <tr style={{ borderBottom: "1px solid #ccc" }}>
+                      <td style={{ padding: "4px 8px" }}>Remondifondi makse</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{euroEE(remondifondiArvutus.laekuminePerioodis)}</td>
+                      <td style={{ padding: "4px 8px" }}>{alus}</td>
+                    </tr>
+                  );
+                })()}
+                {(plan.funds.reserve.plannedEUR || 0) > 0 && (() => {
+                  const basis = getEffectiveAllocationBasis(plan.allocationPolicies?.reserve);
+                  const alus = basis === "m2" ? "" : jaotusalusSilt(basis);
+                  return (
+                    <tr style={{ borderBottom: "1px solid #ccc" }}>
+                      <td style={{ padding: "4px 8px" }}>Reservkapitali makse</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{euroEE(plan.funds.reserve.plannedEUR)}</td>
+                      <td style={{ padding: "4px 8px" }}>{alus}</td>
+                    </tr>
+                  );
+                })()}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Plokk 5: Kütus / soojus / vesi ja kanalisatsioon / elekter */}
+          {(() => {
+            const utilityRows = plan.budget.costRows.filter(r => utilityTypeForRow(r) && (parseFloat(r.summaInput) || 0) > 0);
+            if (utilityRows.length === 0) return null;
+            return (
+              <div className="print-section">
+                <h2 className="print-section-title">Kütus / soojus / vesi ja kanalisatsioon / elekter</h2>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ textAlign: "left", fontSize: 14, borderBottom: "2px solid #000" }}>
+                      <th style={{ padding: "4px 8px" }}>Liik</th>
+                      <th style={{ padding: "4px 8px", textAlign: "right" }}>Prognoositav kogus</th>
+                      <th style={{ padding: "4px 8px" }}>Ühik</th>
+                      <th style={{ padding: "4px 8px", textAlign: "right" }}>Maksumus</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {utilityRows.map(r => (
+                      <tr key={r.id} style={{ borderBottom: "1px solid #ccc" }}>
+                        <td style={{ padding: "4px 8px" }}>
+                          {r.category}{r.name ? <> · <span style={{ color: "#666" }}>{r.name}</span></> : null}
+                        </td>
+                        <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{r.kogus || ""}</td>
+                        <td style={{ padding: "4px 8px" }}>{r.uhik || ""}</td>
+                        <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{euroEE(r.calc?.params?.amountEUR || 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+
+          {/* Plokk 6: Jaluse viited / lühiselgitused */}
+          {(() => {
+            const notes = [];
+            const rows = plan.budget.costRows.filter(r => (parseFloat(r.summaInput) || 0) > 0);
+            if (rows.some(r => r.legalBasisBylaws)) notes.push("Jaotatakse põhikirja alusel.");
+            if (rows.some(r => r.legalBasisSpecialAgreement)) notes.push("Jaotatakse erikokkuleppe alusel.");
+            if (rows.some(r => (r.allocationBasis || "m2") === "m2")) notes.push("Makse on arvutatud üldpinna alusel.");
+            if (rows.some(r => r.allocationBasis === "apartment" || r.allocationBasis === "korter")) notes.push("Makse on arvutatud korterite arvu alusel.");
+            if (loanStatus === "APPLIED" && plan.loans.some(l => l.sepiiriostudInvId)) notes.push("Laenumakse rakendub laenu võtmisel.");
+            if (remondifondiArvutus.laekuminePerioodis > 0) notes.push("Remondifondi makse kogutakse kavandatud tööde katteks.");
+            if ((plan.funds.reserve.plannedEUR || 0) > 0) notes.push("Reservkapital on määratud ettenägematute kulude katteks.");
+            if (rows.some(r => r.forecastAdjustmentEnabled)) notes.push("Sisaldab prognoosivaru.");
+            if ((plan.investments?.items || []).some(i => i.contingencyEnabled)) notes.push("Sisaldab ettenägematute kulude varu.");
+            if (notes.length === 0) return null;
+            return (
+              <div className="print-section">
+                <h2 className="print-section-title">Jaluse viited</h2>
+                <ol style={{ margin: 0, paddingLeft: 24, fontSize: 13, lineHeight: 1.6 }}>
+                  {notes.map((n, i) => <li key={i}>{n}</li>)}
+                </ol>
+              </div>
+            );
+          })()}
+
           </>)}
 
           {printMode === "apartments" && (

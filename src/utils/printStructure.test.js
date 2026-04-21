@@ -16,6 +16,9 @@ const FULL_MODE_SECTIONS_IN_ORDER = [
   "Kaasomandi eseme seisukord ja kavandatavad toimingud",
   "Kavandatud tulud",
   "Kavandatud kulud",
+  "Korteriomanike kohustuste jaotus majandamiskulude kandmisel",
+  "Kütus / soojus / vesi ja kanalisatsioon / elekter",
+  "Jaluse viited",
 ];
 
 describe("print/PDF sektsioonide struktuur", () => {
