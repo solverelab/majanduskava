@@ -3812,6 +3812,48 @@ export default function App() {
               </>
             )}
 
+            {/* ── Plokk 6: Jaluse viited / lühiselgitused ── */}
+            {(() => {
+              const notes = [];
+              const rows = plan.budget.costRows.filter(r => (parseFloat(r.summaInput) || 0) > 0);
+              if (rows.some(r => r.legalBasisBylaws)) {
+                notes.push("Jaotatakse põhikirja alusel.");
+              }
+              if (rows.some(r => r.legalBasisSpecialAgreement)) {
+                notes.push("Jaotatakse erikokkuleppe alusel.");
+              }
+              if (rows.some(r => (r.allocationBasis || "m2") === "m2")) {
+                notes.push("Makse on arvutatud üldpinna alusel.");
+              }
+              if (rows.some(r => r.allocationBasis === "apartment" || r.allocationBasis === "korter")) {
+                notes.push("Makse on arvutatud korterite arvu alusel.");
+              }
+              if (loanStatus === "APPLIED" && plan.loans.some(l => l.sepiiriostudInvId)) {
+                notes.push("Laenumakse rakendub laenu võtmisel.");
+              }
+              if (remondifondiArvutus.laekuminePerioodis > 0) {
+                notes.push("Remondifondi makse kogutakse kavandatud tööde katteks.");
+              }
+              if ((plan.funds.reserve.plannedEUR || 0) > 0) {
+                notes.push("Reservkapital on määratud ettenägematute kulude katteks.");
+              }
+              if (rows.some(r => r.forecastAdjustmentEnabled)) {
+                notes.push("Sisaldab prognoosivaru.");
+              }
+              if ((plan.investments?.items || []).some(i => i.contingencyEnabled)) {
+                notes.push("Sisaldab ettenägematute kulude varu.");
+              }
+              if (notes.length === 0) return null;
+              return (
+                <div style={{ ...card, padding: 24 }}>
+                  <div style={H3_STYLE}>Jaluse viited</div>
+                  <ol style={{ margin: 0, paddingLeft: 24, fontSize: 13, color: N.sub, lineHeight: 1.8 }}>
+                    {notes.map((n, i) => <li key={i}>{n}</li>)}
+                  </ol>
+                </div>
+              );
+            })()}
+
             {/* ── Prindi + Ekspordi nupud (always visible) ── */}
             <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
               <button
