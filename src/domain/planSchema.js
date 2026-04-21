@@ -9,12 +9,11 @@ export function mkCashflowRow({
   side = "COST",
   name = "",
   category = "",
-  jaotusalus = "m2",
   utilityType = null,
   legal = { bucket: "OPERATIONAL", category: "MAINTENANCE", targetedFund: null },
   calc = { type: "FIXED_PERIOD", params: { amountEUR: 0 } },
 } = {}) {
-  return { id: uid(), side, name, category, jaotusalus, utilityType, legal, calc };
+  return { id: uid(), side, name, category, utilityType, legal, calc };
 }
 
 export function mkInvestmentItem({

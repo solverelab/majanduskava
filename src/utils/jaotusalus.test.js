@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { kulureaOsa, jaotusalusSilt, computeRemondifondiArvutus, KOMMUNAALTEENUSED, HALDUSTEENUSED } from "./majanduskavaCalc";
-import { mkCashflowRow } from "../domain/planSchema";
 
 // ══════════════════════════════════════════════════════════════════════
 // jaotusalus — kulurea jaotusaluse testid
@@ -65,18 +64,6 @@ describe("kulureaOsa helper", () => {
   });
 });
 
-describe("mkCashflowRow jaotusalus väli", () => {
-  it("vaikimisi m2", () => {
-    const row = mkCashflowRow();
-    expect(row.jaotusalus).toBe("m2");
-  });
-
-  it("saab üle kirjutada", () => {
-    const row = mkCashflowRow({ jaotusalus: "korter" });
-    expect(row.jaotusalus).toBe("korter");
-  });
-});
-
 describe("tagasiühilduvus — puuduv jaotusalus", () => {
   it('vana rida ilma jaotusaluseta käitub nagu "m2"', () => {
     // Simuleerime vana importi — jaotusalus puudub
@@ -106,13 +93,6 @@ describe("computeRemondifondiArvutus ei muutu jaotusaluse tõttu", () => {
 });
 
 describe("serialize/import roundtrip", () => {
-  it("jaotusalus säilib JSON roundtrip'is", () => {
-    const row = mkCashflowRow({ category: "Prügivedu", jaotusalus: "korter" });
-    const json = JSON.stringify(row);
-    const parsed = JSON.parse(json);
-    expect(parsed.jaotusalus).toBe("korter");
-  });
-
   it("puuduv jaotusalus fallback pärast JSON parse'i", () => {
     const json = '{"id":"x","side":"COST","category":"Haldus"}';
     const parsed = JSON.parse(json);

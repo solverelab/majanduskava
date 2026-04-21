@@ -1304,7 +1304,7 @@ export default function App() {
         calc: { type: "FIXED_PERIOD", params: { amountEUR: 0 } },
       }),
       ...(side === "COST"
-        ? { category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0, jaotusalus: "m2", selgitus: "", forecastAdjustmentEnabled: false, forecastAdjustmentType: null, forecastAdjustmentPercent: null, forecastAdjustmentNote: "", allocationBasis: "m2", legalBasisBylaws: false, legalBasisSpecialAgreement: false, allocationExplanation: "" }
+        ? { category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0, selgitus: "", forecastAdjustmentEnabled: false, forecastAdjustmentType: null, forecastAdjustmentPercent: null, forecastAdjustmentNote: "", allocationBasis: "m2", legalBasisBylaws: false, legalBasisSpecialAgreement: false, allocationExplanation: "" }
         : { category: "Muu tulu", arvutus: "aastas", summaInput: "" }),
     };
     setPlan(p => ({
@@ -1354,22 +1354,6 @@ export default function App() {
       patch.kogus = undefined;
       patch.uhik = undefined;
       patch.uhikuHind = undefined;
-    }
-    // Maintenance-tundlik rida ei kanna enam legacy r.jaotusalus välja —
-    // efektiivne alus tuleb plan.allocationPolicies.maintenance kaudu.
-    if (HALDUSTEENUSED.includes(newKategooria)) {
-      setPlan(p => ({
-        ...p,
-        budget: {
-          ...p.budget,
-          costRows: p.budget.costRows.map(r => {
-            if (r.id !== id) return r;
-            const { jaotusalus: _drop, ...rest } = r;
-            return { ...rest, ...patch };
-          }),
-        },
-      }));
-      return;
     }
     updateRow("COST", id, patch);
   };
