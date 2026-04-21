@@ -632,13 +632,14 @@ export default function App() {
   const [importError, setImportError] = useState(null);
   const [pilotFeedbackOpen, setPilotFeedbackOpen] = useState(false);
   const [showTechnicalInfo, setShowTechnicalInfo] = useState(false);
-  const [isPrinting, setIsPrinting] = useState(false);
+  const [printMode, setPrintMode] = useState(null); // null | "full" | "apartments"
+  const isPrinting = printMode !== null;
 
   const [avaKorterDetail, setAvaKorterDetail] = useState({});
   const [ehrTotalAreaM2, setEhrTotalAreaM2] = useState(null); // EHR pindalade summa, null = pole laetud
 
   const onPrint = () => {
-    setIsPrinting(true);
+    setPrintMode("full");
     // Wait one frame for React to render all sections
     requestAnimationFrame(() => {
       document.body.classList.add("print-mode");
@@ -646,7 +647,7 @@ export default function App() {
         window.print();
       } finally {
         document.body.classList.remove("print-mode");
-        setIsPrinting(false);
+        setPrintMode(null);
       }
     });
   };
