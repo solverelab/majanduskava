@@ -14,7 +14,7 @@ import { AddressSearch } from "./components/AddressSearch";
 import {
   arvutaKuumakse, arvutaKuumakseExact,
   computeKopiiriondvaade, computeReserveMin, computeRemondifondiArvutus,
-  investmentStatus, kulureaOsa, jaotusalusSilt,
+  investmentStatus, kulureaOsa, jaotusalusSilt, getEffectiveRowAllocationBasis,
   UTILITY_TYPE_BY_CATEGORY, utilityTypeForRow, utilityRowStatus,
   KOMMUNAALTEENUSED, HALDUSTEENUSED, LAENUMAKSED,
 } from "./utils/majanduskavaCalc";
@@ -566,7 +566,7 @@ export default function App() {
         : v;
       const jaotusalus = HALDUSTEENUSED.includes(r.category)
         ? maintenanceBasis
-        : r.allocationBasis;
+        : getEffectiveRowAllocationBasis(r);
       return { category: r.category, kuus, jaotusalus };
     });
 
@@ -2423,19 +2423,30 @@ export default function App() {
                         </>
                       );
                     })() : (
-                      <>
-                        <select
-                          value={r.allocationBasis}
-                          onChange={(e) => updateRow("COST", r.id, { allocationBasis: e.target.value })}
-                          style={{ ...selectStyle, width: "100%" }}
-                        >
-                          <option value="m2">m²</option>
-                          <option value="apartment">korter</option>
-                        </select>
-                        <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>
-                          {r.allocationBasis === "apartment" ? "Jaotatakse võrdselt korterite vahel" : "Jaotatakse korteri pindala järgi"}
-                        </div>
-                      </>
+                      {(() => {
+                        const selectedBasis = r.allocationBasis || "m2";
+                        const needsWarning = selectedBasis !== "m2" && getEffectiveRowAllocationBasis(r) === "m2";
+                        return (
+                          <>
+                            <select
+                              value={selectedBasis}
+                              onChange={(e) => updateRow("COST", r.id, { allocationBasis: e.target.value })}
+                              style={{ ...selectStyle, width: "100%" }}
+                            >
+                              <option value="m2">m²</option>
+                              <option value="apartment">korter</option>
+                            </select>
+                            <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>
+                              {selectedBasis === "apartment" ? "Jaotatakse võrdselt korterite vahel" : "Jaotatakse korteri pindala järgi"}
+                            </div>
+                            {needsWarning && (
+                              <div style={{ fontSize: 12, color: "#b45309", marginTop: 4 }}>
+                                Õiguslik alus märkimata — arvutuses rakendatakse seadusjärgset alust (m²).
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     )}
                   </div>
 
@@ -3550,8 +3561,12 @@ export default function App() {
                   </thead>
                   <tbody>
                     {plan.budget.costRows.filter(r => (parseFloat(r.summaInput) || 0) > 0).map(r => {
-                      const basis = r.allocationBasis || "m2";
-                      const alus = basis === "m2" ? "" : jaotusalusSilt(basis);
+                      const effectiveBasis = HALDUSTEENUSED.includes(r.category)
+                        ? getEffectiveAllocationBasis(plan.allocationPolicies?.maintenance)
+                        : getEffectiveRowAllocationBasis(r);
+                      const selectedBasis = r.allocationBasis || "m2";
+                      const alus = jaotusalusSilt(effectiveBasis);
+                      const showSelectedNote = !HALDUSTEENUSED.includes(r.category) && selectedBasis !== effectiveBasis;
                       return (
                         <tr key={r.id} style={tdSep}>
                           <td style={{ padding: "8px 12px 8px 0" }}>
@@ -3561,7 +3576,13 @@ export default function App() {
                           <td style={{ padding: "8px 12px 8px 0", textAlign: "right", fontFamily: "monospace" }}>
                             {euroEE(r.calc?.params?.amountEUR || 0)}
                           </td>
-                          <td style={{ padding: "8px 0" }}>{alus}</td>
+                          <td style={{ padding: "8px 0" }}>
+                            {alus}
+                            {showSelectedNote && <div style={{ fontSize: 12, color: "#b45309" }}>Valitud: {jaotusalusSilt(selectedBasis)} (õiguslik alus puudub)</div>}
+                            {r.legalBasisBylaws && <div style={{ fontSize: 12, color: N.dim }}>Õiguslik alus: põhikiri</div>}
+                            {r.legalBasisSpecialAgreement && <div style={{ fontSize: 12, color: N.dim }}>Õiguslik alus: erikokkulepe</div>}
+                            {r.selgitus && <div style={{ fontSize: 12, color: N.dim }}>{r.selgitus}</div>}
+                          </td>
                         </tr>
                       );
                     })}
@@ -4168,7 +4189,7 @@ export default function App() {
                       {" "}<span style={{ fontSize: 12, color: "#999" }}>({jaotusalusSilt(
                         HALDUSTEENUSED.includes(r.category)
                           ? getEffectiveAllocationBasis(plan.allocationPolicies?.maintenance)
-                          : r.allocationBasis
+                          : getEffectiveRowAllocationBasis(r)
                       )})</span>
                     </span>
                     <span style={{ fontFamily: "monospace" }}>
@@ -4200,8 +4221,12 @@ export default function App() {
               </thead>
               <tbody>
                 {plan.budget.costRows.filter(r => (parseFloat(r.summaInput) || 0) > 0).map(r => {
-                  const basis = r.allocationBasis || "m2";
-                  const alus = basis === "m2" ? "" : jaotusalusSilt(basis);
+                  const effectiveBasis = HALDUSTEENUSED.includes(r.category)
+                    ? getEffectiveAllocationBasis(plan.allocationPolicies?.maintenance)
+                    : getEffectiveRowAllocationBasis(r);
+                  const selectedBasis = r.allocationBasis || "m2";
+                  const alus = jaotusalusSilt(effectiveBasis);
+                  const showSelectedNote = !HALDUSTEENUSED.includes(r.category) && selectedBasis !== effectiveBasis;
                   return (
                     <tr key={r.id} style={{ borderBottom: "1px solid #ccc" }}>
                       <td style={{ padding: "4px 8px" }}>
@@ -4209,7 +4234,13 @@ export default function App() {
                         {r.name || (!r.category ? "—" : "")}
                       </td>
                       <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{euroEE(r.calc?.params?.amountEUR || 0)}</td>
-                      <td style={{ padding: "4px 8px" }}>{alus}</td>
+                      <td style={{ padding: "4px 8px" }}>
+                        {alus}
+                        {showSelectedNote && <div style={{ fontSize: 12, color: "#666" }}>Valitud: {jaotusalusSilt(selectedBasis)} (õiguslik alus puudub)</div>}
+                        {r.legalBasisBylaws && <div style={{ fontSize: 12, color: "#666" }}>Õiguslik alus: põhikiri</div>}
+                        {r.legalBasisSpecialAgreement && <div style={{ fontSize: 12, color: "#666" }}>Õiguslik alus: erikokkulepe</div>}
+                        {r.selgitus && <div style={{ fontSize: 12, color: "#666" }}>{r.selgitus}</div>}
+                      </td>
                     </tr>
                   );
                 })}
@@ -4278,8 +4309,12 @@ export default function App() {
             const rows = plan.budget.costRows.filter(r => (parseFloat(r.summaInput) || 0) > 0);
             if (rows.some(r => r.legalBasisBylaws)) notes.push("Jaotatakse põhikirja alusel.");
             if (rows.some(r => r.legalBasisSpecialAgreement)) notes.push("Jaotatakse erikokkuleppe alusel.");
-            if (rows.some(r => (r.allocationBasis || "m2") === "m2")) notes.push("Makse on arvutatud üldpinna alusel.");
-            if (rows.some(r => r.allocationBasis === "apartment" || r.allocationBasis === "korter")) notes.push("Makse on arvutatud korterite arvu alusel.");
+            const rowEffectiveBasis = (r) =>
+              HALDUSTEENUSED.includes(r.category)
+                ? getEffectiveAllocationBasis(plan.allocationPolicies?.maintenance)
+                : getEffectiveRowAllocationBasis(r);
+            if (rows.some(r => rowEffectiveBasis(r) === "m2")) notes.push("Makse on arvutatud üldpinna alusel.");
+            if (rows.some(r => rowEffectiveBasis(r) === "apartment" || rowEffectiveBasis(r) === "korter")) notes.push("Makse on arvutatud korterite arvu alusel.");
             if (loanStatus === "APPLIED" && plan.loans.some(l => l.sepiiriostudInvId)) notes.push("Laenumakse rakendub laenu võtmisel.");
             if (remondifondiArvutus.laekuminePerioodis > 0) notes.push("Remondifondi makse kogutakse kavandatud tööde katteks.");
             if ((plan.funds.reserve.plannedEUR || 0) > 0) notes.push("Reservkapital on määratud ettenägematute kulude katteks.");

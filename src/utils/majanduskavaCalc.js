@@ -42,6 +42,17 @@ export function jaotusalusSilt(jaotusalus) {
   return "m² järgi";
 }
 
+// Reapõhise kulurea efektiivne jaotusalus (Valik B).
+// Kui valitud alus erineb seadusjärgsest (m²) ja puudub õiguslik alus,
+// tagastatakse kanoniliselt "m2". HALDUSTEENUSED on policy-põhised —
+// nende jaoks kasuta getEffectiveAllocationBasis allocationPolicies pealt.
+export function getEffectiveRowAllocationBasis(r) {
+  const raw = r.allocationBasis || "m2";
+  if (raw === "m2") return "m2";
+  if (r.legalBasisBylaws || r.legalBasisSpecialAgreement) return raw;
+  return "m2";
+}
+
 // Kulurea jaotusaluse osakaalu arvutus.
 // Kanoniline tõekoht: kõik korteritele jaotamised kasutavad seda.
 // Aktsepteerib mõlemat sõnastikku — vt jaotusalusSilt kommentaari.
