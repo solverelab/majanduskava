@@ -47,6 +47,11 @@ function formatYMEE(ym) {
 
 
 
+// p3 jaotusaluse silt — lõppvaate p3 tarbeks, ei muuda arvutusi ega muud UI-d.
+// "m² järgi" → täpsem KrtS § 58 viide kaasomandi osa mõttes.
+const p3AlusSilt = (basis) =>
+  (basis === "m2") ? "Kaasomandi osa järgi (m² järgi)" : jaotusalusSilt(basis);
+
 // ════════════════════════════════════════════════════════════════════════
 // Design tokens — single source of truth for the entire UI
 // ════════════════════════════════════════════════════════════════════════
@@ -3448,7 +3453,7 @@ export default function App() {
                   <thead>
                     <tr style={thRow}>
                       <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Kululiik</th>
-                      <th style={{ padding: "8px 12px 8px 0", textAlign: "right" }}>Makse</th>
+                      <th style={{ padding: "8px 12px 8px 0", textAlign: "right" }}>Makse perioodis</th>
                       <th style={{ padding: "8px 0", textAlign: "left" }}>Jaotamise alus</th>
                     </tr>
                   </thead>
@@ -3458,7 +3463,7 @@ export default function App() {
                         ? getEffectiveAllocationBasis(plan.allocationPolicies?.maintenance)
                         : getEffectiveRowAllocationBasis(r);
                       const selectedBasis = r.allocationBasis || "m2";
-                      const alus = jaotusalusSilt(effectiveBasis);
+                      const alus = p3AlusSilt(effectiveBasis);
                       const showSelectedNote = !HALDUSTEENUSED.includes(r.category) && selectedBasis !== effectiveBasis;
                       return (
                         <tr key={r.id} style={tdSep}>
@@ -3471,7 +3476,7 @@ export default function App() {
                           </td>
                           <td style={{ padding: "8px 0" }}>
                             {alus}
-                            {showSelectedNote && <div style={{ fontSize: 12, color: "#b45309" }}>Valitud: {jaotusalusSilt(selectedBasis)} (õiguslik alus puudub)</div>}
+                            {showSelectedNote && <div style={{ fontSize: 12, color: "#b45309" }}>Valitud: {p3AlusSilt(selectedBasis)} (õiguslik alus puudub)</div>}
                             {r.legalBasisBylaws && <div style={{ fontSize: 12, color: N.dim }}>Õiguslik alus: põhikiri</div>}
                             {r.legalBasisSpecialAgreement && <div style={{ fontSize: 12, color: N.dim }}>Õiguslik alus: erikokkulepe</div>}
                             {r.settledPostHoc && <div style={{ fontSize: 12, color: N.dim }}>Tasutakse pärast kulude suuruse selgumist</div>}
@@ -3482,7 +3487,7 @@ export default function App() {
                     })}
                     {remondifondiArvutus.laekuminePerioodis > 0 && (() => {
                       const basis = getEffectiveAllocationBasis(plan.allocationPolicies?.remondifond);
-                      const alus = jaotusalusSilt(basis);
+                      const alus = p3AlusSilt(basis);
                       return (
                         <tr style={tdSep}>
                           <td style={{ padding: "8px 12px 8px 0" }}>Remondifondi makse</td>
@@ -3498,7 +3503,7 @@ export default function App() {
                     })()}
                     {(plan.funds.reserve.plannedEUR || 0) > 0 && (() => {
                       const basis = getEffectiveAllocationBasis(plan.allocationPolicies?.reserve);
-                      const alus = jaotusalusSilt(basis);
+                      const alus = p3AlusSilt(basis);
                       return (
                         <tr style={tdSep}>
                           <td style={{ padding: "8px 12px 8px 0" }}>Reservkapitali makse</td>
@@ -3526,7 +3531,7 @@ export default function App() {
                             )}
                           </td>
                           <td style={{ padding: "8px 12px 8px 0", textAlign: "right", fontFamily: "monospace" }}>{euroEE(laenPeriood)}</td>
-                          <td style={{ padding: "8px 0" }}>{jaotusalusSilt("m2")}</td>
+                          <td style={{ padding: "8px 0" }}>{p3AlusSilt("m2")}</td>
                         </tr>
                       );
                     })()}
@@ -4194,7 +4199,7 @@ export default function App() {
               <thead>
                 <tr style={{ textAlign: "left", fontSize: 14, borderBottom: "2px solid #000" }}>
                   <th style={{ padding: "4px 8px" }}>Kululiik</th>
-                  <th style={{ padding: "4px 8px", textAlign: "right" }}>Makse</th>
+                  <th style={{ padding: "4px 8px", textAlign: "right" }}>Makse perioodis</th>
                   <th style={{ padding: "4px 8px" }}>Jaotamise alus</th>
                 </tr>
               </thead>
@@ -4204,7 +4209,7 @@ export default function App() {
                     ? getEffectiveAllocationBasis(plan.allocationPolicies?.maintenance)
                     : getEffectiveRowAllocationBasis(r);
                   const selectedBasis = r.allocationBasis || "m2";
-                  const alus = jaotusalusSilt(effectiveBasis);
+                  const alus = p3AlusSilt(effectiveBasis);
                   const showSelectedNote = !HALDUSTEENUSED.includes(r.category) && selectedBasis !== effectiveBasis;
                   return (
                     <tr key={r.id} style={{ borderBottom: "1px solid #ccc" }}>
@@ -4215,7 +4220,7 @@ export default function App() {
                       <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{euroEE(r.calc?.params?.amountEUR || 0)}</td>
                       <td style={{ padding: "4px 8px" }}>
                         {alus}
-                        {showSelectedNote && <div style={{ fontSize: 12, color: "#666" }}>Valitud: {jaotusalusSilt(selectedBasis)} (õiguslik alus puudub)</div>}
+                        {showSelectedNote && <div style={{ fontSize: 12, color: "#666" }}>Valitud: {p3AlusSilt(selectedBasis)} (õiguslik alus puudub)</div>}
                         {r.legalBasisBylaws && <div style={{ fontSize: 12, color: "#666" }}>Õiguslik alus: põhikiri</div>}
                         {r.legalBasisSpecialAgreement && <div style={{ fontSize: 12, color: "#666" }}>Õiguslik alus: erikokkulepe</div>}
                         {r.settledPostHoc && <div style={{ fontSize: 12, color: "#666" }}>Tasutakse pärast kulude suuruse selgumist</div>}
@@ -4226,7 +4231,7 @@ export default function App() {
                 })}
                 {remondifondiArvutus.laekuminePerioodis > 0 && (() => {
                   const basis = getEffectiveAllocationBasis(plan.allocationPolicies?.remondifond);
-                  const alus = jaotusalusSilt(basis);
+                  const alus = p3AlusSilt(basis);
                   return (
                     <tr style={{ borderBottom: "1px solid #ccc" }}>
                       <td style={{ padding: "4px 8px" }}>Remondifondi makse</td>
@@ -4242,7 +4247,7 @@ export default function App() {
                 })()}
                 {(plan.funds.reserve.plannedEUR || 0) > 0 && (() => {
                   const basis = getEffectiveAllocationBasis(plan.allocationPolicies?.reserve);
-                  const alus = jaotusalusSilt(basis);
+                  const alus = p3AlusSilt(basis);
                   return (
                     <tr style={{ borderBottom: "1px solid #ccc" }}>
                       <td style={{ padding: "4px 8px" }}>Reservkapitali makse</td>
@@ -4270,7 +4275,7 @@ export default function App() {
                         )}
                       </td>
                       <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{euroEE(laenPeriood)}</td>
-                      <td style={{ padding: "4px 8px" }}>{jaotusalusSilt("m2")}</td>
+                      <td style={{ padding: "4px 8px" }}>{p3AlusSilt("m2")}</td>
                     </tr>
                   );
                 })()}
