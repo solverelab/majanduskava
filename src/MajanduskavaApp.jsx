@@ -48,7 +48,7 @@ function formatYMEE(ym) {
 
 
 // p3 jaotusaluse silt — lõppvaate p3 tarbeks, ei muuda arvutusi ega muud UI-d.
-// "m² järgi" → täpsem KrtS § 58 viide kaasomandi osa mõttes.
+// p3 lõppvaate jaoks arusaadavam m²-põhise jaotuse silt
 const p3AlusSilt = (basis) =>
   (basis === "m2") ? "Kaasomandi osa järgi (m² järgi)" : jaotusalusSilt(basis);
 
@@ -1480,7 +1480,7 @@ export default function App() {
     const seotud = plan.loans.find(l => l.sepiiriostudInvId === investeeringId);
     if (!seotud) return;
     if (seotud.annualRatePct || seotud.termMonths) {
-      if (!window.confirm("Eemaldada ka seotud laenurida Fondid sektsioonist?")) {
+      if (!window.confirm("Eemaldada ka seotud laenurida Rahastamine sektsioonist?")) {
         setPlan(p => ({ ...p, loans: p.loans.map(l =>
           l.sepiiriostudInvId === investeeringId ? { ...l, sepiiriostudInvId: null } : l
         )}));
@@ -1817,7 +1817,7 @@ export default function App() {
                   <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>
                     {desc.hasOverride
                       ? `Õiguslik alus: ${desc.legalBasis}${desc.legalBasisNote ? " — " + desc.legalBasisNote : ""}`
-                      : "Vaikimisi jaotusalus"}
+                      : "Kaasomandi osa järgi (m² järgi)"}
                   </div>
                 </>
               );
@@ -1835,7 +1835,7 @@ export default function App() {
                     <option value="apartment">korter</option>
                   </select>
                   <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>
-                    {selectedBasis === "apartment" ? "Jaotatakse võrdselt korterite vahel" : "Jaotatakse korteri pindala järgi"}
+                    {selectedBasis === "apartment" ? "Korterite vahel võrdselt" : "Kaasomandi osa järgi (m² järgi)"}
                   </div>
                   {needsWarning && (
                     <div style={{ fontSize: 12, color: "#b45309", marginTop: 4 }}>
@@ -2630,7 +2630,7 @@ export default function App() {
                           Jaotusalus: {desc.basisLabel}
                           {desc.hasOverride
                             ? ` · Õiguslik alus: ${desc.legalBasis}${desc.legalBasisNote ? " — " + desc.legalBasisNote : ""}`
-                            : " · Vaikimisi jaotusalus"}
+                            : " · Kaasomandi osa järgi (m² järgi)"}
                         </div>
                       );
                     })()}
@@ -2818,7 +2818,7 @@ export default function App() {
                           Jaotusalus: {desc.basisLabel}
                           {desc.hasOverride
                             ? ` · Õiguslik alus: ${desc.legalBasis}${desc.legalBasisNote ? " — " + desc.legalBasisNote : ""}`
-                            : " · Vaikimisi jaotusalus"}
+                            : " · Kaasomandi osa järgi (m² järgi)"}
                         </div>
                       );
                     })()}
@@ -3412,10 +3412,12 @@ export default function App() {
               const rf = remondifondiArvutus;
               const reservPeriood = plan.funds.reserve.plannedEUR || 0;
               const hasRf = (rf.saldoAlgus || rf.laekuminePerioodis || rf.investRemondifondist || rf.saldoLopp) !== 0;
-              if (!hasRf && reservPeriood <= 0) return null;
               return (
                 <div style={{ ...card, padding: 24 }}>
                   <div style={H3_STYLE}>Remondifondi ja reservkapitali maksed</div>
+                  {!hasRf && reservPeriood <= 0 && (
+                    <p style={{ fontSize: 14, color: N.sub }}>Andmed on sisestamata.</p>
+                  )}
                   {hasRf && (
                     <>
                       <div style={{ fontSize: 12, fontWeight: 600, color: N.dim, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Remondifond</div>
@@ -3543,10 +3545,12 @@ export default function App() {
             {/* ── Plokk 8: Kütus / soojus / vesi ja kanalisatsioon / elekter ── */}
             {(() => {
               const utilityRows = plan.budget.costRows.filter(r => P5_KOMMUNAALTEENUSED.includes(r.category) && (parseFloat(r.summaInput) || 0) > 0);
-              if (utilityRows.length === 0) return null;
               return (
                 <div style={{ ...card, padding: 24 }}>
                   <div style={H3_STYLE}>Kütus / soojus / vesi ja kanalisatsioon / elekter</div>
+                  {utilityRows.length === 0 ? (
+                    <p style={{ fontSize: 14, color: N.sub }}>Andmed on sisestamata.</p>
+                  ) : (
                   <div style={tableWrap}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                       <thead>
@@ -3572,6 +3576,7 @@ export default function App() {
                       </tbody>
                     </table>
                   </div>
+                  )}
                 </div>
               );
             })()}
