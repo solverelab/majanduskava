@@ -83,7 +83,9 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded, onAddressSe
           setResults(hits);
           setOpen(hits.length > 0);
           setHighlightIdx(-1);
-        } catch {
+        } catch (err) {
+          console.error("[AddressSearch] otsing ebaõnnestus:", err);
+          setError("Aadressi otsing ebaõnnestus. Kontrolli võrguühendust.");
           setResults([]);
           setOpen(false);
           setHighlightIdx(-1);
@@ -120,8 +122,9 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded, onAddressSe
         } else {
           onApartmentsLoaded(apts);
         }
-      } catch {
-        setError("Korterite andmeid ei leitud. Sisesta käsitsi.");
+      } catch (err) {
+        console.error("[AddressSearch] korterite laadimine ebaõnnestus:", err);
+        setError("Korterite laadimine ebaõnnestus: " + (err.message || "tundmatu viga"));
       } finally {
         setLoading(false);
       }

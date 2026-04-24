@@ -1,67 +1,56 @@
 // src/utils/grammarCheck.test.js
 import { describe, it, expect } from "vitest";
-import { applyGrammarSuggestion, grammarStateKey, autoNormalizeText, normalizeIfChanged } from "./grammarCheck";
-
-describe("grammarStateKey", () => {
-  it("tagastab stabiilse stringi-võtme scope+id+field alusel", () => {
-    expect(grammarStateKey("cost", "r1", "selgitus")).toBe("cost:r1:selgitus");
-    expect(grammarStateKey("condition", "s1", "puudused")).toBe("condition:s1:puudused");
-  });
-});
+import { autoNormalizeText, normalizeIfChanged } from "./grammarCheck";
 
 describe("autoNormalizeText — automaatne konservatiivne parandus", () => {
-  it("topelt tühikud → üks tühik", () => {
-    expect(autoNormalizeText("foo  bar")).toBe("foo bar");
-    expect(autoNormalizeText("a    b    c")).toBe("a b c");
+  it("topelt tühikud → üks tühik (mitte-juhtivad)", () => {
+    expect(autoNormalizeText("foo  bar")).toBe("Foo bar");
+    expect(autoNormalizeText("a    b    c")).toBe("A b c");
   });
 
   it("trailing whitespace eemaldus (lõpus ja iga rea lõpus)", () => {
-    expect(autoNormalizeText("foo   ")).toBe("foo");
-    expect(autoNormalizeText("foo\t\t")).toBe("foo");
-    expect(autoNormalizeText("rida 1  \nrida 2  ")).toBe("rida 1\nrida 2");
+    expect(autoNormalizeText("foo   ")).toBe("Foo");
+    expect(autoNormalizeText("foo\t\t")).toBe("Foo");
+    expect(autoNormalizeText("rida 1  \nrida 2  ")).toBe("Rida 1\nrida 2");
   });
 
   it("tühik enne koma/punkti/;/:/!/? eemaldus", () => {
-    expect(autoNormalizeText("foo ,")).toBe("foo,");
-    expect(autoNormalizeText("foo .")).toBe("foo.");
-    expect(autoNormalizeText("foo ;")).toBe("foo;");
-    expect(autoNormalizeText("foo :")).toBe("foo:");
-    expect(autoNormalizeText("foo !")).toBe("foo!");
-    expect(autoNormalizeText("foo ?")).toBe("foo?");
+    expect(autoNormalizeText("foo ,")).toBe("Foo,");
+    expect(autoNormalizeText("foo .")).toBe("Foo.");
+    expect(autoNormalizeText("foo ;")).toBe("Foo;");
+    expect(autoNormalizeText("foo :")).toBe("Foo:");
+    expect(autoNormalizeText("foo !")).toBe("Foo!");
+    expect(autoNormalizeText("foo ?")).toBe("Foo?");
     expect(autoNormalizeText("Hello , world")).toBe("Hello, world");
   });
 
   it("puuduv tühik pärast koma/punkti/;/:/!/? lisatakse, kui järgmine on täht/number", () => {
-    expect(autoNormalizeText("foo,bar")).toBe("foo, bar");
-    expect(autoNormalizeText("foo.bar")).toBe("foo. bar");
-    expect(autoNormalizeText("foo;bar")).toBe("foo; bar");
-    expect(autoNormalizeText("foo:bar")).toBe("foo: bar");
-    expect(autoNormalizeText("foo!bar")).toBe("foo! bar");
-    expect(autoNormalizeText("foo?bar")).toBe("foo? bar");
-    expect(autoNormalizeText("foo,5")).toBe("foo, 5");
+    expect(autoNormalizeText("foo,bar")).toBe("Foo, bar");
+    expect(autoNormalizeText("foo.bar")).toBe("Foo. bar");
+    expect(autoNormalizeText("foo;bar")).toBe("Foo; bar");
+    expect(autoNormalizeText("foo:bar")).toBe("Foo: bar");
+    expect(autoNormalizeText("foo!bar")).toBe("Foo! bar");
+    expect(autoNormalizeText("foo?bar")).toBe("Foo? bar");
+    expect(autoNormalizeText("foo,5")).toBe("Foo, 5");
     expect(autoNormalizeText("Lorem.Ipsum.Dolor")).toBe("Lorem. Ipsum. Dolor");
-    expect(autoNormalizeText("ärä,öäe")).toBe("ärä, öäe"); // eesti tähti toetab
+    expect(autoNormalizeText("ärä,öäe")).toBe("Ärä, öäe"); // eesti tähti toetab
   });
 
   it(".. / !! / ?? / ,, → üks märk", () => {
-    expect(autoNormalizeText("foo..")).toBe("foo.");
-    expect(autoNormalizeText("foo...")).toBe("foo.");
-    expect(autoNormalizeText("foo!!")).toBe("foo!");
-    expect(autoNormalizeText("foo??")).toBe("foo?");
-    expect(autoNormalizeText("foo,,")).toBe("foo,");
+    expect(autoNormalizeText("foo..")).toBe("Foo.");
+    expect(autoNormalizeText("foo...")).toBe("Foo.");
+    expect(autoNormalizeText("foo!!")).toBe("Foo!");
+    expect(autoNormalizeText("foo??")).toBe("Foo?");
+    expect(autoNormalizeText("foo,,")).toBe("Foo,");
   });
 
   it("ei muuda stringe, kus parandust vaja ei ole", () => {
     expect(autoNormalizeText("")).toBe("");
-    expect(autoNormalizeText("a")).toBe("a");
+    expect(autoNormalizeText("A")).toBe("A");
     expect(autoNormalizeText("Tere.")).toBe("Tere.");
     expect(autoNormalizeText("Lorem ipsum, dolor sit amet.")).toBe("Lorem ipsum, dolor sit amet.");
     expect(autoNormalizeText("Kas see töötab?")).toBe("Kas see töötab?");
-    expect(autoNormalizeText("rida 1\nrida 2")).toBe("rida 1\nrida 2");
-  });
-
-  it("ei muuda lause alguse tähte (teadlikult väljas)", () => {
-    expect(autoNormalizeText("see on väiketähega algus.")).toBe("see on väiketähega algus.");
+    expect(autoNormalizeText("Rida 1\nrida 2")).toBe("Rida 1\nrida 2");
   });
 
   it("ei puuduta mitte-string sisendit", () => {
@@ -73,6 +62,30 @@ describe("autoNormalizeText — automaatne konservatiivne parandus", () => {
   it("kombineeritud reeglid ühel käigul", () => {
     expect(autoNormalizeText("Tere  ,maailm..  Uus  lause !"))
       .toBe("Tere, maailm. Uus lause!");
+  });
+
+  it("esimene sisuline täht suureks — lihtne väiketäht alguses", () => {
+    expect(autoNormalizeText("tere maailm")).toBe("Tere maailm");
+  });
+
+  it("esimene sisuline täht suureks — alguses tühikud + väiketäht", () => {
+    expect(autoNormalizeText("   tere maailm")).toBe("   Tere maailm");
+  });
+
+  it("esimene sisuline täht suureks — juba suur algustäht → muutus puudub", () => {
+    expect(autoNormalizeText("Ära tee midagi")).toBe("Ära tee midagi");
+  });
+
+  it("esimene sisuline täht suureks — algab numbriga → muutus puudub", () => {
+    expect(autoNormalizeText("123 abc")).toBe("123 abc");
+  });
+
+  it("esimene sisuline täht suureks — algab kirjavahemärgiga → muutus puudub", () => {
+    expect(autoNormalizeText("- tere")).toBe("- tere");
+  });
+
+  it("esimene sisuline täht suureks — tühi string → muutus puudub", () => {
+    expect(autoNormalizeText("")).toBe("");
   });
 });
 
@@ -114,38 +127,5 @@ describe("normalizeIfChanged — kutsub apply'i AINULT siis, kui väärtus on te
     normalizeIfChanged("Tere, maailm.", () => { calls++; });
     normalizeIfChanged("Tere, maailm.", () => { calls++; });
     expect(calls).toBe(0);
-  });
-});
-
-describe("applyGrammarSuggestion", () => {
-  it("asendab [offset, offset+length) valitud asendusega", () => {
-    const out = applyGrammarSuggestion("vanna tuba", { offset: 0, length: 5, message: "", replacements: ["vann"] }, "vann");
-    expect(out).toBe("vann tuba");
-  });
-
-  it("tagastab algse teksti, kui suggestion on vigane", () => {
-    expect(applyGrammarSuggestion("abc", null, "x")).toBe("abc");
-    expect(applyGrammarSuggestion("abc", {}, "x")).toBe("abc");
-  });
-
-  it("tagastab algse teksti, kui offset on vahemikust väljas", () => {
-    expect(applyGrammarSuggestion("abc", { offset: -1, length: 1, replacements: [] }, "x")).toBe("abc");
-    expect(applyGrammarSuggestion("abc", { offset: 99, length: 1, replacements: [] }, "x")).toBe("abc");
-  });
-
-  it("piirab asenduse lõppu stringi pikkusega (kaitse üle lõpu)", () => {
-    const out = applyGrammarSuggestion("abc", { offset: 2, length: 10, replacements: ["ZZ"] }, "ZZ");
-    expect(out).toBe("abZZ");
-  });
-
-  it("ei kirjuta kanoonilist sisendit — funktsioon on puhas", () => {
-    const input = "algne tekst";
-    applyGrammarSuggestion(input, { offset: 0, length: 5, replacements: [] }, "uus");
-    expect(input).toBe("algne tekst");
-  });
-
-  it("tühja asenduse korral tagastab ilma ala eemaldamisega", () => {
-    const out = applyGrammarSuggestion("aaa bbb ccc", { offset: 4, length: 3, replacements: [""] }, "");
-    expect(out).toBe("aaa  ccc");
   });
 });

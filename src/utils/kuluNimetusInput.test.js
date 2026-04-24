@@ -25,8 +25,8 @@ describe("KuluRidaEditor definitsioonimuster", () => {
     // Vana muster: `const KuluRidaEditor = ({ r }) =>` — React komponent IIFE sees
     expect(src).not.toMatch(/const\s+KuluRidaEditor\s*=\s*\(\s*\{/);
 
-    // Uus muster: `const kuluRidaEditor = (r) =>` — tavaline funktsioon
-    expect(src).toMatch(/const\s+kuluRidaEditor\s*=\s*\(r\)\s*=>/);
+    // Uus muster: `const kuluRidaEditor = (r, ...) =>` — tavaline funktsioon (parameetrite arv võib kasvada)
+    expect(src).toMatch(/const\s+kuluRidaEditor\s*=\s*\(r[^)]*\)\s*=>/);
   });
 
   it("renderRow ei loo KuluRidaEditor JSX elementi", async () => {
@@ -38,8 +38,9 @@ describe("KuluRidaEditor definitsioonimuster", () => {
     // Vana: <KuluRidaEditor — loob komponendi, mis remount'itakse
     expect(src).not.toMatch(/<KuluRidaEditor\s/);
 
-    // Uus: kutsub otse funktsiooni kuluRidaEditor(r)
-    expect(src).toMatch(/kuluRidaEditor\(r\)/);
+    // Uus: kutsub otse funktsiooni kuluRidaEditor(r, ...) — r on alati esimene argument
+    expect(src).toMatch(/kuluRidaEditor\(r[,)]/);
+
   });
 
   it("iga kulurida key põhineb r.id-l, mitte muutuval väärtusel", async () => {

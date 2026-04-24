@@ -48,10 +48,12 @@ describe("print/PDF sektsioonide struktuur", () => {
     expect(src).toContain('print-section-title">Korteriomanike kuumaksed');
   });
 
-  it("Kaasomandi sektsioon on tingimuslik (seisukord)", () => {
+  it("Kaasomandi sektsioon renderdub alati (fallback tekst kui andmed puuduvad)", () => {
+    // p1 renderdub alati — tingimuslikku peitmist enam pole
     const kaasomandIdx = src.indexOf('print-section-title">Kaasomandi eseme seisukord ja kavandatavad toimingud');
-    const beforeKaasomand = src.substring(Math.max(0, kaasomandIdx - 200), kaasomandIdx);
-    expect(beforeKaasomand).toMatch(/seisukord.*&&/);
+    expect(kaasomandIdx).toBeGreaterThan(-1);
+    // Fallback tekst peab olema olemas (kuvatakse kui seisukorra ridu pole)
+    expect(src).toContain("Kaasomandi eseme seisukorra andmed on sisestamata.");
   });
 
   it("print-content plokk on isPrinting tingimusega", () => {

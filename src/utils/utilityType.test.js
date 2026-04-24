@@ -10,16 +10,16 @@ import { mkCashflowRow } from "../domain/planSchema";
 // ══════════════════════════════════════════════════════════════════════
 
 describe("UTILITY_TYPE_BY_CATEGORY mapping", () => {
-  it("katab kõik 4 p 5 liiki", () => {
+  it("katab kõik p 5 liiki", () => {
     expect(UTILITY_TYPE_BY_CATEGORY["Soojus"]).toBe("heat");
     expect(UTILITY_TYPE_BY_CATEGORY["Kütus"]).toBe("fuel");
     expect(UTILITY_TYPE_BY_CATEGORY["Vesi ja kanalisatsioon"]).toBe("water_sewer");
     expect(UTILITY_TYPE_BY_CATEGORY["Elekter"]).toBe("electricity");
+    expect(UTILITY_TYPE_BY_CATEGORY["Muu kommunaalteenus"]).toBe("other");
   });
 
   it("ei kata mitte-p5 kategooriaid", () => {
     expect(UTILITY_TYPE_BY_CATEGORY["Haldus"]).toBeUndefined();
-    expect(UTILITY_TYPE_BY_CATEGORY["Muu kommunaalteenus"]).toBeUndefined();
     expect(UTILITY_TYPE_BY_CATEGORY["Prügivedu"]).toBeUndefined();
   });
 });

@@ -14,6 +14,7 @@ export const UTILITY_TYPE_BY_CATEGORY = {
   "Kütus": "fuel",
   "Vesi ja kanalisatsioon": "water_sewer",
   "Elekter": "electricity",
+  "Muu kommunaalteenus": "other",
 };
 
 // Tagastab rea utilityType: eksplitsiitne väli või category fallback.
@@ -120,6 +121,7 @@ export function computeKopiiriondvaade(costRows, incomeRows, loans, monthEq, loa
     const v = Math.max(0, parseFloat(r.summaInput) || 0);
     return {
       kategooria: r.category,
+      settledPostHoc: r.settledPostHoc === true,
       summaKuus: KOMMUNAALTEENUSED.includes(r.category)
         ? v / mEq
         : r.arvutus === "aastas" ? v / 12
@@ -144,7 +146,7 @@ export function computeKopiiriondvaade(costRows, incomeRows, loans, monthEq, loa
   }));
 
   const kommunaalKokku = Math.round(kulud
-    .filter(k => KOMMUNAALTEENUSED.includes(k.kategooria))
+    .filter(k => KOMMUNAALTEENUSED.includes(k.kategooria) && !k.settledPostHoc)
     .reduce((sum, k) => sum + (parseFloat(k.summaKuus) || 0), 0));
 
   const haldusKokku = Math.round(kulud
@@ -152,7 +154,7 @@ export function computeKopiiriondvaade(costRows, incomeRows, loans, monthEq, loa
     .reduce((sum, k) => sum + (parseFloat(k.summaKuus) || 0), 0));
 
   const kommunaalPeriood = costRows
-    .filter(r => KOMMUNAALTEENUSED.includes(r.category))
+    .filter(r => KOMMUNAALTEENUSED.includes(r.category) && !r.settledPostHoc)
     .reduce((sum, r) => sum + (Math.round(parseFloat(r.summaInput) || 0)), 0);
 
   const haldusPeriood = costRows
