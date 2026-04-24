@@ -14,8 +14,8 @@ import { describe, it, expect, beforeAll } from "vitest";
 
 const FULL_MODE_SECTIONS_IN_ORDER = [
   "Kaasomandi eseme seisukord ja kavandatavad toimingud",
-  "Kavandatud tulud",
-  "Kavandatud kulud",
+  "Kavandatavad tulud",
+  "Kavandatavad kulud",
   "Korteriomanike kohustuste jaotus majandamiskulude kandmisel",
   "Kütus / soojus / vesi ja kanalisatsioon / elekter",
   "Jaluse viited",

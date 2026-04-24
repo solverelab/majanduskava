@@ -3986,7 +3986,7 @@ export default function App() {
 
           {/* Tulud */}
           <div className="print-section">
-            <h2 className="print-section-title">Kavandatud tulud</h2>
+            <h2 className="print-section-title">Kavandatavad tulud</h2>
             {(() => {
               const mEq = derived.period.monthEq || 12;
 
@@ -4032,30 +4032,50 @@ export default function App() {
 
           {/* Kulud */}
           <div className="print-section">
-            <h2 className="print-section-title">Kavandatud kulud</h2>
-            {(() => { const rows = plan.budget.costRows.filter(r => (parseFloat(r.summaInput) || 0) > 0); return rows.length === 0
-              ? <div>Kulusid pole lisatud.</div>
-              : rows.map(r => {
+            <h2 className="print-section-title">Kavandatavad kulud</h2>
+            {(() => {
+              const rows = plan.budget.costRows.filter(r => (parseFloat(r.summaInput) || 0) > 0);
+              if (rows.length === 0) return <div>Kulusid pole lisatud.</div>;
+              const p5Sum = rows
+                .filter(r => P5_KOMMUNAALTEENUSED.includes(r.category))
+                .reduce((s, r) => s + (r.calc?.params?.amountEUR || 0), 0);
+              let p5Rendered = false;
+              return rows.map(r => {
+                if (P5_KOMMUNAALTEENUSED.includes(r.category)) {
+                  if (p5Rendered) return null;
+                  p5Rendered = true;
+                  return (
+                    <div key="kommunaalid-kokku" style={{ padding: "4px 0", borderBottom: "1px solid #ccc" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>
+                          <span style={{ color: "#666" }}>Kommunaalteenused kokku</span>
+                          <div style={{ fontSize: 12, color: "#999", marginTop: 2 }}>Detailne kogus ja maksumus on esitatud kommunaalteenuste prognoosi plokis.</div>
+                        </span>
+                        <span style={{ fontFamily: "monospace" }}>{euroEE(p5Sum)}</span>
+                      </div>
+                    </div>
+                  );
+                }
                 return (
-                <div key={r.id} style={{ padding: "4px 0", borderBottom: "1px solid #ccc" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>
-                      {r.category ? <span style={{ color: "#666" }}>{r.category}</span> : null}
-                      {r.category && r.name ? " · " : ""}
-                      {r.name || (!r.category ? "—" : "")}
-                      {" "}<span style={{ fontSize: 12, color: "#999" }}>({jaotusalusSilt(
-                        HALDUSTEENUSED.includes(r.category)
-                          ? getEffectiveAllocationBasis(plan.allocationPolicies?.maintenance)
-                          : getEffectiveRowAllocationBasis(r)
-                      )})</span>
-                    </span>
-                    <span style={{ fontFamily: "monospace" }}>
-                      {euroEE(r.calc.params.amountEUR)}
-                    </span>
+                  <div key={r.id} style={{ padding: "4px 0", borderBottom: "1px solid #ccc" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>
+                        {r.category ? <span style={{ color: "#666" }}>{r.category}</span> : null}
+                        {r.category && r.name ? " · " : ""}
+                        {r.name || (!r.category ? "—" : "")}
+                        {" "}<span style={{ fontSize: 12, color: "#999" }}>({jaotusalusSilt(
+                          HALDUSTEENUSED.includes(r.category)
+                            ? getEffectiveAllocationBasis(plan.allocationPolicies?.maintenance)
+                            : getEffectiveRowAllocationBasis(r)
+                        )})</span>
+                      </span>
+                      <span style={{ fontFamily: "monospace" }}>
+                        {euroEE(r.calc.params.amountEUR)}
+                      </span>
+                    </div>
                   </div>
-                </div>
                 );
-              })
+              });
             })()}
             <div style={{ marginTop: 8, fontWeight: 600, fontFamily: "monospace" }}>
               Kokku: {euroEE(derived.totals.costPeriodEUR)} · {euroEE(derived.totals.costMonthlyEUR)}/kuu
