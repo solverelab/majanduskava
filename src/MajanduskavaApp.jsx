@@ -4013,6 +4013,7 @@ export default function App() {
                 }, 0);
 
               const kokku = haldusSum + muudSum;
+              if (haldusSum === 0 && muudSum === 0) return <p style={{ fontSize: 14, color: "#666" }}>Tulude andmed on sisestamata.</p>;
               return (
                 <>
                   <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #ccc" }}>
@@ -4045,46 +4046,50 @@ export default function App() {
                 .filter(r => P5_KOMMUNAALTEENUSED.includes(r.category))
                 .reduce((s, r) => s + (r.calc?.params?.amountEUR || 0), 0);
               let p5Rendered = false;
-              return rows.map(r => {
-                if (P5_KOMMUNAALTEENUSED.includes(r.category)) {
-                  if (p5Rendered) return null;
-                  p5Rendered = true;
-                  return (
-                    <div key="kommunaalid-kokku" style={{ padding: "4px 0", borderBottom: "1px solid #ccc" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span>
-                          <span style={{ color: "#666" }}>Kommunaalteenused kokku</span>
-                          <div style={{ fontSize: 12, color: "#999", marginTop: 2 }}>Detailne kogus ja maksumus on esitatud kommunaalteenuste prognoosi plokis.</div>
-                        </span>
-                        <span style={{ fontFamily: "monospace" }}>{euroEE(p5Sum)}</span>
+              return (
+                <>
+                  {rows.map(r => {
+                    if (P5_KOMMUNAALTEENUSED.includes(r.category)) {
+                      if (p5Rendered) return null;
+                      p5Rendered = true;
+                      return (
+                        <div key="kommunaalid-kokku" style={{ padding: "4px 0", borderBottom: "1px solid #ccc" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span>
+                              <span style={{ color: "#666" }}>Kommunaalteenused kokku</span>
+                              <div style={{ fontSize: 12, color: "#999", marginTop: 2 }}>Detailne kogus ja maksumus on esitatud kommunaalteenuste prognoosi plokis.</div>
+                            </span>
+                            <span style={{ fontFamily: "monospace" }}>{euroEE(p5Sum)}</span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={r.id} style={{ padding: "4px 0", borderBottom: "1px solid #ccc" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span>
+                            {r.category ? <span style={{ color: "#666" }}>{r.category}</span> : null}
+                            {r.category && r.name ? " · " : ""}
+                            {r.name || (!r.category ? "—" : "")}
+                            {" "}<span style={{ fontSize: 12, color: "#999" }}>({jaotusalusSilt(
+                              HALDUSTEENUSED.includes(r.category)
+                                ? getEffectiveAllocationBasis(plan.allocationPolicies?.maintenance)
+                                : getEffectiveRowAllocationBasis(r)
+                            )})</span>
+                          </span>
+                          <span style={{ fontFamily: "monospace" }}>
+                            {euroEE(r.calc.params.amountEUR)}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                }
-                return (
-                  <div key={r.id} style={{ padding: "4px 0", borderBottom: "1px solid #ccc" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>
-                        {r.category ? <span style={{ color: "#666" }}>{r.category}</span> : null}
-                        {r.category && r.name ? " · " : ""}
-                        {r.name || (!r.category ? "—" : "")}
-                        {" "}<span style={{ fontSize: 12, color: "#999" }}>({jaotusalusSilt(
-                          HALDUSTEENUSED.includes(r.category)
-                            ? getEffectiveAllocationBasis(plan.allocationPolicies?.maintenance)
-                            : getEffectiveRowAllocationBasis(r)
-                        )})</span>
-                      </span>
-                      <span style={{ fontFamily: "monospace" }}>
-                        {euroEE(r.calc.params.amountEUR)}
-                      </span>
-                    </div>
+                    );
+                  })}
+                  <div style={{ marginTop: 8, fontWeight: 600, fontFamily: "monospace" }}>
+                    Kokku: {euroEE(derived.totals.costPeriodEUR)} · {euroEE(derived.totals.costMonthlyEUR)}/kuu
                   </div>
-                );
-              });
+                </>
+              );
             })()}
-            <div style={{ marginTop: 8, fontWeight: 600, fontFamily: "monospace" }}>
-              Kokku: {euroEE(derived.totals.costPeriodEUR)} · {euroEE(derived.totals.costMonthlyEUR)}/kuu
-            </div>
           </div>
 
           {/* Laenukohustused ja rahastamisallikad */}
