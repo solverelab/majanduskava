@@ -4040,7 +4040,7 @@ export default function App() {
             <h2 className="print-section-title">Kavandatavad kulud</h2>
             {(() => {
               const rows = plan.budget.costRows.filter(r => (parseFloat(r.summaInput) || 0) > 0);
-              if (rows.length === 0) return <div>Kulusid pole lisatud.</div>;
+              if (rows.length === 0) return <div>Kulude andmed on sisestamata.</div>;
               const p5Sum = rows
                 .filter(r => P5_KOMMUNAALTEENUSED.includes(r.category))
                 .reduce((s, r) => s + (r.calc?.params?.amountEUR || 0), 0);
@@ -4156,7 +4156,7 @@ export default function App() {
               <div className="print-section">
                 <h2 className="print-section-title">Remondifondi ja reservkapitali maksed</h2>
                 {!hasRf && reservPeriood <= 0 && (
-                  <p style={{ fontSize: 14, color: "#666" }}>Reservkapitali ja remondifondi makseid ei ole sisestatud.</p>
+                  <p style={{ fontSize: 14, color: "#666" }}>Andmed on sisestamata.</p>
                 )}
                 {hasRf && (
                   <>
@@ -4279,6 +4279,12 @@ export default function App() {
                     </tr>
                   );
                 })()}
+                {plan.budget.costRows.filter(r => (parseFloat(r.summaInput) || 0) > 0).length === 0
+                  && remondifondiArvutus.laekuminePerioodis <= 0
+                  && (plan.funds.reserve.plannedEUR || 0) <= 0
+                  && kopiiriondvaade.laenumaksedKokku <= 0 && (
+                  <tr><td colSpan={3} style={{ padding: "8px 8px", color: "#666" }}>Kohustuste jaotuse andmed on sisestamata.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -4290,7 +4296,7 @@ export default function App() {
               <div className="print-section">
                 <h2 className="print-section-title">Kütus / soojus / vesi ja kanalisatsioon / elekter</h2>
                 {utilityRows.length === 0 ? (
-                  <p style={{ fontSize: 14, color: "#666" }}>Kütuse, soojuse, vee- ja kanalisatsiooniteenuse ning elektri prognoosi andmeid ei ole sisestatud.</p>
+                  <p style={{ fontSize: 14, color: "#666" }}>Andmed on sisestamata.</p>
                 ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
