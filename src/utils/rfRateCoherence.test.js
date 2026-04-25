@@ -68,20 +68,20 @@ describe("kuvatud kuumäär ja laekumine klapivad", () => {
   });
 });
 
-describe("kuumäär ümardatakse üles 0.01 täpsusega", () => {
-  it("irratsionaalne aastasmäär → kuumäär on ceil'd", () => {
-    // rate = 10000 / (2 * 5337.2) ≈ 0.9368 €/m²/a → 0.0781 €/m²/kuu → ceil → 0.08
+describe("käsitsi override säilitab täpse väärtuse ja klappib laekumisega", () => {
+  it("override 0.08 → maarKuusM2 === 0.08, laekumine klappib", () => {
     const r = computeRemondifondiArvutus({
       ...BASE,
+      maarOverride: 0.08,
       investments: [{
         id: "i3", name: "Test", plannedYear: 2029, totalCostEUR: 10000,
         fundingPlan: [{ source: "Remondifond", amountEUR: 10000 }],
       }],
     });
-    // kuumäär peab olema täpne 2 kohta
-    expect(r.maarKuusM2).toBe(parseFloat(r.maarKuusM2.toFixed(2)));
-    // aastas tuletatud kuust
+    expect(r.maarKuusM2).toBe(0.08);
     expect(r.maarAastasM2).toBeCloseTo(r.maarKuusM2 * 12, 10);
+    const kontrollLaekumine = Math.round(0.08 * 12 * 5337.2 * 60 / 12);
+    expect(r.laekuminePerioodis).toBe(kontrollLaekumine);
   });
 });
 
@@ -113,16 +113,20 @@ describe("käsitsi override säilitab kasutaja täpse kuumäära", () => {
   });
 });
 
-describe("negatiivset lõppseisu ei teki soovituslikul määral", () => {
-  it("automaatne määr tagab saldoLopp >= 0", () => {
+describe("käsitsi override tagab saldoLopp >= 0 kui piisav", () => {
+  it("piisav override → saldoLopp >= 0", () => {
+    // periodEndYear = 2031; investeeringud 2027 ja 2029 mõlemad sees
+    // investRemondifondist = 130000; laekumine = override * 12 * 5337.2 * 60/12
+    // vajame: laekumine >= 130000 → override >= 130000 / (5337.2 * 60) ≈ 0.406
     const r = computeRemondifondiArvutus({
       ...BASE,
+      maarOverride: 0.41,
       investments: [
         { id: "a", name: "A", plannedYear: 2027, totalCostEUR: 50000, fundingPlan: [{ source: "Remondifond", amountEUR: 50000 }] },
         { id: "b", name: "B", plannedYear: 2029, totalCostEUR: 80000, fundingPlan: [{ source: "Remondifond", amountEUR: 80000 }] },
       ],
     });
+    expect(r.maarKuusM2).toBe(0.41);
     expect(r.saldoLopp).toBeGreaterThanOrEqual(0);
-    expect(r.maarKuusM2).toBeGreaterThan(0);
   });
 });

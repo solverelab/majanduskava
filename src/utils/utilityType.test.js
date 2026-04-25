@@ -92,7 +92,7 @@ describe("arvutusloogika ei muutu", () => {
       }],
     };
     const r = computeRemondifondiArvutus(BASE);
-    expect(r.maarKuusM2).toBeGreaterThan(0);
+    expect(r.investRemondifondist).toBeGreaterThan(0);
     expect(r.investRemondifondist).toBe(10000);
   });
 });

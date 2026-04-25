@@ -2,10 +2,11 @@ import { describe, it, expect } from "vitest";
 import { computeRemondifondiArvutus } from "./majanduskavaCalc";
 
 // ══════════════════════════════════════════════════════════════════════
-// RF määra koherentsuse regressioonitestid
+// RF arvutuse koherentsuse regressioonitestid
 //
-// Invariant: kui invArvutusread näitab kogumisvajadust ja saldoLopp < 0,
-// siis maarAastasM2 > 0. Negatiivne lõppseis ja 0-määr ei saa koos olla.
+// Invariant 1: investRemondifondist + nextPeriodRfVajadus = kogurfSumma
+// Invariant 2: katab ≡ saldoLopp >= nextPeriodRfVajadus
+// Invariant 3: maarKuusM2 = maarOverride ?? 0  (auto-tuletust pole)
 // ══════════════════════════════════════════════════════════════════════
 
 const BASE = {
@@ -18,67 +19,62 @@ const BASE = {
   maarOverride: null,
   loans: [],
   loanStatus: "APPLIED",
-  monthEq: 60,
+  monthEq: 60,  // periodEndYear = 2031
 };
 
-describe("RF määr ei jää 0-ks kui kogumisvajadus on olemas", () => {
-  it("plannedYear === periodiAasta → maarKuusM2 > 0", () => {
+describe("investRemondifondist + nextPeriodRfVajadus = kogurfSumma", () => {
+  it("kõik investeeringud perioodi sees", () => {
     const r = computeRemondifondiArvutus({
       ...BASE,
-      investments: [{
-        id: "i1", name: "Katus", plannedYear: 2027, totalCostEUR: 5000,
-        fundingPlan: [{ source: "Remondifond", amountEUR: 5000 }],
-      }],
+      investments: [
+        { id: "i1", name: "Katus", plannedYear: 2029, totalCostEUR: 5000, fundingPlan: [{ source: "Remondifond", amountEUR: 5000 }] },
+        { id: "i2", name: "Fassaad", plannedYear: 2031, totalCostEUR: 3000, fundingPlan: [{ source: "Remondifond", amountEUR: 3000 }] },
+      ],
     });
-    expect(r.invArvutusread.length).toBeGreaterThan(0);
-    expect(r.maarAastasM2).toBeGreaterThan(0);
-    expect(r.maarKuusM2).toBeGreaterThan(0);
+    const koguRf = r.invDetail.reduce((s, d) => s + d.rfSumma, 0);
+    expect(r.investRemondifondist + r.nextPeriodRfVajadus).toBe(koguRf);
+    expect(r.investRemondifondist).toBe(8000);
+    expect(r.nextPeriodRfVajadus).toBe(0);
   });
 
-  it("plannedYear < periodiAasta → maarKuusM2 > 0 (perioodi-eelne investeering)", () => {
+  it("investeeringud mõlemas perioodis", () => {
     const r = computeRemondifondiArvutus({
       ...BASE,
-      investments: [{
-        id: "i2", name: "Fassaad", plannedYear: 2025, totalCostEUR: 10000,
-        fundingPlan: [{ source: "Remondifond", amountEUR: 3000 }],
-      }],
+      investments: [
+        { id: "i1", name: "A", plannedYear: 2030, totalCostEUR: 10000, fundingPlan: [{ source: "Remondifond", amountEUR: 10000 }] },
+        { id: "i2", name: "B", plannedYear: 2032, totalCostEUR: 7000, fundingPlan: [{ source: "Remondifond", amountEUR: 7000 }] },
+      ],
     });
-    expect(r.invArvutusread.length).toBeGreaterThan(0);
-    expect(r.investRemondifondist).toBe(3000);
-    expect(r.maarAastasM2).toBeGreaterThan(0);
-    expect(r.maarKuusM2).toBeGreaterThan(0);
-  });
-
-  it("plannedYear > periodiAasta → maarKuusM2 > 0 (kontroll)", () => {
-    const r = computeRemondifondiArvutus({
-      ...BASE,
-      investments: [{
-        id: "i3", name: "Katus", plannedYear: 2030, totalCostEUR: 20000,
-        fundingPlan: [{ source: "Remondifond", amountEUR: 20000 }],
-      }],
-    });
-    expect(r.maarAastasM2).toBeGreaterThan(0);
+    const koguRf = r.invDetail.reduce((s, d) => s + d.rfSumma, 0);
+    expect(r.investRemondifondist + r.nextPeriodRfVajadus).toBe(koguRf);
+    expect(r.investRemondifondist).toBe(10000);
+    expect(r.nextPeriodRfVajadus).toBe(7000);
   });
 });
 
-describe("negatiivne lõppseis ja 0-määr ei saa koos tekkida", () => {
-  it("saldoLopp < 0 → maarAastasM2 > 0 (maarOverride = null)", () => {
-    // Suur investeering lühikese ajaga
-    const r = computeRemondifondiArvutus({
-      ...BASE,
-      saldoAlgusRaw: "0",
-      investments: [{
-        id: "i4", name: "Suur remont", plannedYear: 2027, totalCostEUR: 100000,
-        fundingPlan: [{ source: "Remondifond", amountEUR: 100000 }],
-      }],
-    });
-    expect(r.maarAastasM2).toBeGreaterThan(0);
-    // saldoLopp peaks olema >= 0, sest määr katab vajaduse
-    expect(r.saldoLopp).toBeGreaterThanOrEqual(0);
+describe("katab invariant kehtib alati", () => {
+  it("katab === (saldoLopp >= nextPeriodRfVajadus) eri stsenaariumidel", () => {
+    const cases = [
+      { saldo: "0", maarOverride: null },
+      { saldo: "50000", maarOverride: null },
+      { saldo: "0", maarOverride: 1.0 },
+      { saldo: "10000", maarOverride: 2.0 },
+    ];
+    for (const { saldo, maarOverride } of cases) {
+      const r = computeRemondifondiArvutus({
+        ...BASE,
+        saldoAlgusRaw: saldo,
+        maarOverride,
+        investments: [
+          { id: "x", name: "X", plannedYear: 2033, totalCostEUR: 20000, fundingPlan: [{ source: "Remondifond", amountEUR: 20000 }] },
+        ],
+      });
+      expect(r.katab).toBe(r.saldoLopp >= r.nextPeriodRfVajadus);
+    }
   });
 });
 
-describe("tingimusliku investeeringu koherentsus loendi, määra ja saldo vahel", () => {
+describe("segarahastuse investeering kajastub korrektselt", () => {
   const mixedInv = [{
     id: "inv1", name: "Katus", plannedYear: 2029, totalCostEUR: 10000,
     fundingPlan: [
@@ -87,19 +83,14 @@ describe("tingimusliku investeeringu koherentsus loendi, määra ja saldo vahel"
     ],
   }];
 
-  it("APPLIED: RF osa kajastub loendis JA mõjutab määra", () => {
+  it("APPLIED: RF osa kajastub invDetail-s ja investRemondifondist-s", () => {
     const r = computeRemondifondiArvutus({
       ...BASE,
       loanStatus: "APPLIED",
       investments: mixedInv,
     });
-    // Loendis
-    expect(r.invArvutusread.length).toBe(1);
+    expect(r.invDetail.length).toBe(1);
     expect(r.investRemondifondist).toBe(2000);
-    // Määras
-    expect(r.maarAastasM2).toBeGreaterThan(0);
-    // Saldos
-    expect(r.saldoLopp).toBeGreaterThanOrEqual(0);
   });
 
   it("APPROVED: sama koherentsus kehtib", () => {
@@ -109,24 +100,21 @@ describe("tingimusliku investeeringu koherentsus loendi, määra ja saldo vahel"
       investments: mixedInv,
       loans: [{ id: "l1", sepiiriostudInvId: "inv1", principalEUR: 8000, annualRatePct: 4, termMonths: 120 }],
     });
-    expect(r.invArvutusread.length).toBe(1);
+    expect(r.invDetail.length).toBe(1);
     expect(r.investRemondifondist).toBe(2000);
-    expect(r.maarAastasM2).toBeGreaterThan(0);
-    expect(r.saldoLopp).toBeGreaterThanOrEqual(0);
   });
 
-  it("mitu perioodi-eelset investeeringut → määr katab kõik", () => {
+  it("mitu investeeringut jagatud perioodide vahel → investRemondifondist ainult praegune", () => {
     const r = computeRemondifondiArvutus({
       ...BASE,
       investments: [
-        { id: "a", name: "A", plannedYear: 2025, totalCostEUR: 5000, fundingPlan: [{ source: "Remondifond", amountEUR: 3000 }] },
-        { id: "b", name: "B", plannedYear: 2026, totalCostEUR: 8000, fundingPlan: [{ source: "Remondifond", amountEUR: 8000 }] },
-        { id: "c", name: "C", plannedYear: 2029, totalCostEUR: 4000, fundingPlan: [{ source: "Remondifond", amountEUR: 4000 }] },
+        { id: "a", name: "A", plannedYear: 2028, totalCostEUR: 5000, fundingPlan: [{ source: "Remondifond", amountEUR: 3000 }] },
+        { id: "b", name: "B", plannedYear: 2029, totalCostEUR: 8000, fundingPlan: [{ source: "Remondifond", amountEUR: 8000 }] },
+        { id: "c", name: "C", plannedYear: 2033, totalCostEUR: 4000, fundingPlan: [{ source: "Remondifond", amountEUR: 4000 }] },
       ],
     });
-    expect(r.invArvutusread.length).toBe(3);
-    expect(r.maarAastasM2).toBeGreaterThan(0);
-    // Kogu vajadus peab olema kaetud
-    expect(r.saldoLopp).toBeGreaterThanOrEqual(0);
+    expect(r.invDetail.length).toBe(3);
+    expect(r.investRemondifondist).toBe(11000); // A+B (C on järgmises perioodis)
+    expect(r.nextPeriodRfVajadus).toBe(4000);
   });
 });

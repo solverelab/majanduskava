@@ -37,28 +37,17 @@ describe("segarahastuse investeering (RF + Laen) kajastub RF arvutuses", () => {
     ],
   }];
 
-  it("RF osa jõuab invArvutusread-sse ka kui laen pole kinnitatud", () => {
+  it("RF osa jõuab invDetail-sse ka kui laen pole kinnitatud", () => {
     const ra = computeRemondifondiArvutus({
       ...BASE,
       loanStatus: "APPLIED",
       investments: mixedInv,
     });
 
-    expect(ra.invArvutusread.length).toBeGreaterThan(0);
+    expect(ra.invDetail.length).toBeGreaterThan(0);
     expect(ra.investRemondifondist).toBe(2000);
-    expect(ra.invArvutusread[0].nimetus).toBe("Katus");
-    expect(ra.invArvutusread[0].rfSumma).toBe(2000);
-  });
-
-  it("RF määr > 0 segarahastusega investeeringu puhul", () => {
-    const ra = computeRemondifondiArvutus({
-      ...BASE,
-      loanStatus: "APPLIED",
-      investments: mixedInv,
-    });
-
-    expect(ra.maarAastasM2).toBeGreaterThan(0);
-    expect(ra.maarKuusM2).toBeGreaterThan(0);
+    expect(ra.invDetail[0].nimetus).toBe("Katus");
+    expect(ra.invDetail[0].rfSumma).toBe(2000);
   });
 
   it("laenu kinnitamine ei muuda RF osa summat", () => {
@@ -74,13 +63,13 @@ describe("segarahastuse investeering (RF + Laen) kajastub RF arvutuses", () => {
     });
 
     expect(applied.investRemondifondist).toBe(approved.investRemondifondist);
-    expect(applied.invArvutusread.length).toBe(approved.invArvutusread.length);
-    expect(applied.invArvutusread[0].rfSumma).toBe(approved.invArvutusread[0].rfSumma);
+    expect(applied.invDetail.length).toBe(approved.invDetail.length);
+    expect(applied.invDetail[0].rfSumma).toBe(approved.invDetail[0].rfSumma);
   });
 });
 
 describe("ainult laenuga investeering ei lähe RF alla", () => {
-  it("investeering ilma RF allikata → invArvutusread tühi", () => {
+  it("investeering ilma RF allikata → invDetail tühi", () => {
     const ra = computeRemondifondiArvutus({
       ...BASE,
       investments: [{
@@ -92,7 +81,7 @@ describe("ainult laenuga investeering ei lähe RF alla", () => {
       }],
     });
 
-    expect(ra.invArvutusread.length).toBe(0);
+    expect(ra.invDetail.length).toBe(0);
     expect(ra.investRemondifondist).toBe(0);
   });
 });
@@ -110,9 +99,8 @@ describe("ainult RF investeering töötab endiselt", () => {
       }],
     });
 
-    expect(ra.invArvutusread.length).toBe(1);
+    expect(ra.invDetail.length).toBe(1);
     expect(ra.investRemondifondist).toBe(15000);
-    expect(ra.maarAastasM2).toBeGreaterThan(0);
   });
 });
 
@@ -135,7 +123,7 @@ describe("mitu investeeringut korraga", () => {
       ],
     });
 
-    expect(ra.invArvutusread.length).toBe(2);
+    expect(ra.invDetail.length).toBe(2);
     expect(ra.investRemondifondist).toBe(7000);
   });
 });

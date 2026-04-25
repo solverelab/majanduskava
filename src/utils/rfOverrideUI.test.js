@@ -5,9 +5,8 @@ import { computeRemondifondiArvutus } from "./majanduskavaCalc";
 // RF override UI regressioonitestid
 //
 // 1. Muutmata blur ei aktiveeri override'i
-// 2. Reset (maarOverride: null) taastab automaatse määra
-// 3. Soovituslik vajadus kasutab sama ümardust kui automaatne
-// 4. Horisondi info on kättesaadav, kui investeering ulatub perioodi üle
+// 2. Reset (maarOverride: null) puhastab käsitsi määra
+// 3. Horisondi info on kättesaadav, kui investeering ulatub perioodi üle
 // ══════════════════════════════════════════════════════════════════════
 
 const BASE = {
@@ -34,7 +33,6 @@ describe("muutmata blur ei aktiveeri override'i", () => {
     const auto = computeRemondifondiArvutus(BASE);
     const automaatneKuu = parseFloat(auto.maarKuusM2.toFixed(2));
 
-    // Simuleerime onChange loogikat MajanduskavaApp.jsx-st
     const v = automaatneKuu; // blur saadab sama väärtuse tagasi
     const automaatne = parseFloat(auto.maarKuusM2.toFixed(2));
     const shouldOverride = v !== automaatne;
@@ -54,39 +52,15 @@ describe("muutmata blur ei aktiveeri override'i", () => {
   });
 });
 
-describe("reset taastab automaatse määra", () => {
-  it("maarOverride: null → kasutab automaatset", () => {
+describe("reset puhastab käsitsi määra", () => {
+  it("maarOverride: null → maarKuusM2 = 0, kasitsiMaar = false", () => {
     const overridden = computeRemondifondiArvutus({ ...BASE, maarOverride: 0.50 });
     expect(overridden.kasitsiMaar).toBe(true);
     expect(overridden.maarKuusM2).toBe(0.50);
 
     const reset = computeRemondifondiArvutus({ ...BASE, maarOverride: null });
     expect(reset.kasitsiMaar).toBe(false);
-    expect(reset.maarKuusM2).not.toBe(0.50);
-    expect(reset.maarKuusM2).toBeGreaterThan(0);
-  });
-});
-
-describe("soovituslik vajadus kasutab sama ümardust", () => {
-  it("maarSoovituslik/12 ceil'd annab sama mis automaatne maarKuusM2", () => {
-    const auto = computeRemondifondiArvutus(BASE);
-    // UI kuvab: Math.ceil(ra.maarSoovituslik / 12 * 100) / 100
-    const soovituslikKuu = Math.ceil(auto.maarSoovituslik / 12 * 100) / 100;
-    // Automaatne maarKuusM2 kasutab sama ümardust
-    expect(soovituslikKuu).toBe(auto.maarKuusM2);
-  });
-
-  it("erineva stsenaariumiga — suur investeering", () => {
-    const auto = computeRemondifondiArvutus({
-      ...BASE,
-      koguPind: 5337.2,
-      investments: [{
-        id: "i2", name: "Fassaad", plannedYear: 2030, totalCostEUR: 200000,
-        fundingPlan: [{ source: "Remondifond", amountEUR: 200000 }],
-      }],
-    });
-    const soovituslikKuu = Math.ceil(auto.maarSoovituslik / 12 * 100) / 100;
-    expect(soovituslikKuu).toBe(auto.maarKuusM2);
+    expect(reset.maarKuusM2).toBe(0); // auto = 0 (pole auto-tuletust)
   });
 });
 
@@ -116,6 +90,5 @@ describe("horisondi info on kättesaadav", () => {
   it("tühja investeeringuteta — invDetail on tühi", () => {
     const r = computeRemondifondiArvutus({ ...BASE, investments: [] });
     expect(r.invDetail.length).toBe(0);
-    // Horisondi selgitust ei kuvata
   });
 });

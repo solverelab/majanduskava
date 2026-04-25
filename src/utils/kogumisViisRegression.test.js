@@ -56,9 +56,9 @@ describe("kogumisViis ei mõjuta RF arvutust", () => {
 });
 
 describe("RF arvutuse põhiflow töötab pärast UI eemaldust", () => {
-  it("investeeringuga RF → positiivne kogumismäär", () => {
+  it("investeeringuga RF → investRemondifondist > 0", () => {
     const ra = computeRemondifondiArvutus({ ...BASE, kogumisViis: "eraldi" });
-    expect(ra.maarAastasM2).toBeGreaterThan(0);
+    expect(ra.invDetail.length).toBeGreaterThan(0);
     expect(ra.investRemondifondist).toBe(30000);
   });
 
@@ -72,7 +72,7 @@ describe("RF arvutuse põhiflow töötab pärast UI eemaldust", () => {
     expect(ra.investRemondifondist).toBe(0);
   });
 
-  it("saldoAlgus vähendab kogumise vajadust", () => {
+  it("saldoAlgus parandab lõppseisu", () => {
     const noSaldo = computeRemondifondiArvutus({
       ...BASE,
       kogumisViis: "eraldi",
@@ -83,6 +83,6 @@ describe("RF arvutuse põhiflow töötab pärast UI eemaldust", () => {
       kogumisViis: "eraldi",
       saldoAlgusRaw: "10000",
     });
-    expect(withSaldo.maarAastasM2).toBeLessThan(noSaldo.maarAastasM2);
+    expect(withSaldo.saldoLopp).toBeGreaterThan(noSaldo.saldoLopp);
   });
 });

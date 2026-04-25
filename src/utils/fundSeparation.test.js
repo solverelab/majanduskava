@@ -24,7 +24,8 @@ describe("remondifondi kogumismäär tuleneb investeeringute mudelist (INV-08)",
     expect(ra.investRemondifondist).toBe(0);
   });
 
-  it("investeering Remondifond allikaga → kogumismäär > 0", () => {
+  it("investeering Remondifond allikaga → RF kajastub arvutuses", () => {
+    // periodiAasta:2027 monthEq:12 → periodEndYear:2027; inv.plannedYear:2028 → nextPeriodRfVajadus
     const ra = computeRemondifondiArvutus({
       ...BASE_RF,
       investments: [{
@@ -32,8 +33,8 @@ describe("remondifondi kogumismäär tuleneb investeeringute mudelist (INV-08)",
         fundingPlan: [{ source: "Remondifond", amountEUR: 20000 }],
       }],
     });
-    expect(ra.maarAastasM2).toBeGreaterThan(0);
-    expect(ra.investRemondifondist).toBe(20000);
+    expect(ra.nextPeriodRfVajadus).toBeGreaterThan(0);
+    expect(ra.nextPeriodRfVajadus).toBe(20000);
   });
 
   it("tegevuskulud ei mõjuta kogumismäära (computeRemondifondiArvutus ei saa costRows-i)", () => {
@@ -43,10 +44,10 @@ describe("remondifondi kogumismäär tuleneb investeeringute mudelist (INV-08)",
     }];
     // computeRemondifondiArvutus ei saa costRows parameetrit üldse
     const ra = computeRemondifondiArvutus({ ...BASE_RF, investments: inv });
-    expect(ra.maarAastasM2).toBeGreaterThan(0);
+    expect(ra.nextPeriodRfVajadus).toBeGreaterThan(0);
     // Sama tulemus sõltumata mis tegevuskulud on
     const ra2 = computeRemondifondiArvutus({ ...BASE_RF, investments: inv });
-    expect(ra2.maarAastasM2).toBe(ra.maarAastasM2);
+    expect(ra2.nextPeriodRfVajadus).toBe(ra.nextPeriodRfVajadus);
   });
 });
 

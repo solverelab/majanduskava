@@ -87,7 +87,7 @@ describe("computeRemondifondiArvutus ei muutu jaotusaluse tõttu", () => {
     };
     const r = computeRemondifondiArvutus(BASE);
     // RF arvutus ei sõltu kuluridadest ega jaotusalusest
-    expect(r.maarKuusM2).toBeGreaterThan(0);
+    expect(r.investRemondifondist).toBeGreaterThan(0);
     expect(r.investRemondifondist).toBe(10000);
   });
 });

@@ -68,14 +68,16 @@ describe("assetCondition ei ole investeeringu arvutuste allikas", () => {
 
 describe("ainult investments.items mõjutab remondifondi arvutust", () => {
   it("investeeringu lisamine muudab remondifondi arvutust", () => {
+    // periodiAasta:2026 monthEq:12 → periood:2026, järgmine:2027; inv.plannedYear:2028 → väljaspool mõlemat
+    // Investeering kajastub invDetail-s sõltumata perioodi klassifikatsioonist
     const empty = computeRemondifondiArvutus({ ...BASE_RF_PARAMS, investments: [] });
 
     const inv = mkInv("inv-1", "rida-1", [{ source: "Remondifond", amountEUR: 20000 }]);
     const withInv = computeRemondifondiArvutus({ ...BASE_RF_PARAMS, investments: [inv] });
 
-    expect(empty.investRemondifondist).toBe(0);
-    expect(withInv.investRemondifondist).toBe(20000);
-    expect(withInv.maarAastasM2).toBeGreaterThan(empty.maarAastasM2);
+    expect(empty.invDetail.length).toBe(0);
+    expect(withInv.invDetail.length).toBe(1);
+    expect(withInv.invDetail[0].rfSumma).toBe(20000);
   });
 
   it("investeeringu eemaldamine muudab remondifondi arvutust", () => {
@@ -83,8 +85,9 @@ describe("ainult investments.items mõjutab remondifondi arvutust", () => {
     const with1 = computeRemondifondiArvutus({ ...BASE_RF_PARAMS, investments: [inv] });
     const with0 = computeRemondifondiArvutus({ ...BASE_RF_PARAMS, investments: [] });
 
-    expect(with1.investRemondifondist).toBe(30000);
-    expect(with0.investRemondifondist).toBe(0);
+    expect(with1.invDetail.length).toBe(1);
+    expect(with1.invDetail[0].rfSumma).toBe(30000);
+    expect(with0.invDetail.length).toBe(0);
   });
 });
 
@@ -92,12 +95,13 @@ describe("ainult investments.items mõjutab remondifondi arvutust", () => {
 
 describe("condition_item investeering osaleb arvutuses läbi investments.items", () => {
   it("condition_item remondifondist rahastatav investeering mõjutab remondifondi", () => {
+    // plannedYear:2028; periood:2026, järgmine:2027 → investeering kajastub invDetail-s
     const condInv = mkInv("inv-c", "rida-1", [{ source: "Remondifond", amountEUR: 25000 }]);
     const result = computeRemondifondiArvutus({ ...BASE_RF_PARAMS, investments: [condInv] });
 
-    expect(result.investRemondifondist).toBe(25000);
     expect(result.invDetail).toHaveLength(1);
     expect(result.invDetail[0].nimetus).toBe("Inv-inv-c");
+    expect(result.invDetail[0].rfSumma).toBe(25000);
   });
 });
 
@@ -108,8 +112,8 @@ describe("standalone investeering osaleb arvutuses läbi investments.items", () 
     const standInv = mkInv("inv-s", null, [{ source: "Remondifond", amountEUR: 15000 }]);
     const result = computeRemondifondiArvutus({ ...BASE_RF_PARAMS, investments: [standInv] });
 
-    expect(result.investRemondifondist).toBe(15000);
     expect(result.invDetail).toHaveLength(1);
+    expect(result.invDetail[0].rfSumma).toBe(15000);
   });
 
   it("mõlemad tüübid koos annavad kumulatiivse tulemuse", () => {
@@ -121,8 +125,9 @@ describe("standalone investeering osaleb arvutuses läbi investments.items", () 
       investments: [condInv, standInv],
     });
 
-    expect(result.investRemondifondist).toBe(30000);
     expect(result.invDetail).toHaveLength(2);
+    const totalRf = result.invDetail.reduce((s, d) => s + d.rfSumma, 0);
+    expect(totalRf).toBe(30000);
   });
 });
 
@@ -133,8 +138,10 @@ describe("legacy investmentsPipeline ei mõjuta runtime arvutusi", () => {
     const inv = mkInv("inv-1", null, [{ source: "Remondifond", amountEUR: 10000 }]);
 
     // investments param on kanoniline — investmentsPipeline ei ole parameeter
+    // plannedYear:2028; periood:2026, järgmine:2027 → kajastub invDetail-s
     const result = computeRemondifondiArvutus({ ...BASE_RF_PARAMS, investments: [inv] });
-    expect(result.investRemondifondist).toBe(10000);
+    expect(result.invDetail.length).toBe(1);
+    expect(result.invDetail[0].rfSumma).toBe(10000);
 
     // Teine "investmentsPipeline" lisamine ei mõjuta midagi
     const result2 = computeRemondifondiArvutus({
@@ -144,8 +151,9 @@ describe("legacy investmentsPipeline ei mõjuta runtime arvutusi", () => {
         mkInv("ghost", null, [{ source: "Remondifond", amountEUR: 99999 }]),
       ]},
     });
-    // investmentsPipeline ignoreeritakse — sama tulemus
-    expect(result2.investRemondifondist).toBe(10000);
+    // investmentsPipeline ignoreeritakse — sama invDetail tulemus
+    expect(result2.invDetail.length).toBe(1);
+    expect(result2.invDetail[0].rfSumma).toBe(10000);
   });
 
   it("computeKopiiriondvaade ei kasuta investeeringuid üldse", () => {

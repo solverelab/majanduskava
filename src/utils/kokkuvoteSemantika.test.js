@@ -84,6 +84,6 @@ describe("korterimaksete arvutus ei muutu", () => {
         fundingPlan: [{ source: "Remondifond", amountEUR: 10000 }],
       }],
     });
-    expect(r.maarKuusM2).toBeGreaterThan(0);
+    expect(r.investRemondifondist).toBeGreaterThan(0);
   });
 });

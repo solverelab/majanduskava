@@ -13,11 +13,10 @@ import { describe, it, expect, beforeAll } from "vitest";
 // Plokid 4, 5, 6 lisanduvad järgnevate slice'ide kaupa.
 
 const FULL_MODE_SECTIONS_IN_ORDER = [
-  "Kaasomandi eseme seisukord ja kavandatavad toimingud",
-  "Kavandatavad tulud",
-  "Kavandatavad kulud",
+  "Ülevaade kaasomandi eseme seisukorrast ja kavandatavatest toimingutest",
+  "Korteriühistu kavandatavad tulud ja kulud",
   "Korteriomanike kohustuste jaotus majandamiskulude kandmisel",
-  "Kütus / soojus / vesi ja kanalisatsioon / elekter",
+  "Kütuse, soojuse, vee- ja kanalisatsiooniteenuse ning elektri prognoositav kogus ja maksumus",
   "Jaluse viited",
 ];
 
@@ -50,7 +49,7 @@ describe("print/PDF sektsioonide struktuur", () => {
 
   it("Kaasomandi sektsioon renderdub alati (fallback tekst kui andmed puuduvad)", () => {
     // p1 renderdub alati — tingimuslikku peitmist enam pole
-    const kaasomandIdx = src.indexOf('print-section-title">Kaasomandi eseme seisukord ja kavandatavad toimingud');
+    const kaasomandIdx = src.indexOf('print-section-title">Ülevaade kaasomandi eseme seisukorrast ja kavandatavatest toimingutest');
     expect(kaasomandIdx).toBeGreaterThan(-1);
     // Fallback tekst peab olema olemas (kuvatakse kui seisukorra ridu pole)
     expect(src).toContain("Kaasomandi eseme seisukorra andmed on sisestamata.");
