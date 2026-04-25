@@ -16,6 +16,7 @@ const FULL_MODE_SECTIONS_IN_ORDER = [
   "Ülevaade kaasomandi eseme seisukorrast ja kavandatavatest toimingutest",
   "Korteriühistu kavandatavad tulud ja kulud",
   "Korteriomanike kohustuste jaotus majandamiskulude kandmisel",
+  "Reservkapitali ja remondifondi tehtavate maksete suurus",
   "Kütuse, soojuse, vee- ja kanalisatsiooniteenuse ning elektri prognoositav kogus ja maksumus",
   "Jaluse viited",
 ];
@@ -63,5 +64,34 @@ describe("print/PDF sektsioonide struktuur", () => {
   it("print harud on gate'itud printMode järgi", () => {
     expect(src).toContain('printMode === "full"');
     expect(src).toContain('printMode === "apartments"');
+  });
+
+  it("p4 waterfall renderdub alati — ei ole hasRf-tingimusega peidetud", () => {
+    const p4Title = 'print-section-title">Reservkapitali ja remondifondi tehtavate maksete suurus';
+    const p4Idx = src.indexOf(p4Title);
+    expect(p4Idx).toBeGreaterThan(-1);
+    const p4Region = src.slice(p4Idx, p4Idx + 2000);
+    // Kõik waterfall read peavad olema tingimusteta
+    expect(p4Region).toContain("Saldo perioodi alguses");
+    expect(p4Region).toContain("Laekumine perioodis");
+    expect(p4Region).toContain("Saldo perioodi lõpus");
+    // hasRf ei tohi olla waterfall-i ees
+    expect(p4Region).not.toMatch(/hasRf \? \(\s*<>/);
+  });
+
+  it("p2 kommunaalteenused on aggregeeritud, mitte detailsed (p5 ei dubleeru)", () => {
+    // p2 näitab kommunaalteenuseid ühe kokkuvõtliku reana
+    expect(src).toContain("Kommunaalteenused kokku");
+    // Redirect-viide p5-sse peab olema olemas
+    expect(src).toContain("Detailne kogus ja maksumus on esitatud kommunaalteenuste prognoosi plokis");
+  });
+
+  it("p4 ei näita automaatset RF hinnangusilti", () => {
+    const p4Title = 'print-section-title">Reservkapitali ja remondifondi tehtavate maksete suurus';
+    const p4Idx = src.indexOf(p4Title);
+    const p4Region = src.slice(p4Idx, p4Idx + 2000);
+    expect(p4Region).not.toContain("vajalik määr");
+    expect(p4Region).not.toContain("soovituslik");
+    expect(p4Region).not.toContain("maarSoovituslik");
   });
 });

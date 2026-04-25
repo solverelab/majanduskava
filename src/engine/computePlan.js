@@ -5,6 +5,7 @@ const N = (v) => Number(v) || 0;
 import { compareInvestmentsCanonical } from "../utils/sortInvestments";
 import { isInvestmentReady } from "../utils/investmentInclusion";
 import { getEffectiveAllocationBasis } from "../domain/planSchema";
+import { KOMMUNAALTEENUSED, LAENUMAKSED } from "../utils/majanduskavaCalc";
 
 const RISK_LIMITS = {
   loanWarnPerM2: 0.5,
@@ -168,7 +169,17 @@ export function computePlan(plan) {
   const costThisYearEUR = round2(thisYearItems.reduce((s, it) => s + N(it?.totalCostEUR), 0));
 
   // outflows for simplified fund closings (Tee 1)
-  const rfOutflowThisYearEUR = round2(thisYearItems.reduce((s, it) => s + sumFundingBySource(it?.fundingPlan, "Remondifond"), 0));
+  const invRfOutflowThisYearEUR = round2(thisYearItems.reduce((s, it) => s + sumFundingBySource(it?.fundingPlan, "Remondifond"), 0));
+  const p2RfOutflowEUR = round2(
+    costRows
+      .filter(r =>
+        r.fundingSource === "remondifond" &&
+        !KOMMUNAALTEENUSED.includes(r.category) &&
+        !LAENUMAKSED.includes(r.category)
+      )
+      .reduce((s, r) => s + calcRowPeriodEUR(r, yearFrac, monthEq), 0)
+  );
+  const rfOutflowThisYearEUR = round2(invRfOutflowThisYearEUR + p2RfOutflowEUR);
   const reserveOutflowThisYearEUR = round2(thisYearItems.reduce((s, it) => s + sumFundingBySource(it?.fundingPlan, "RESERVE"), 0));
   const loanOutflowThisYearEUR = round2(
     thisYearItems.reduce((s, it) => s + ((it.fundingPlan || [])
@@ -379,6 +390,8 @@ export function computePlan(plan) {
     investments: {
       thisYearCount,
       costThisYearEUR,
+      invRfOutflowThisYearEUR,
+      p2RfOutflowEUR,
       rfOutflowThisYearEUR,
       reserveOutflowThisYearEUR,
       loanOutflowThisYearEUR,
