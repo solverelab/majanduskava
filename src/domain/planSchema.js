@@ -43,8 +43,9 @@ export function mkLoan({
   type = "annuity",
   startYM = "",
   reservePct = 0,
+  sepiiriostudInvId = null,
 } = {}) {
-  return { id: uid(), name, principalEUR, annualRatePct, termMonths, type, startYM, reservePct };
+  return { id: uid(), name, principalEUR, annualRatePct, termMonths, type, startYM, reservePct, sepiiriostudInvId };
 }
 
 export function defaultPlan({ year = new Date().getFullYear() } = {}) {

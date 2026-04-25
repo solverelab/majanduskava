@@ -453,7 +453,7 @@ export default function App() {
   const [openCostExplanationId, setOpenCostExplanationId] = useState(null);
 
 
-  const derived = useMemo(() => computePlan(plan), [plan]);
+  const derived = useMemo(() => computePlan(plan, { loanStatus }), [plan, loanStatus]);
 
   const reserveMin = useMemo(() =>
     computeReserveMin(plan.budget.costRows, derived.period.monthEq),

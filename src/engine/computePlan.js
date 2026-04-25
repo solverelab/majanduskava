@@ -108,8 +108,8 @@ function issue(severity, message, code, section, extra = {}) {
   return f;
 }
 
-// v1 Tee1: “liigiti” tugi (kulud) + tulude kategooriad + fondide closing + investeeringute normid
-export function computePlan(plan) {
+// v1 Tee1: "liigiti" tugi (kulud) + tulude kategooriad + fondide closing + investeeringute normid
+export function computePlan(plan, { loanStatus = "APPROVED" } = {}) {
   const p = plan || {};
   const period = p.period || {};
   const building = p.building || {};
@@ -139,7 +139,7 @@ export function computePlan(plan) {
   const netOperationalPeriodEUR = round2(costPeriodEUR - incomePeriodEUR);
   const netOperationalMonthlyEUR = round2(netOperationalPeriodEUR / monthEq);
 
-  // --- “liigiti”: costs by category (KrtS §41 loogika) ---
+  // --- "liigiti": costs by category (KrtS §41 loogika) ---
   const costByCategory = {};
   for (const r of costRows) {
     const cat = r?.legal?.category || "UNSPECIFIED";
@@ -189,7 +189,12 @@ export function computePlan(plan) {
   );
 
   // --- Loans ---
-  const loanItems = loans.map(ln => {
+  // §41 base scenario: APPLIED korral planeeritavad laenud (sepiiriostudInvId) välja
+  const baseLoans = loanStatus === "APPLIED"
+    ? loans.filter(l => !l.sepiiriostudInvId)
+    : loans;
+
+  const mapLoanItems = (loanList) => loanList.map(ln => {
     const sched = generateLoanSchedule(
       N(ln.principalEUR),
       N(ln.annualRatePct),
@@ -204,10 +209,19 @@ export function computePlan(plan) {
     return { id: ln.id, servicingPeriodEUR, servicingMonthlyEUR, reservePeriodEUR };
   });
 
+  const loanItems = mapLoanItems(baseLoans);
+  // §36 burden: kõik laenud, sh planeeritavad — eraldi kontroll
+  const allLoanItems = loanStatus === "APPLIED" ? mapLoanItems(loans) : loanItems;
+
   const loanServicePeriodEUR = round2(loanItems.reduce((s, l) => s + N(l.servicingPeriodEUR), 0));
   const loanServiceMonthlyEUR = round2(loanServicePeriodEUR / monthEq);
   const loanReservePeriodEUR = round2(loanItems.reduce((s, l) => s + N(l.reservePeriodEUR), 0));
   const loanReserveMonthlyEUR = round2(loanReservePeriodEUR / monthEq);
+
+  const allLoanServiceMonthlyEUR = round2(allLoanItems.reduce((s, l) => s + N(l.servicingMonthlyEUR), 0));
+  const allLoanReserveMonthlyEUR = round2(
+    allLoanItems.reduce((s, l) => s + N(l.reservePeriodEUR), 0) / monthEq
+  );
 
   // --- Funds ---
   const rfRate = N(funds?.repairFund?.monthlyRateEurPerM2);
@@ -265,7 +279,8 @@ export function computePlan(plan) {
   });
 
   // ===== RISKIANALÜÜS =====
-  const totalLoanMonthlyEUR = round2(loanServiceMonthlyEUR + loanReserveMonthlyEUR);
+  // §36 laenukoormus: kõik laenud (sh planeeritavad) — ei sõltu base scenario filtrist
+  const totalLoanMonthlyEUR = round2(allLoanServiceMonthlyEUR + allLoanReserveMonthlyEUR);
   const loanBurdenEurPerM2 = totAreaM2 > 0 ? round2(totalLoanMonthlyEUR / totAreaM2) : 0;
   const ownersNeedEurPerM2 = totAreaM2 > 0 ? round2(ownersNeedMonthlyEUR / totAreaM2) : 0;
 
@@ -283,7 +298,7 @@ export function computePlan(plan) {
   if ((budget.costRows || []).length === 0)
     issues.push(issue("ERROR", "Majandamiskulud (kulud) on sisestamata.", "NO_COSTS", "Kulud"));
 
-  // “liigiti” praktiline kontroll: cost row category
+  // "liigiti" praktiline kontroll: cost row category
   for (const r of costRows) {
     const cat = r?.legal?.category;
     if (!cat) {
@@ -297,7 +312,7 @@ export function computePlan(plan) {
   if ((budget.incomeRows || []).length === 0)
     issues.push(issue("WARN", "Tulud on sisestamata (kui tulusid ei ole, jäta selge märge).", "NO_INCOME", "Tulud"));
 
-  // Investeeringud – kui sellel aastal pole, lisa “dokumendilausena” info
+  // Investeeringud – kui sellel aastal pole, lisa "dokumendilausena" info
   if (thisYearCount === 0) {
     issues.push(issue("INFO", "Perioodil ei ole valideeritud investeeringuid.", "INV_NONE_THIS_YEAR", "Investeeringud"));
   }
@@ -395,7 +410,7 @@ export function computePlan(plan) {
       rfOutflowThisYearEUR,
       reserveOutflowThisYearEUR,
       loanOutflowThisYearEUR,
-      // UI jaoks: “dokumendilausena”
+      // UI jaoks: "dokumendilausena"
       noteThisYear: thisYearCount === 0 ? "Perioodil ei ole valideeritud investeeringuid." : null,
     },
 
