@@ -6,20 +6,43 @@ import { kulureaOsa, jaotusalusSilt, computeRemondifondiArvutus, KOMMUNAALTEENUS
 // ══════════════════════════════════════════════════════════════════════
 
 describe("jaotusalusSilt helper", () => {
-  it('"m2" => "m² järgi"', () => {
-    expect(jaotusalusSilt("m2")).toBe("m² järgi");
+  it('"m2" => "Kaasomandi osa suuruse alusel"', () => {
+    expect(jaotusalusSilt("m2")).toBe("Kaasomandi osa suuruse alusel");
   });
 
-  it('"korter" => "korterite vahel võrdselt"', () => {
-    expect(jaotusalusSilt("korter")).toBe("korterite vahel võrdselt");
+  it('"kaasomand" => "Kaasomandi osa suuruse alusel"', () => {
+    expect(jaotusalusSilt("kaasomand")).toBe("Kaasomandi osa suuruse alusel");
   });
 
-  it('puuduv (undefined) => "m² järgi"', () => {
-    expect(jaotusalusSilt(undefined)).toBe("m² järgi");
+  it('"korter" => "Korteri kohta"', () => {
+    expect(jaotusalusSilt("korter")).toBe("Korteri kohta");
   });
 
-  it('null => "m² järgi"', () => {
-    expect(jaotusalusSilt(null)).toBe("m² järgi");
+  it('"apartment" => "Korteri kohta"', () => {
+    expect(jaotusalusSilt("apartment")).toBe("Korteri kohta");
+  });
+
+  it('"muu" => "Muu"', () => {
+    expect(jaotusalusSilt("muu")).toBe("Muu");
+  });
+
+  it('"other" => "Muu"', () => {
+    expect(jaotusalusSilt("other")).toBe("Muu");
+  });
+
+  it('puuduv (undefined) => "Kaasomandi osa suuruse alusel"', () => {
+    expect(jaotusalusSilt(undefined)).toBe("Kaasomandi osa suuruse alusel");
+  });
+
+  it('null => "Kaasomandi osa suuruse alusel"', () => {
+    expect(jaotusalusSilt(null)).toBe("Kaasomandi osa suuruse alusel");
+  });
+
+  it('"m² järgi" ei esine enam jaotusaluse display-sõnastusena', () => {
+    const allValues = ["m2", "kaasomand", "korter", "apartment", "muu", "other", undefined, null];
+    for (const v of allValues) {
+      expect(jaotusalusSilt(v)).not.toBe("m² järgi");
+    }
   });
 });
 

@@ -35,6 +35,14 @@ export function mkInvestmentItem({
   };
 }
 
+export function mkRfUsageItem({
+  linkedAssetConditionId = null,
+  remondifondistKaetavSumma = 0,
+  markus = "",
+} = {}) {
+  return { id: uid(), linkedAssetConditionId, remondifondistKaetavSumma, markus };
+}
+
 export function mkLoan({
   name = "",
   principalEUR = 0,
@@ -44,8 +52,27 @@ export function mkLoan({
   startYM = "",
   reservePct = 0,
   sepiiriostudInvId = null,
+  // Tab 2 metaandmed ja perioodikulu väljad
+  laenuandja = "",
+  laenuandjaKirjeldus = "",
+  eesmärk = "",
+  eesmärkKirjeldus = "",
+  pohiosPerioodis = 0,
+  intressPerioodis = 0,
+  teenustasudPerioodis = 0,
+  allocationBasis = "m2",
+  legalBasisSeadus = true,
+  legalBasisBylaws = false,
+  legalBasisSpecialAgreement = false,
+  legalBasisMuu = false,
+  legalBasisTaepsustus = "",
 } = {}) {
-  return { id: uid(), name, principalEUR, annualRatePct, termMonths, type, startYM, reservePct, sepiiriostudInvId };
+  return {
+    id: uid(), name, principalEUR, annualRatePct, termMonths, type, startYM, reservePct, sepiiriostudInvId,
+    laenuandja, laenuandjaKirjeldus, eesmärk, eesmärkKirjeldus,
+    pohiosPerioodis, intressPerioodis, teenustasudPerioodis,
+    allocationBasis, legalBasisSeadus, legalBasisBylaws, legalBasisSpecialAgreement, legalBasisMuu, legalBasisTaepsustus,
+  };
 }
 
 export function defaultPlan({ year = new Date().getFullYear() } = {}) {
@@ -71,10 +98,11 @@ export function defaultPlan({ year = new Date().getFullYear() } = {}) {
       items: [],
     },
     funds: {
-      repairFund: { monthlyRateEurPerM2: 0 },
+      repairFund: { monthlyRateEurPerM2: 0, usageItems: [] },
       reserve: { plannedEUR: 0 },
     },
     loans: [],
+    removedDefaultKommunaalCategories: [],
     openingBalances: {
       repairFundEUR: 0,
       reserveEUR: 0,

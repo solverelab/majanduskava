@@ -63,6 +63,53 @@ describe("allocationPolicies → computePlan wiring", () => {
     expect(getEffectiveAllocationBasis(plan.allocationPolicies.reserve)).toBe("m2");
   });
 
+  it('maintenance overrideBasis="apartment" + legalBasis="pohikiri" → jaotub korteri kaupa (sama mis "korter")', () => {
+    const planKorter = mkPlanWithTwoApartments();
+    planKorter.allocationPolicies.maintenance.overrideBasis = "korter";
+    planKorter.allocationPolicies.maintenance.legalBasis = "pohikiri";
+
+    const planApartment = mkPlanWithTwoApartments();
+    planApartment.allocationPolicies.maintenance.overrideBasis = "apartment";
+    planApartment.allocationPolicies.maintenance.legalBasis = "pohikiri";
+
+    const resK = computePlan(planKorter);
+    const resA = computePlan(planApartment);
+    expect(resA.apartmentPayments[0].operationalMonthlyEUR).toBeCloseTo(resK.apartmentPayments[0].operationalMonthlyEUR, 5);
+    expect(resA.apartmentPayments[1].operationalMonthlyEUR).toBeCloseTo(resK.apartmentPayments[1].operationalMonthlyEUR, 5);
+  });
+
+  it('"apartment" korral jagatakse summa korterite arvuga võrdselt', () => {
+    const plan = mkPlanWithTwoApartments();
+    plan.allocationPolicies.maintenance.overrideBasis = "apartment";
+    plan.allocationPolicies.maintenance.legalBasis = "pohikiri";
+    const res = computePlan(plan);
+    const [a, b] = res.apartmentPayments;
+    expect(a.operationalMonthlyEUR).toBeCloseTo(b.operationalMonthlyEUR, 2);
+  });
+
+  it('"apartment" remondifondis → jaotub korteri kaupa (sama mis "korter")', () => {
+    const planKorter = mkPlanWithTwoApartments();
+    planKorter.allocationPolicies.remondifond.overrideBasis = "korter";
+    planKorter.allocationPolicies.remondifond.legalBasis = "pohikiri";
+
+    const planApartment = mkPlanWithTwoApartments();
+    planApartment.allocationPolicies.remondifond.overrideBasis = "apartment";
+    planApartment.allocationPolicies.remondifond.legalBasis = "pohikiri";
+
+    const resK = computePlan(planKorter);
+    const resA = computePlan(planApartment);
+    expect(resA.apartmentPayments[0].repairFundMonthlyEUR).toBeCloseTo(resK.apartmentPayments[0].repairFundMonthlyEUR, 5);
+    expect(resA.apartmentPayments[1].repairFundMonthlyEUR).toBeCloseTo(resK.apartmentPayments[1].repairFundMonthlyEUR, 5);
+  });
+
+  it('"m2" alus jääb pindalapõhiseks — "apartment" ei mõjuta m² jaotust', () => {
+    const plan = mkPlanWithTwoApartments();
+    // vaikimisi m2, ei seta overrideBasis-i
+    const res = computePlan(plan);
+    const [a, b] = res.apartmentPayments;
+    expect(a.operationalMonthlyEUR / b.operationalMonthlyEUR).toBeCloseTo(30 / 70, 3);
+  });
+
   it('regressioon: ainult toggle ON (overrideBasis="korter", legalBasis=null) ei muuda computePlan väljundit', () => {
     // Kasutaja avab erandi UI ('toggle ON') aga ei ole veel alust kinnitanud.
     // State sisaldab overrideBasis="korter" + legalBasis=null → arithmetic peab jääma

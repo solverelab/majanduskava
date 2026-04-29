@@ -68,10 +68,12 @@ export async function fetchBuildingCode(adsOid) {
 }
 
 /**
- * Korterite andmed — EHR ehitisregistri buildingData
+ * Korterite andmed + hoone metaandmed — EHR ehitisregistri buildingData
  * @param {string} ehrCode — hoone EHR kood (nt "120726980")
- * @returns {Promise<Array<{ number: string, area: number }>>}
- * Sorteeritud loomuliku sortimise järgi (1, 2, 3, …, 10, 11)
+ * @returns {Promise<{ apartments: Array<{ number: string, area: number, koetavPind: number|null }>, meta: object }>}
+ * apartments on sorteeritud loomuliku sortimise järgi (1, 2, 3, …, 10, 11)
+ * apartments[].koetavPind — korteri köetav pind m² (ehitiseOsaPohiandmed.koetavPind), null kui puudub
+ * meta.* on null kui EHR vastuses välja ei leitud
  */
 export async function fetchApartments(ehrCode) {
   const url = `https://livekluster.ehr.ee/api/building/v2/buildingData?ehr_code=${encodeURIComponent(ehrCode)}`;
@@ -83,28 +85,42 @@ export async function fetchApartments(ehrCode) {
     const apartments = [];
     // EHR v2 vastus: ehitis on otse top-level, mitte ehpilesResult sees
     const ehitis = data?.ehitis;
-    if (!ehitis) return apartments;
+    if (!ehitis) return { apartments, meta: { ehrKood: ehrCode } };
 
     const kehanded = ehitis.ehitiseKehand?.kehand;
-    if (!Array.isArray(kehanded)) return apartments;
-
-    for (const kehand of kehanded) {
-      const osad = kehand.ehitiseOsad?.ehitiseOsa;
-      if (!Array.isArray(osad)) continue;
-      for (const osa of osad) {
-        if (osa.liik === "K" && osa.tahis) {
-          // pind asub ehitiseOsaPohiandmed sees
-          const pind = osa.ehitiseOsaPohiandmed?.pind;
-          apartments.push({
-            number: osa.tahis,
-            area: parseFloat(pind) || 0,
-          });
+    if (Array.isArray(kehanded)) {
+      for (const kehand of kehanded) {
+        const osad = kehand.ehitiseOsad?.ehitiseOsa;
+        if (!Array.isArray(osad)) continue;
+        for (const osa of osad) {
+          if (osa.liik === "K" && osa.tahis) {
+            // pind ja koetavPind asuvad ehitiseOsaPohiandmed sees
+            const osap = osa.ehitiseOsaPohiandmed ?? {};
+            const koetavRaw = parseFloat(osap.koetavPind);
+            apartments.push({
+              number: osa.tahis,
+              area: parseFloat(osap.pind) || 0,
+              koetavPind: isNaN(koetavRaw) ? null : koetavRaw,
+            });
+          }
         }
       }
     }
 
     apartments.sort((a, b) => naturalCompare(a.number, b.number));
-    return apartments;
+
+    // Hoone metaandmed — EHR v2 tegelikud väljanimed (kontrollitud 104023768 näitel)
+    // suletudNetopind ja koetavPind EI OLE siin — need summeeritakse korterite tasemelt
+    const p = ehitis.ehitisePohiandmed ?? {};   // NB: ehitisePohiandmed, mitte ehitisPohiandmed
+    const andmed = ehitis.ehitiseAndmed ?? {};   // esmaneKasutus = ehitusaasta
+
+    const meta = {
+      ehrKood: ehrCode,
+      ehitusaasta: andmed.esmaneKasutus ?? null,   // "1977"
+      korrusteArv: p.maxKorrusteArv ?? null,        // maxKorrusteArv, mitte korrusteArv
+    };
+
+    return { apartments, meta };
   } catch (err) {
     throw new Error(`Korterite päring ebaõnnestus: ${err.message}`);
   }

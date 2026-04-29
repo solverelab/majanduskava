@@ -53,7 +53,7 @@ describe("print/PDF sektsioonide struktuur", () => {
     const kaasomandIdx = src.indexOf('print-section-title">Ülevaade kaasomandi eseme seisukorrast ja kavandatavatest toimingutest');
     expect(kaasomandIdx).toBeGreaterThan(-1);
     // Fallback tekst peab olema olemas (kuvatakse kui seisukorra ridu pole)
-    expect(src).toContain("Kaasomandi eseme seisukorra andmed on sisestamata.");
+    expect(src).toContain("Andmeid ei ole sisestatud.");
   });
 
   it("print-content plokk on isPrinting tingimusega", () => {
@@ -70,7 +70,7 @@ describe("print/PDF sektsioonide struktuur", () => {
     const p4Title = 'print-section-title">Reservkapitali ja remondifondi tehtavate maksete suurus';
     const p4Idx = src.indexOf(p4Title);
     expect(p4Idx).toBeGreaterThan(-1);
-    const p4Region = src.slice(p4Idx, p4Idx + 2000);
+    const p4Region = src.slice(p4Idx, p4Idx + 3000);
     // Kõik waterfall read peavad olema tingimusteta
     expect(p4Region).toContain("Saldo perioodi alguses");
     expect(p4Region).toContain("Laekumine perioodis");

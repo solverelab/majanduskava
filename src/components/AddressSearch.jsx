@@ -116,11 +116,11 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded, onAddressSe
           return;
         }
 
-        const apts = await fetchApartments(code);
+        const { apartments: apts, meta } = await fetchApartments(code);
         if (apts.length === 0) {
           setError("Korterite andmeid ei leitud. Sisesta käsitsi.");
         } else {
-          onApartmentsLoaded(apts);
+          onApartmentsLoaded(apts, meta);
         }
       } catch (err) {
         console.error("[AddressSearch] korterite laadimine ebaõnnestus:", err);

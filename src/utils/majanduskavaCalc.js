@@ -2,7 +2,14 @@
 // Pure financial calculation functions extracted from MajanduskavaApp.jsx
 
 export const KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus", "Muu kommunaalteenus"];
-export const HALDUSTEENUSED = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Prügivedu", "Muu haldusteenus"];
+export const HALDUSTEENUSED = [
+  // Legacy values kept for backward compat with saved plans
+  "Haldus", "Hooldus", "Muu haldusteenus",
+  // Current Tab 2 haldus category values
+  "Valitseja / halduri tasu", "Raamatupidamine", "Koristus", "Kindlustus",
+  "Tehnosüsteemide hooldus", "Pangatasud", "Audit / revisjon", "Õigusabi",
+  "Heakord", "Liftihooldus", "Tuleohutuse kontroll / hooldus", "Prügivedu", "Muu teenus",
+];
 export const LAENUMAKSED = ["Laenumakse"];
 
 // KrtS § 41 lg 1 p 5 — kommunaalteenuste liigid.
@@ -39,8 +46,9 @@ export function utilityRowStatus(row) {
 // ja canonical "apartment" (rea-mudel allocationBasis). Backward-compat kiht, mitte
 // uus paralleelne canonical mudel — eemaldatakse, kui allocationPolicies migreeritud.
 export function jaotusalusSilt(jaotusalus) {
-  if (jaotusalus === "korter" || jaotusalus === "apartment") return "korterite vahel võrdselt";
-  return "m² järgi";
+  if (jaotusalus === "korter" || jaotusalus === "apartment") return "Korteri kohta";
+  if (jaotusalus === "muu" || jaotusalus === "other") return "Muu";
+  return "Kaasomandi osa suuruse alusel"; // m2, kaasomand, null, undefined
 }
 
 // Reapõhise kulurea efektiivne jaotusalus (Valik B).
@@ -209,8 +217,12 @@ export function computeRemondifondiArvutus({
   loanStatus,
   monthEq,
   costRows = [],
+  rfUsageItems = [],
+  planeeritudKogumine = null,
+  fondiMuuTulu = 0,
 }) {
   const saldoAlgus = Math.round(parseFloat(String(saldoAlgusRaw).replace(",", ".")) || 0);
+  const fondiMuuTuluRaw = Math.round(parseFloat(String(fondiMuuTulu || 0).replace(",", ".")) || 0);
   const koikInv = investments;
 
   const isConditional = (inv) => (inv.fundingPlan || []).some(fp => fp.source === "Laen");
@@ -288,21 +300,30 @@ export function computeRemondifondiArvutus({
       .reduce((sum, l) => sum + arvutaKuumakse(l.principalEUR, l.annualRatePct, parseInt(l.termMonths) || 0), 0);
     const laenumaksedKuus = planeeritudLaenumaksedKuus + olemasolevLaenumaksedKuus;
 
-    const maarKuusM2 = maarOverride ?? 0;
+    const plKogumine = planeeritudKogumine != null
+      ? Math.round(parseFloat(String(planeeritudKogumine).replace(",", ".")) || 0) : null;
+    const maarKuusM2Legacy = maarOverride ?? 0;
+    const laekuminePerioodis = (plKogumine != null && plKogumine > 0)
+      ? plKogumine
+      : Math.round(maarKuusM2Legacy * 12 * koguPind * mEq / 12);
+    const maarKuusM2 = (plKogumine != null && plKogumine > 0)
+      ? (koguPind > 0 && mEq > 0 ? laekuminePerioodis / (koguPind * mEq) : 0)
+      : maarKuusM2Legacy;
     const maarAastasM2 = maarKuusM2 * 12;
-    const laekuminePerioodis = Math.round(maarAastasM2 * koguPind * mEq / 12);
-    const remondifondistKaetavadKokku = investRemondifondist + p2Remondifondist;
-    const saldoLopp = saldoAlgus + laekuminePerioodis - remondifondistKaetavadKokku;
+    const rfUsageRemondifondist = Math.round(rfUsageItems.reduce((s, it) => s + (parseFloat(it.remondifondistKaetavSumma) || 0), 0));
+    const remondifondistKaetavadKokku = investRemondifondist + p2Remondifondist + rfUsageRemondifondist;
+    const saldoLopp = saldoAlgus + laekuminePerioodis + fondiMuuTuluRaw - remondifondistKaetavadKokku;
     const katab = saldoLopp >= nextPeriodRfVajadus;
 
     return {
       saldoAlgus, maarAastasM2, koguPind, laekuminePerioodis,
-      investRemondifondist, p2Remondifondist, remondifondistKaetavadKokku,
+      investRemondifondist, p2Remondifondist, rfUsageRemondifondist, remondifondistKaetavadKokku,
       nextPeriodRfVajadus, katab,
       saldoLopp, onLaen, invDetail,
       laenumaksedKuus, planeeritudLaenumaksedKuus, olemasolevLaenumaksedKuus,
       maarKuusM2,
-      kasitsiMaar: maarOverride != null,
+      kasitsiMaar: maarOverride != null || (plKogumine != null && plKogumine > 0),
+      fondiMuuTulu: fondiMuuTuluRaw,
     };
   };
 
@@ -324,4 +345,112 @@ export function computeRemondifondiArvutus({
     loanScenario,
     loanApproved: loanStatus === "APPROVED",
   };
+}
+
+// ── Kommunaalteenuste vaikimisi ühikud ja standardread ──────────────────────
+export const KOMMUNAAL_VAIKE_UHIK = {
+  "Kütus": "m³",
+  "Soojus": "MWh",
+  "Vesi ja kanalisatsioon": "m³",
+  "Elekter": "kWh",
+};
+
+// KrtS § 41 lg 1 p 5 — kohustuslikud standardteenused uuel plaanil.
+// Kütus on vabatahtlik — lisa eraldi nupu kaudu.
+export const KOMMUNAAL_DEFAULT_CATEGORIES = ["Soojus", "Vesi ja kanalisatsioon", "Elekter"];
+
+const _uid = () => Math.random().toString(36).slice(2, 9);
+
+// Creates a fully-initialised kommunaal cost row with isDefault: true.
+export function makeKommunaalRow(category) {
+  return {
+    id: _uid(),
+    side: "COST",
+    category,
+    name: category,
+    utilityType: UTILITY_TYPE_BY_CATEGORY[category] || null,
+    kogus: "",
+    uhik: KOMMUNAAL_VAIKE_UHIK[category] || "",
+    uhikuHind: "",
+    summaInput: 0,
+    selgitus: "",
+    isDefault: true,
+    notApplicable: false,
+    forecastAdjustmentEnabled: false,
+    forecastAdjustmentType: null,
+    forecastAdjustmentPercent: null,
+    forecastAdjustmentNote: "",
+    allocationBasis: "m2",
+    legalBasisBylaws: false,
+    legalBasisSpecialAgreement: false,
+    allocationExplanation: "",
+    settledPostHoc: false,
+    fundingSource: "eelarve",
+    recursNextPeriod: false,
+    nextPeriodAmount: null,
+    legalBasisSeadus: true,
+    legalBasisMuu: false,
+    legalBasisTaepsustus: "",
+    allocationBasisMuuKirjeldus: "",
+    muuTeenusKirjeldus: "",
+    legal: { bucket: "OPERATIONAL", category: "MAINTENANCE", targetedFund: null },
+    calc: { type: "FIXED_PERIOD", params: { amountEUR: 0 } },
+  };
+}
+
+// Idempotent: seeds missing standard kommunaalread into a plan without duplicating.
+// Respects plan.removedDefaultKommunaalCategories — categories the user has intentionally removed.
+// "Tühjenda" resets removedDefaultKommunaalCategories: [] before calling this.
+export function seedDefaultKommunaalRows(plan) {
+  const removed = new Set(plan.removedDefaultKommunaalCategories || []);
+  const existing = new Set(
+    (plan.budget?.costRows || [])
+      .filter(r => KOMMUNAAL_DEFAULT_CATEGORIES.includes(r.category))
+      .map(r => r.category)
+  );
+  const missing = KOMMUNAAL_DEFAULT_CATEGORIES.filter(cat => !existing.has(cat) && !removed.has(cat));
+  if (missing.length === 0) return plan;
+  return {
+    ...plan,
+    budget: {
+      ...plan.budget,
+      costRows: [...(plan.budget?.costRows || []), ...missing.map(makeKommunaalRow)],
+    },
+  };
+}
+
+// Normalizes income row allocations — handles both new incomeAllocations model and
+// legacy incomeUse/targetFund/fundDirectedAmount fields.
+export function normalizeIncomeAllocations(row) {
+  const rowSumma = Math.round(parseFloat(row.summaInput) || 0);
+
+  if (Array.isArray(row.incomeAllocations) && row.incomeAllocations.length > 0) {
+    const allocs = row.incomeAllocations;
+    const totalAllocated = Math.round(allocs.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0));
+    const errors = [];
+    if (row.incomeAllocation === "targeted") {
+      allocs.forEach(a => {
+        if (!a.target) errors.push("Kõigil suunamistel peab olema sihtkoht.");
+        if (!(parseFloat(a.amount) > 0)) errors.push("Kõigil suunamistel peab olema summa.");
+        if ((parseFloat(a.amount) || 0) < 0) errors.push("Summa ei tohi olla negatiivne.");
+      });
+      if (rowSumma > 0 && totalAllocated !== rowSumma)
+        errors.push("Suunatud summad peavad kokku andma kogu tulu summa.");
+    }
+    return { allocations: allocs, totalAllocated, unallocatedAmount: rowSumma - totalAllocated, isValid: errors.length === 0, errors };
+  }
+
+  if (row.incomeAllocation === "targeted") {
+    return { allocations: [], totalAllocated: 0, unallocatedAmount: rowSumma, isValid: false, errors: ["Vähemalt üks suunamine peab olema."] };
+  }
+
+  // Legacy fallback: old incomeUse/targetFund/fundDirectedAmount model
+  if (row.incomeUse === "fund" && row.targetFund) {
+    const directed = (row.fundDirectedAmount !== "" && row.fundDirectedAmount != null)
+      ? Math.max(0, Math.min(Math.round(parseFloat(row.fundDirectedAmount) || 0), rowSumma))
+      : rowSumma;
+    return { allocations: [{ id: "__legacy__", target: row.targetFund, amount: directed, note: "" }], totalAllocated: directed, unallocatedAmount: rowSumma - directed, isValid: true, errors: [] };
+  }
+
+  return { allocations: [], totalAllocated: 0, unallocatedAmount: rowSumma, isValid: true, errors: [] };
 }

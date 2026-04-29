@@ -203,10 +203,21 @@ export function computePlan(plan, { loanStatus = "APPROVED" } = {}) {
       (ln.startYM || `${year}-01`)
     );
     const svc = loanServiceInPeriod(sched, period.start, period.end);
-    const servicingPeriodEUR = round2(svc.total);
+
+    // Manual period amounts (Tab 2 fields) take precedence over amortization schedule
+    // when the user has explicitly entered them. Planned loans (sepiiriostudInvId) always
+    // use the amortization schedule since no actual payments have been made yet.
+    const manualPrincipal = round2(N(ln.pohiosPerioodis));
+    const manualInterest = round2(N(ln.intressPerioodis));
+    const feesPeriodEUR = round2(N(ln.teenustasudPerioodis));
+    const hasManual = !ln.sepiiriostudInvId && (manualPrincipal > 0 || manualInterest > 0);
+
+    const principalPeriodEUR = hasManual ? manualPrincipal : round2(svc.principal);
+    const interestPeriodEUR = hasManual ? manualInterest : round2(svc.interest);
+    const servicingPeriodEUR = round2(principalPeriodEUR + interestPeriodEUR + feesPeriodEUR);
     const servicingMonthlyEUR = round2(servicingPeriodEUR / monthEq);
     const reservePeriodEUR = round2(servicingPeriodEUR * N(ln.reservePct) / 100);
-    return { id: ln.id, servicingPeriodEUR, servicingMonthlyEUR, reservePeriodEUR };
+    return { id: ln.id, servicingPeriodEUR, servicingMonthlyEUR, reservePeriodEUR, principalPeriodEUR, interestPeriodEUR, feesPeriodEUR };
   });
 
   const loanItems = mapLoanItems(baseLoans);
@@ -254,7 +265,7 @@ export function computePlan(plan, { loanStatus = "APPROVED" } = {}) {
   const maintenanceBasis = getEffectiveAllocationBasis(p.allocationPolicies?.maintenance);
   const repairFundBasis = getEffectiveAllocationBasis(p.allocationPolicies?.remondifond);
   const shareFor = (basis, apt) => {
-    if (basis === "korter") return apartmentsCount > 0 ? 1 / apartmentsCount : 0;
+    if (basis === "korter" || basis === "apartment") return apartmentsCount > 0 ? 1 / apartmentsCount : 0;
     return totAreaM2 > 0 ? N(apt.areaM2) / totAreaM2 : 0;
   };
 

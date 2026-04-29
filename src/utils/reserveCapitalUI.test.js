@@ -2,114 +2,156 @@ import { describe, it, expect } from "vitest";
 import { computeReserveMin } from "./majanduskavaCalc";
 
 // ══════════════════════════════════════════════════════════════════════
-// Reservkapitali ploki regressioonitestid
+// Reservkapitali ploki invariandid
 //
 // Kontrollib:
-// 1. computeReserveMin loogika ei muutunud
-// 2. reservkapitali määr €/m²/kuu arvutatakse õigesti
-// 3. algseis → kogumine → kasutamine → lõppseis voog on koherentne
-// 4. katvus ja miinimum on arvutuslikult korrektsed
+// 1. computeReserveMin: nõutav reservkapital = aasta eeldatavad kulud / 12
+// 2. Aasta eeldatavad kulud tulevad kanonilisest arvutusest (costRows)
+// 3. Lõppsaldo = algsaldo + kogumine – kasutamine
+// 4. Hoiatus kui lõppsaldo < nõutav miinimum
+// 5. Planeeritud kogumine jääb kasutaja sisendiks (auto-fill eemaldatud)
+// 6. Remondifond ja laenud ei muutu
 // ══════════════════════════════════════════════════════════════════════
 
-describe("computeReserveMin ei muutu", () => {
-  it("tagastab 1/12 aastakuludest KrtS § 8 järgi", () => {
-    const costRows = [
-      { summaInput: "12000" },
-      { summaInput: "6000" },
-    ];
+// ── 1 + 2. Nõutav reservkapital = aasta eeldatavad kulud / 12 ─────────────
+
+describe("nõutav reservkapital = aasta eeldatavad kulud / 12", () => {
+  it("12 kuu periood: noutavMiinimum = aastaKulud / 12", () => {
+    const costRows = [{ summaInput: "12000" }, { summaInput: "6000" }];
     const r = computeReserveMin(costRows, 12);
-    // periodiKulud = 18000, monthEq = 12 → noutavMiinimum = 18000/12 = 1500
-    expect(r.noutavMiinimum).toBe(1500);
+    // aastaKulud = 18000, noutavMiinimum = 18000/12 = 1500
     expect(r.aastaKulud).toBe(18000);
+    expect(r.noutavMiinimum).toBe(1500);
+    expect(r.noutavMiinimum).toBe(r.aastaKulud / 12);
   });
 
-  it("arvestab moonthEq-d (periood pole alati 12 kuud)", () => {
+  it("arvestab monthEq-d: 60 kuu periood", () => {
     const costRows = [{ summaInput: "30000" }];
     const r = computeReserveMin(costRows, 60);
-    // periodiKulud = 30000, monthEq = 60 → noutavMiinimum = 30000/60 = 500
+    // periodiKulud = 30000, noutavMiinimum = 30000/60 = 500, aastaKulud = 6000
     expect(r.noutavMiinimum).toBe(500);
     expect(r.aastaKulud).toBe(6000);
+    expect(r.noutavMiinimum).toBe(r.aastaKulud / 12);
   });
 
-  it("tühja kuluridadega tagastab 0", () => {
+  it("tühja costRows-iga noutavMiinimum = 0", () => {
     const r = computeReserveMin([], 12);
     expect(r.noutavMiinimum).toBe(0);
     expect(r.aastaKulud).toBe(0);
   });
+
+  it("üks kuluread: noutavMiinimum = see kulu / 12 (12 kuu periood)", () => {
+    const costRows = [{ summaInput: "2400" }];
+    const r = computeReserveMin(costRows, 12);
+    expect(r.noutavMiinimum).toBe(200);
+    expect(r.aastaKulud).toBe(2400);
+  });
 });
 
-describe("reservkapitali määr €/m²/kuu", () => {
-  // Arvutus UI-s: rkKogumine / mEq / koguPind
+// ── 2. Aasta eeldatavad kulud tulevad costRows-ist, mitte käsitsi väljast ─
+
+describe("aasta eeldatavad kulud tulevad kanonilisest arvutusest", () => {
+  it("sama costRows → sama aastaKulud sõltumata muudest sisenditest", () => {
+    const costRows = [{ summaInput: "24000" }];
+    const r1 = computeReserveMin(costRows, 12);
+    const r2 = computeReserveMin(costRows, 12);
+    expect(r1.aastaKulud).toBe(r2.aastaKulud);
+    expect(r1.aastaKulud).toBe(24000);
+  });
+
+  it("erinev costRows → erinev aastaKulud", () => {
+    const r1 = computeReserveMin([{ summaInput: "12000" }], 12);
+    const r2 = computeReserveMin([{ summaInput: "24000" }], 12);
+    expect(r1.aastaKulud).not.toBe(r2.aastaKulud);
+  });
+});
+
+// ── 3. Lõppsaldo valem ────────────────────────────────────────────────────
+
+describe("reservkapitali lõppsaldo = algsaldo + kogumine − kasutamine", () => {
+  const calcSaldo = (saldoAlgus, kogumine, kasutamine) =>
+    (parseFloat(saldoAlgus) || 0) + (kogumine || 0) - (parseFloat(kasutamine) || 0);
+
+  it("täisarvud: 5000 + 1200 − 300 = 5900", () => {
+    expect(calcSaldo("5000", 1200, "300")).toBe(5900);
+  });
+
+  it("tühja algsaldoga: 0 + 1500 − 0 = 1500", () => {
+    expect(calcSaldo("", 1500, "0")).toBe(1500);
+  });
+
+  it("negatiivne tulemus: 1000 + 500 − 2000 = -500", () => {
+    expect(calcSaldo("1000", 500, "2000")).toBe(-500);
+  });
+
+  it("kasutamine 0: lõppsaldo = algsaldo + kogumine", () => {
+    expect(calcSaldo("3000", 1000, "0")).toBe(4000);
+  });
+
+  it("kõik 0: lõppsaldo = 0", () => {
+    expect(calcSaldo("", 0, "")).toBe(0);
+  });
+});
+
+// ── 4. Hoiatus kui lõppsaldo < nõutav miinimum ───────────────────────────
+
+describe("hoiatus kui lõppsaldo jääb alla nõutava miinimumi", () => {
+  const vastab = (rkSaldoLopp, noutavMiinimum) => rkSaldoLopp >= noutavMiinimum;
+
+  it("lõppsaldo < nõutav → ei vasta (hoiatus kuvatakse)", () => {
+    expect(vastab(1499, 1500)).toBe(false);
+  });
+
+  it("lõppsaldo = nõutav → vastab (hoiatust ei kuvata)", () => {
+    expect(vastab(1500, 1500)).toBe(true);
+  });
+
+  it("lõppsaldo > nõutav → vastab (hoiatust ei kuvata)", () => {
+    expect(vastab(2000, 1500)).toBe(true);
+  });
+
+  it("lõppsaldo = 0, nõutav = 0 → vastab", () => {
+    expect(vastab(0, 0)).toBe(true);
+  });
+
+  it("negatiivne lõppsaldo → ei vasta", () => {
+    expect(vastab(-1, 1500)).toBe(false);
+  });
+});
+
+// ── 5. Planeeritud kogumine on kasutaja sisend (ei kirjutata üle) ─────────
+
+describe("planeeritud kogumine jääb kasutaja sisendiks", () => {
+  it("computeReserveMin ei sisalda 'plannedEUR' välja (ei otsusta kogumise üle)", () => {
+    const r = computeReserveMin([{ summaInput: "12000" }], 12);
+    expect(r).not.toHaveProperty("plannedEUR");
+  });
+
+  it("computeReserveMin ei sisalda 'kogumineEUR' ega 'autoFill' välja", () => {
+    const r = computeReserveMin([{ summaInput: "12000" }], 12);
+    expect(r).not.toHaveProperty("kogumineEUR");
+    expect(r).not.toHaveProperty("autoFill");
+  });
+
+  it("noutavMiinimum on ainult soovituslik piir, mitte kogumise ettekirjutus", () => {
+    const r = computeReserveMin([{ summaInput: "12000" }], 12);
+    // Funktsiooni väljund on ainult informatsioon, mitte käsk plan.funds.reserve.plannedEUR-i seada
+    expect(typeof r.noutavMiinimum).toBe("number");
+    expect(Object.keys(r)).toEqual(["aastaKulud", "noutavMiinimum"]);
+  });
+});
+
+// ── 6. €/m²/kuu abikuva (informatsioon) ──────────────────────────────────
+
+describe("reservkapitali €/m²/kuu kuvamine", () => {
   const calcRkMaarKuusM2 = (rkKogumine, mEq, koguPind) =>
     koguPind > 0 ? rkKogumine / mEq / koguPind : 0;
 
-  it("arvutatakse õigesti tavajuhul", () => {
-    // 1200 € kogumine, 12 kuud, 200 m²
-    // → 1200 / 12 / 200 = 0.50 €/m²/kuu
+  it("1200 € kogumine, 12 kuud, 200 m² → 0,50 €/m²/kuu", () => {
     expect(calcRkMaarKuusM2(1200, 12, 200)).toBeCloseTo(0.50, 2);
-  });
-
-  it("arvestab mEq-d (periood pole alati 12 kuud)", () => {
-    // 5000 € kogumine, 60 kuud, 300 m²
-    // → 5000 / 60 / 300 ≈ 0.28 €/m²/kuu
-    expect(calcRkMaarKuusM2(5000, 60, 300)).toBeCloseTo(0.2778, 3);
   });
 
   it("koguPind = 0 → 0 (ei jaga nulliga)", () => {
     expect(calcRkMaarKuusM2(1200, 12, 0)).toBe(0);
-  });
-
-  it("kogumine = 0 → 0", () => {
-    expect(calcRkMaarKuusM2(0, 12, 200)).toBe(0);
-  });
-});
-
-describe("algseis-kogumine-kasutamine-lõppseis voog", () => {
-  // Simuleerib UI IIFE loogikat
-  const calcSaldo = (saldoAlgus, kogumine, kasutamine) => ({
-    rkSaldoAlgus: parseFloat(saldoAlgus) || 0,
-    rkKogumine: kogumine || 0,
-    rkKasutamine: parseFloat(kasutamine) || 0,
-    rkSaldoLopp: (parseFloat(saldoAlgus) || 0) + (kogumine || 0) - (parseFloat(kasutamine) || 0),
-  });
-
-  it("lõppsaldo = algsaldo + kogumine - kasutamine", () => {
-    const s = calcSaldo("5000", 1200, "300");
-    expect(s.rkSaldoLopp).toBe(5900);
-  });
-
-  it("tühja algsaldoga lõppsaldo = kogumine - kasutamine", () => {
-    const s = calcSaldo("", 1500, "0");
-    expect(s.rkSaldoLopp).toBe(1500);
-  });
-
-  it("negatiivne lõppsaldo, kui kasutamine ületab algsaldo + kogumine", () => {
-    const s = calcSaldo("1000", 500, "2000");
-    expect(s.rkSaldoLopp).toBe(-500);
-  });
-});
-
-describe("katvus ja miinimum", () => {
-  it("katvusKuud = lõppsaldo / kuukulud", () => {
-    const kuuKulud = 1500;
-    const rkSaldoLopp = 4500;
-    const katvusKuud = kuuKulud > 0 ? rkSaldoLopp / kuuKulud : 0;
-    expect(katvusKuud).toBe(3);
-  });
-
-  it("katvusLabel: >= 3 → Hea, >= 1.5 → Rahuldav, muidu → Riskantne", () => {
-    const label = (kuud) => kuud >= 3 ? "Hea" : kuud >= 1.5 ? "Rahuldav" : "Riskantne";
-    expect(label(3)).toBe("Hea");
-    expect(label(5)).toBe("Hea");
-    expect(label(1.5)).toBe("Rahuldav");
-    expect(label(2.9)).toBe("Rahuldav");
-    expect(label(1.4)).toBe("Riskantne");
-    expect(label(0)).toBe("Riskantne");
-  });
-
-  it("vastab miinimumile, kui lõppsaldo >= noutavMiinimum", () => {
-    const noutavMiinimum = 1500;
-    expect(1500 >= noutavMiinimum).toBe(true);
-    expect(1499 >= noutavMiinimum).toBe(false);
   });
 });

@@ -20,10 +20,14 @@ describe("Jaotusaluse erandi UI paigutus", () => {
     expect(src).toContain("const renderPolicyException");
   });
 
-  it("renderPolicyException kutsutakse remondifondile, reservkapitalile ja maintenance'ile", () => {
-    expect(src).toContain('renderPolicyException("remondifond")');
+  it("renderPolicyException kutsutakse reservkapitalile ja maintenance'ile", () => {
     expect(src).toContain('renderPolicyException("reserve")');
     expect(src).toContain('renderPolicyException("maintenance")');
+  });
+
+  it("remondifond kasutab oma inline jaotusaluse UI-d (patchRfPolicy)", () => {
+    expect(src).toContain("patchRfPolicy");
+    expect(src).toContain("Kulude jaotuse alus");
   });
 
   it("maintenance-erand on seotud ainult HALDUSTEENUSED kuluridadega", () => {
