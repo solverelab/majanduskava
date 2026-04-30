@@ -5,7 +5,7 @@ import { describeAllocationPolicy, summarizeAllocationPolicy } from "./domain/al
 import { syncLoan } from "./utils/syncLoan";
 import { normalizeInvestmentsField, cleanAssetConditionInvestmentFields } from "./utils/importNormalize";
 import { cleanupOrphanLinkedLoans } from "./utils/planCleanup";
-import { syncRepairFundRate, syncRepairFundOpeningBalance, fillMissingYearsFromPeriod, syncConditionItemPlannedYears } from "./utils/planSync";
+import { syncRepairFundRate, syncRepairFundOpeningBalance, fillMissingYearsFromPeriod } from "./utils/planSync";
 import { computePlan, euro } from "./engine/computePlan";
 import { runPlan, applyActionAndRun, applyOnly, setPreset as setHostPreset, runAutoResolve, SOLVERE_CORE_CONTRACT_VERSION } from "./solvereBridge/majanduskavaHost";
 import { buildStateSignature } from "../packages/solvere-core/src/moduleHost.ts";
@@ -1346,36 +1346,15 @@ export default function App() {
   };
 
   const uuendaSeisukord = (id, field, value) => {
-    setPlan(p => {
-      const updatedCondition = (p.assetCondition?.items || []).map(r =>
-        r.id !== id ? r : { ...r, [field]: value }
-      );
-
-      // Sync linked condition_item investment if relevant field changed
-      const invPatch = {};
-      if (field === "eeldatavKulu") invPatch.totalCostEUR = Math.max(0, Number(value) || 0);
-      if (field === "tegevusAasta") invPatch.plannedYear = Number(value) || p.period.year;
-      if (field === "ese" || field === "tegevus") {
-        const rida = updatedCondition.find(r => r.id === id);
-        if (rida) invPatch.name = rida.ese + (rida.tegevus ? " — " + rida.tegevus : "");
-      }
-
-      const hasInvPatch = Object.keys(invPatch).length > 0;
-      const updatedInvestments = hasInvPatch
-        ? {
-            ...p.investments,
-            items: p.investments.items.map(inv =>
-              inv.sourceRefId !== id ? inv : { ...inv, ...invPatch }
-            ),
-          }
-        : p.investments;
-
-      return {
-        ...p,
-        assetCondition: { ...p.assetCondition, items: updatedCondition },
-        investments: updatedInvestments,
-      };
-    });
+    setPlan(p => ({
+      ...p,
+      assetCondition: {
+        ...p.assetCondition,
+        items: (p.assetCondition?.items || []).map(r =>
+          r.id !== id ? r : { ...r, [field]: value }
+        ),
+      },
+    }));
   };
 
   const eemaldaSeisukordRida = (id) => {
@@ -1393,27 +1372,6 @@ export default function App() {
     }));
   };
 
-  const handleLooInvesteering = (rida) => {
-    setPlan(p => {
-      if (p.investments.items.some(i => i.sourceRefId === rida.id)) return p;
-      const nimi = rida.ese + (rida.tegevus ? " — " + rida.tegevus : "");
-      const newInv = {
-        ...mkInvestmentItem({
-          name: nimi,
-          plannedYear: Number(rida.tegevusAasta) || p.period.year,
-          totalCostEUR: rida.eeldatavKulu || 0,
-        }),
-        sourceType: "condition_item",
-        sourceRefId: rida.id,
-        fundingPlan: [],
-        contingencyEnabled: false,
-        contingencyType: null,
-        contingencyPercent: null,
-        contingencyNote: "",
-      };
-      return { ...p, investments: { ...p.investments, items: [...p.investments.items, newInv] } };
-    });
-  };
 
   const eemaldaInvesteering = (sourceRefId) => {
     if (!window.confirm("Kas soovid investeeringu eemaldada?")) return;
@@ -1754,10 +1712,6 @@ export default function App() {
     setPlan(p => fillMissingYearsFromPeriod(p, plan.period.year));
   }, [plan.period.year]);
 
-  // Condition_item investeeringu plannedYear peab järgima seotud seisukorra-rea tegevusAasta
-  useEffect(() => {
-    setPlan(p => syncConditionItemPlannedYears(p));
-  }, [plan.assetCondition?.items, plan.investments?.items]);
 
   const SECS = ["Üldandmed", "Seisukord ja plaan", "Tulud ja kulud", "Kommunaalid", "Fondid", "Kohustuste jaotus", "Majanduskava"];
 
@@ -2395,87 +2349,76 @@ export default function App() {
                 </span>
               </div>
 
-              {seisukord.map((rida) => (
-                <div key={rida.id} style={{ border: `1px solid ${N.rule}`, borderRadius: 8, padding: 12, marginBottom: 8 }}>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                    <div style={{ flex: 1, minWidth: 160 }}>
-                      <div style={fieldLabel}>Nimetus</div>
-                      <select value={rida.ese} onChange={(e) => uuendaSeisukord(rida.id, "ese", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
-                        <option value="">Vali…</option>
-                        {ESEMED.map(e => <option key={e} value={e}>{e}</option>)}
-                      </select>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 140 }}>
-                      <div style={fieldLabel}>Seisukord</div>
-                      <select value={rida.seisukordVal} onChange={(e) => uuendaSeisukord(rida.id, "seisukordVal", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
-                        <option value="">Vali…</option>
-                        {SEISUKORD_VALIKUD.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 140 }}>
-                      <div style={fieldLabel}>Prioriteet</div>
-                      <select value={rida.prioriteet} onChange={(e) => uuendaSeisukord(rida.id, "prioriteet", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
-                        <option value="">Vali…</option>
-                        {PRIORITEEDID.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                    <div style={{ flex: 2, minWidth: 180 }}>
-                      <div style={fieldLabel}>Puudused</div>
-                      <input type="text" placeholder={PUUDUSED_PLACEHOLDERS[rida.ese] || "Kirjelda puudused"} value={rida.puudused} onChange={(e) => uuendaSeisukord(rida.id, "puudused", e.target.value)} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => uuendaSeisukord(rida.id, "puudused", next))} style={inputStyle} />
-                    </div>
-                    <div style={{ flex: 2, minWidth: 180 }}>
-                      <div style={fieldLabel}>Kavandatav toiming</div>
-                      <input type="text" placeholder={TEGEVUS_PLACEHOLDERS[rida.ese] || "Kirjelda kavandatav toiming"} value={rida.tegevus} onChange={(e) => uuendaSeisukord(rida.id, "tegevus", e.target.value)} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => uuendaSeisukord(rida.id, "tegevus", next))} style={inputStyle} />
-                    </div>
-                    <div style={{ flex: "1 1 160px" }}>
-                      <div style={fieldLabel}>Eeldatav maksumus (€)</div>
-                      <EuroInput value={rida.eeldatavKulu} onChange={(v) => uuendaSeisukord(rida.id, "eeldatavKulu", v)} style={numStyle} />
-                    </div>
-                    <div style={{ flex: "0 1 140px", minWidth: 90 }}>
-                      <div style={fieldLabel}>Aasta</div>
-                      <select value={rida.tegevusAasta || ""} onChange={(e) => uuendaSeisukord(rida.id, "tegevusAasta", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
-                        <option value="">Vali ...</option>
-                        {(() => {
-                          const sy = plan.period.start ? Number(plan.period.start.slice(0, 4)) : null;
-                          const ey = plan.period.end ? Number(plan.period.end.slice(0, 4)) : null;
-                          const base = sy || new Date().getFullYear();
-                          const end = ey || base;
-                          const from = base - 1;
-                          const to = end + 3;
-                          const years = [];
-                          for (let y = from; y <= to; y++) years.push(y);
-                          return years.map(y => <option key={y} value={String(y)}>{y}</option>);
-                        })()}
-                      </select>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <button style={btnRemove} onClick={() => eemaldaSeisukordRida(rida.id)}>Eemalda rida</button>
-                  </div>
-
-                  {(() => {
-                    const inv = plan.investments.items.find(i => i.sourceRefId === rida.id);
-                    if (!inv) return null;
-                    return (
-                    <div id={`inv-${rida.id}`} style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${N.rule}` }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, color: N.text }}>Investeering</div>
-                      <div style={{ display: "flex", gap: 16, alignItems: "baseline" }}>
-                        <div style={{ flex: 1 }}>
-                          <span style={{ fontSize: 14, color: N.text }}>{inv.name || "\u2014"}</span>
-                        </div>
-                        <div style={{ fontFamily: "monospace", fontSize: 14, fontWeight: 600 }}>
-                          {euroEE(inv.totalCostEUR)}
-                        </div>
+              {seisukord.map((rida) => {
+                const sy = plan.period.start ? Number(plan.period.start.slice(0, 4)) : null;
+                const ey = plan.period.end ? Number(plan.period.end.slice(0, 4)) : null;
+                const isMultiYear = Boolean(sy && ey && ey > sy);
+                const periodYears = isMultiYear ? Array.from({ length: ey - sy + 1 }, (_, i) => sy + i) : [];
+                const effectiveAasta = isMultiYear
+                  ? (rida.tegevusAasta && Number(rida.tegevusAasta) >= sy && Number(rida.tegevusAasta) <= ey
+                      ? rida.tegevusAasta : String(sy))
+                  : rida.tegevusAasta;
+                return (
+                  <div key={rida.id} style={{ border: `1px solid ${N.rule}`, borderRadius: 8, padding: 12, marginBottom: 8 }}>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                      <div style={{ flex: 1, minWidth: 160 }}>
+                        <div style={fieldLabel}>Nimetus</div>
+                        <select value={rida.ese} onChange={(e) => uuendaSeisukord(rida.id, "ese", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
+                          <option value="">Vali…</option>
+                          {ESEMED.map(e => <option key={e} value={e}>{e}</option>)}
+                        </select>
                       </div>
-
-                      <button onClick={() => eemaldaInvesteering(rida.id)} style={{ color: "#c53030", fontSize: 14, background: "none", border: "none", cursor: "pointer", marginTop: 8 }}>Eemalda investeering</button>
+                      <div style={{ flex: 1, minWidth: 140 }}>
+                        <div style={fieldLabel}>Seisukord</div>
+                        <select value={rida.seisukordVal} onChange={(e) => uuendaSeisukord(rida.id, "seisukordVal", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
+                          <option value="">Vali…</option>
+                          {SEISUKORD_VALIKUD.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 140 }}>
+                        <div style={fieldLabel}>Prioriteet</div>
+                        <select value={rida.prioriteet} onChange={(e) => uuendaSeisukord(rida.id, "prioriteet", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
+                          <option value="">Vali…</option>
+                          {PRIORITEEDID.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                      </div>
                     </div>
-                    );
-                  })()}
-                </div>
-              ))}
+                    <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={fieldLabel}>Puudused</div>
+                        <textarea placeholder={PUUDUSED_PLACEHOLDERS[rida.ese] || "Kirjelda puudused"} value={rida.puudused}
+                          onChange={(e) => uuendaSeisukord(rida.id, "puudused", e.target.value)}
+                          onBlur={(e) => normalizeIfChanged(e.target.value, (next) => uuendaSeisukord(rida.id, "puudused", next))}
+                          style={{ ...inputStyle, height: "auto", minHeight: 38, padding: "8px 12px", resize: "vertical", lineHeight: 1.4 }} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={fieldLabel}>Kavandatav toiming</div>
+                        <textarea placeholder={TEGEVUS_PLACEHOLDERS[rida.ese] || "Kirjelda kavandatav toiming"} value={rida.tegevus}
+                          onChange={(e) => uuendaSeisukord(rida.id, "tegevus", e.target.value)}
+                          onBlur={(e) => normalizeIfChanged(e.target.value, (next) => uuendaSeisukord(rida.id, "tegevus", next))}
+                          style={{ ...inputStyle, height: "auto", minHeight: 38, padding: "8px 12px", resize: "vertical", lineHeight: 1.4 }} />
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                      <div style={{ flex: "0 1 200px" }}>
+                        <div style={fieldLabel}>Eeldatav maksumus (€)</div>
+                        <EuroInput value={rida.eeldatavKulu} onChange={(v) => uuendaSeisukord(rida.id, "eeldatavKulu", v)} style={numStyle} />
+                      </div>
+                      {isMultiYear && (
+                        <div style={{ flex: "0 1 140px", minWidth: 90 }}>
+                          <div style={fieldLabel}>Aasta</div>
+                          <select value={effectiveAasta} onChange={(e) => uuendaSeisukord(rida.id, "tegevusAasta", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
+                            {periodYears.map(y => <option key={y} value={String(y)}>{y}</option>)}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <button style={btnRemove} onClick={() => eemaldaSeisukordRida(rida.id)}>Eemalda rida</button>
+                    </div>
+                  </div>
+                );
+              })}
 
               <div style={{ marginTop: 8 }}>
                 <button style={btnAdd} onClick={lisaSeisukordRida}>+ Lisa ese</button>
@@ -3758,36 +3701,41 @@ export default function App() {
             {/* ── Plokk 3: Kaasomandi eseme seisukord ja kavandatavad toimingud ── */}
             <div style={{ ...card, padding: 24 }}>
               <div style={H3_STYLE}>Kaasomandi eseme seisukord ja kavandatavad toimingud</div>
-              {seisukord.length > 0 && seisukord.some(r => r.ese) ? (
-                <div style={tableWrap}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-                    <thead>
-                      <tr style={thRow}>
-                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Ese</th>
-                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Seisukord</th>
-                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Prioriteet</th>
-                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Puudused</th>
-                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Kavandatav toiming</th>
-                        <th style={{ padding: "8px 12px 8px 0", textAlign: "right" }}>Eeldatav maksumus</th>
-                        <th style={{ padding: "8px 0", textAlign: "left" }}>Aasta</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {seisukord.filter(r => r.ese).map(s => (
-                        <tr key={s.id} style={tdSep}>
-                          <td style={{ padding: "8px 12px 8px 0" }}>{s.ese}</td>
-                          <td style={{ padding: "8px 12px 8px 0" }}>{s.seisukordVal || ""}</td>
-                          <td style={{ padding: "8px 12px 8px 0" }}>{s.prioriteet || ""}</td>
-                          <td style={{ padding: "8px 12px 8px 0" }}>{s.puudused || ""}</td>
-                          <td style={{ padding: "8px 12px 8px 0" }}>{s.tegevus || ""}</td>
-                          <td style={{ padding: "8px 12px 8px 0", textAlign: "right", fontFamily: "monospace" }}>{s.eeldatavKulu ? euroEE(s.eeldatavKulu) : ""}</td>
-                          <td style={{ padding: "8px 0" }}>{s.tegevusAasta || ""}</td>
+              {seisukord.length > 0 && seisukord.some(r => r.ese) ? (() => {
+                const p1sy = plan.period.start ? Number(plan.period.start.slice(0, 4)) : null;
+                const p1ey = plan.period.end ? Number(plan.period.end.slice(0, 4)) : null;
+                const p1multi = Boolean(p1sy && p1ey && p1ey > p1sy);
+                return (
+                  <div style={tableWrap}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                      <thead>
+                        <tr style={thRow}>
+                          <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Ese</th>
+                          <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Seisukord</th>
+                          <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Prioriteet</th>
+                          <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Puudused</th>
+                          <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Kavandatav toiming</th>
+                          <th style={{ padding: "8px 12px 8px 0", textAlign: "right" }}>Eeldatav maksumus</th>
+                          {p1multi && <th style={{ padding: "8px 0", textAlign: "left" }}>Aasta</th>}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
+                      </thead>
+                      <tbody>
+                        {seisukord.filter(r => r.ese).map(s => (
+                          <tr key={s.id} style={tdSep}>
+                            <td style={{ padding: "8px 12px 8px 0" }}>{s.ese}</td>
+                            <td style={{ padding: "8px 12px 8px 0" }}>{s.seisukordVal || ""}</td>
+                            <td style={{ padding: "8px 12px 8px 0" }}>{s.prioriteet || ""}</td>
+                            <td style={{ padding: "8px 12px 8px 0" }}>{s.puudused || ""}</td>
+                            <td style={{ padding: "8px 12px 8px 0" }}>{s.tegevus || ""}</td>
+                            <td style={{ padding: "8px 12px 8px 0", textAlign: "right", fontFamily: "monospace" }}>{s.eeldatavKulu ? euroEE(s.eeldatavKulu) : ""}</td>
+                            {p1multi && <td style={{ padding: "8px 0" }}>{s.tegevusAasta || ""}</td>}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })() : (
                 <div style={{ fontSize: 14, color: N.sub }}>Kaasomandi eseme seisukorra andmed on sisestamata.</div>
               )}
             </div>
@@ -4501,34 +4449,39 @@ export default function App() {
           {/* Kaasomandi ese */}
           <div className="print-section">
             <h2 className="print-section-title">Ülevaade kaasomandi eseme seisukorrast ja kavandatavatest toimingutest</h2>
-            {seisukord.length > 0 && seisukord.some(r => r.ese) ? (
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ textAlign: "left", fontSize: 14, borderBottom: "2px solid #000" }}>
-                    <th style={{ padding: "4px 8px" }}>Ese</th>
-                    <th style={{ padding: "4px 8px" }}>Seisukord</th>
-                    <th style={{ padding: "4px 8px" }}>Prioriteet</th>
-                    <th style={{ padding: "4px 8px" }}>Puudused</th>
-                    <th style={{ padding: "4px 8px" }}>Kavandatav toiming</th>
-                    <th style={{ padding: "4px 8px", textAlign: "right" }}>Eeldatav maksumus</th>
-                    <th style={{ padding: "4px 8px" }}>Aasta</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {seisukord.filter(r => r.ese).map((s) => (
-                    <tr key={s.id} style={{ borderBottom: "1px solid #ccc" }}>
-                      <td style={{ padding: "4px 8px" }}>{s.ese}</td>
-                      <td style={{ padding: "4px 8px" }}>{s.seisukordVal || ""}</td>
-                      <td style={{ padding: "4px 8px" }}>{s.prioriteet || ""}</td>
-                      <td style={{ padding: "4px 8px" }}>{s.puudused || ""}</td>
-                      <td style={{ padding: "4px 8px" }}>{s.tegevus || ""}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{s.eeldatavKulu ? euroEE(s.eeldatavKulu) : ""}</td>
-                      <td style={{ padding: "4px 8px" }}>{s.tegevusAasta || ""}</td>
+            {seisukord.length > 0 && seisukord.some(r => r.ese) ? (() => {
+              const p1sy = plan.period.start ? Number(plan.period.start.slice(0, 4)) : null;
+              const p1ey = plan.period.end ? Number(plan.period.end.slice(0, 4)) : null;
+              const p1multi = Boolean(p1sy && p1ey && p1ey > p1sy);
+              return (
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ textAlign: "left", fontSize: 14, borderBottom: "2px solid #000" }}>
+                      <th style={{ padding: "4px 8px" }}>Ese</th>
+                      <th style={{ padding: "4px 8px" }}>Seisukord</th>
+                      <th style={{ padding: "4px 8px" }}>Prioriteet</th>
+                      <th style={{ padding: "4px 8px" }}>Puudused</th>
+                      <th style={{ padding: "4px 8px" }}>Kavandatav toiming</th>
+                      <th style={{ padding: "4px 8px", textAlign: "right" }}>Eeldatav maksumus</th>
+                      {p1multi && <th style={{ padding: "4px 8px" }}>Aasta</th>}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
+                  </thead>
+                  <tbody>
+                    {seisukord.filter(r => r.ese).map((s) => (
+                      <tr key={s.id} style={{ borderBottom: "1px solid #ccc" }}>
+                        <td style={{ padding: "4px 8px" }}>{s.ese}</td>
+                        <td style={{ padding: "4px 8px" }}>{s.seisukordVal || ""}</td>
+                        <td style={{ padding: "4px 8px" }}>{s.prioriteet || ""}</td>
+                        <td style={{ padding: "4px 8px" }}>{s.puudused || ""}</td>
+                        <td style={{ padding: "4px 8px" }}>{s.tegevus || ""}</td>
+                        <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{s.eeldatavKulu ? euroEE(s.eeldatavKulu) : ""}</td>
+                        {p1multi && <td style={{ padding: "4px 8px" }}>{s.tegevusAasta || ""}</td>}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              );
+            })() : (
               <p style={{ fontSize: 14, color: "#666" }}>Andmeid ei ole sisestatud.</p>
             )}
           </div>
