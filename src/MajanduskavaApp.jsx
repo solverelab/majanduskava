@@ -1322,7 +1322,8 @@ export default function App() {
 
   // --- SEISUKORD ---
   const lisaSeisukordRida = () => {
-    const y = plan.period.year ? String(plan.period.year) : "";
+    const endY = plan.period.end ? Number(plan.period.end.slice(0, 4)) : 0;
+    const y = plan.period.year && endY >= new Date().getFullYear() ? String(plan.period.year) : "";
     setPlan(p => ({
       ...p,
       assetCondition: {
@@ -2429,52 +2430,24 @@ export default function App() {
                       <input type="text" placeholder={TEGEVUS_PLACEHOLDERS[rida.ese] || "Kirjelda kavandatav toiming"} value={rida.tegevus} onChange={(e) => uuendaSeisukord(rida.id, "tegevus", e.target.value)} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => uuendaSeisukord(rida.id, "tegevus", next))} style={inputStyle} />
                     </div>
                     <div style={{ flex: "1 1 160px" }}>
-                      <div style={{ ...fieldLabel, display: "flex", alignItems: "center", gap: 4 }}>
-                        Maksumuse hinnang (€)
-                        <span style={{ position: "relative", display: "inline-flex" }}
-                          onMouseEnter={() => setKuluInfoOpen(rida.id)}
-                          onMouseLeave={() => setKuluInfoOpen(null)}>
-                          <button onClick={() => setKuluInfoOpen(v => v === rida.id ? null : rida.id)} aria-label="Näita selgitust"
-                            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center",
-                              width: 16, height: 16, borderRadius: "50%", border: `1px solid ${N.border}`,
-                              background: N.surface, fontSize: 11, color: N.dim, cursor: "help",
-                              padding: 0, fontWeight: 600, fontStyle: "italic", flexShrink: 0, lineHeight: 1 }}>i</button>
-                          {kuluInfoOpen === rida.id && (
-                            <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 20,
-                              background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8,
-                              padding: "10px 14px", fontSize: 13, color: N.text, width: 300,
-                              boxShadow: "0 4px 16px rgba(0,0,0,0.10)", lineHeight: 1.55, fontWeight: 400 }}>
-                              See summa on ainult hinnang. See ei lähe automaatselt majanduskava kuludesse, fondidesse ega rahastamisse. Lisa summa eraldi vastavasse plokki, kui see peab mõjutama makseid.
-                            </div>
-                          )}
-                        </span>
-                      </div>
+                      <div style={fieldLabel}>Eeldatav maksumus (€)</div>
                       <EuroInput value={rida.eeldatavKulu} onChange={(v) => uuendaSeisukord(rida.id, "eeldatavKulu", v)} style={numStyle} />
                     </div>
                     <div style={{ flex: "0 1 140px", minWidth: 90 }}>
-                      <div style={{ ...fieldLabel, display: "flex", alignItems: "center", gap: 4 }}>
-                        Aasta
-                        <span style={{ position: "relative", display: "inline-flex" }}
-                          onMouseEnter={() => setAastaInfoOpen(rida.id)}
-                          onMouseLeave={() => setAastaInfoOpen(null)}>
-                          <button onClick={() => setAastaInfoOpen(v => v === rida.id ? null : rida.id)} aria-label="Näita selgitust"
-                            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center",
-                              width: 16, height: 16, borderRadius: "50%", border: `1px solid ${N.border}`,
-                              background: N.surface, fontSize: 11, color: N.dim, cursor: "help",
-                              padding: 0, fontWeight: 600, fontStyle: "italic", flexShrink: 0, lineHeight: 1 }}>i</button>
-                          {aastaInfoOpen === rida.id && (
-                            <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 20,
-                              background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8,
-                              padding: "10px 14px", fontSize: 13, color: N.text, width: 280,
-                              boxShadow: "0 4px 16px rgba(0,0,0,0.10)", lineHeight: 1.55, fontWeight: 400 }}>
-                              Kui töö jääb sellest majanduskava perioodist välja, kuvatakse see ainult ülevaates. See ei lähe automaatselt selle perioodi kuludesse ega maksetesse.
-                            </div>
-                          )}
-                        </span>
-                      </div>
+                      <div style={fieldLabel}>Aasta</div>
                       <select value={rida.tegevusAasta || ""} onChange={(e) => uuendaSeisukord(rida.id, "tegevusAasta", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
                         <option value="">Vali ...</option>
-                        {(() => { const y = plan.period.year || new Date().getFullYear(); return [y, y + 1, y + 2, y + 3].map(v => <option key={v} value={String(v)}>{v}</option>); })()}
+                        {(() => {
+                          const sy = plan.period.start ? Number(plan.period.start.slice(0, 4)) : null;
+                          const ey = plan.period.end ? Number(plan.period.end.slice(0, 4)) : null;
+                          const base = sy || new Date().getFullYear();
+                          const end = ey || base;
+                          const from = base - 1;
+                          const to = end + 3;
+                          const years = [];
+                          for (let y = from; y <= to; y++) years.push(y);
+                          return years.map(y => <option key={y} value={String(y)}>{y}</option>);
+                        })()}
                       </select>
                     </div>
                   </div>
@@ -3795,7 +3768,7 @@ export default function App() {
                         <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Prioriteet</th>
                         <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Puudused</th>
                         <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Kavandatav toiming</th>
-                        <th style={{ padding: "8px 12px 8px 0", textAlign: "right" }}>Maksumuse hinnang</th>
+                        <th style={{ padding: "8px 12px 8px 0", textAlign: "right" }}>Eeldatav maksumus</th>
                         <th style={{ padding: "8px 0", textAlign: "left" }}>Aasta</th>
                       </tr>
                     </thead>
@@ -4537,7 +4510,7 @@ export default function App() {
                     <th style={{ padding: "4px 8px" }}>Prioriteet</th>
                     <th style={{ padding: "4px 8px" }}>Puudused</th>
                     <th style={{ padding: "4px 8px" }}>Kavandatav toiming</th>
-                    <th style={{ padding: "4px 8px", textAlign: "right" }}>Maksumuse hinnang</th>
+                    <th style={{ padding: "4px 8px", textAlign: "right" }}>Eeldatav maksumus</th>
                     <th style={{ padding: "4px 8px" }}>Aasta</th>
                   </tr>
                 </thead>

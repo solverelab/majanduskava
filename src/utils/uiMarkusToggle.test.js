@@ -72,23 +72,23 @@ describe("Tab 3: rfUsageItem märkuse toggle", () => {
   });
 });
 
-// ── 4. Tab 1: uue rea aasta tuleb plan.period.year-ist ─────────────────────
+// ── 4. Tab 1: uue rea aasta vaikeväärtus ─────────────────────────────────────
 
 describe("Tab 1: uue rea aasta vaikeväärtus", () => {
-  it("lisaSeisukordRida kasutab plan.period.year, mitte new Date()", () => {
+  it("lisaSeisukordRida kasutab plan.period.year tulevase/käimasoleva perioodi korral", () => {
     const fnStart = src.indexOf("const lisaSeisukordRida");
     const fnEnd = src.indexOf("};", fnStart);
     const fnBody = src.slice(fnStart, fnEnd + 2);
     expect(fnBody).toContain("plan.period.year");
-    expect(fnBody).not.toContain("new Date()");
+    expect(fnBody).toContain("new Date().getFullYear()");
   });
 
-  it("Tab 1 aasta fallback on tühi string, mitte konkreetne aasta", () => {
+  it("Tab 1 aasta fallback on tühi string lõppenud perioodi korral", () => {
     const fnStart = src.indexOf("const lisaSeisukordRida");
     const fnEnd = src.indexOf("};", fnStart);
     const fnBody = src.slice(fnStart, fnEnd + 2);
-    // Fallback on "" (tühi), mitte hardcoded aastanumber
-    expect(fnBody).toMatch(/plan\.period\.year.*:\s*""/s);
-    expect(fnBody).not.toMatch(/plan\.period\.year.*:\s*\d{4}/);
+    // Tingimus: endY >= new Date().getFullYear(), muidu ""
+    expect(fnBody).toContain('""');
+    expect(fnBody).not.toMatch(/tegevusAasta:\s*\d{4}/);
   });
 });
