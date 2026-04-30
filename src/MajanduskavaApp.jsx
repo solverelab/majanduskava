@@ -1,5 +1,5 @@
 ﻿// src/App.jsx
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { defaultPlan, mkApartment, mkCashflowRow, mkInvestmentItem, mkLoan, mkRfUsageItem, getEffectiveAllocationBasis, patchAllocationPolicy, deriveLegalBasisType, todayYmd } from "./domain/planSchema";
 import { describeAllocationPolicy, summarizeAllocationPolicy } from "./domain/allocationBasisDisplay";
 import { syncLoan } from "./utils/syncLoan";
@@ -125,6 +125,46 @@ function NumberInput({ value, onChange, ...props }) {
       }}
       {...props}
     />
+  );
+}
+
+// ── Auto-grow textarea — adjusts height to content on mount and value change ──
+function AutoGrowTextarea({ value, onChange, onBlur, placeholder, style }) {
+  const ref = useRef(null);
+  const adjust = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, []);
+  useEffect(() => { adjust(); }, [value, adjust]);
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      placeholder={placeholder}
+      onBlur={onBlur}
+      onChange={(e) => { adjust(); onChange(e); }}
+      style={{ ...style, resize: "none", overflow: "hidden" }}
+    />
+  );
+}
+
+// ── Confirm modal — replaces window.confirm with an Estonian-language dialog ──
+function ConfirmModal({ message, confirmLabel = "Kinnita", cancelLabel = "Loobu", onConfirm, onCancel }) {
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.35)" }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <div style={{ background: "#fff", borderRadius: 10, padding: "28px 32px", maxWidth: 420, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+        <div style={{ fontSize: 15, color: "#2c2825", marginBottom: 24, lineHeight: 1.5 }}>{message}</div>
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button onClick={onCancel} style={{ padding: "8px 18px", borderRadius: 6, border: "1px solid #e0ddd8", background: "#f7f6f4", fontSize: 14, cursor: "pointer", color: "#5c554d" }}>{cancelLabel}</button>
+          <button onClick={onConfirm} style={{ padding: "8px 18px", borderRadius: 6, border: "none", background: "#dc2626", fontSize: 14, cursor: "pointer", color: "#fff", fontWeight: 500 }}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -323,37 +363,35 @@ const TULU_NIMETUS_PLACEHOLDERS = {
 };
 
 const TEGEVUS_PLACEHOLDERS = {
-  "Katus": "nt Katusekatte vahetus",
-  "Fassaad": "nt Fassaadi soojustamine",
-  "Aknad": "nt Akende vahetus",
-  "Trepp/trepikoda": "nt Trepikoja remont",
-  "Torustik (vesi)": "nt Torustiku renoveerimine",
-  "Kanalisatsioon": "nt Kanalisatsiooni uuendamine",
-  "Küttesüsteem": "nt Katla vahetus",
-  "Elektrisüsteem": "nt Elektrisüsteemi uuendamine",
-  "Ventilatsioon": "nt Ventilatsiooni paigaldus",
-  "Kelder": "nt Hüdroisolatsiooni paigaldus",
-  "Lift": "nt Lifti moderniseerimine",
-  "Õueala": "nt Haljastuse ja valgustuse uuendamine",
-  "Parkla": "nt Parkla asfalteerimine",
-  "Muu": "Kirjelda kavandatav toiming",
+  "Katus":           "nt parandamine, katusekatte vahetus",
+  "Fassaad":         "nt parandamine, värvimine",
+  "Aknad":           "nt tihendite vahetus, akende vahetus",
+  "Trepp/trepikoda": "nt remont, valgustuse uuendamine",
+  "Torustik (vesi)": "nt remont, renoveerimine",
+  "Kanalisatsioon":  "nt puhastus, torustiku uuendamine",
+  "Küttesüsteem":    "nt tasakaalustamine, remont",
+  "Elektrisüsteem":  "nt kontroll, uuendamine",
+  "Ventilatsioon":   "nt puhastus, parandamine",
+  "Kelder":          "nt kuivendamine, hüdroisolatsioon",
+  "Lift":            "nt remont, moderniseerimine",
+  "Õueala":          "nt kõnnitee remont, valgustuse uuendamine",
+  "Parkla":          "nt asfalteerimine, märgistuse uuendamine",
 };
 
 const PUUDUSED_PLACEHOLDERS = {
-  "Katus": "nt Lekked, samblad, kahjustatud katusekate",
-  "Fassaad": "nt Praod, niiskuskahjustused, vajab värvimist",
-  "Aknad": "nt Klaaspaketid udused, tihendid kulunud",
-  "Trepp/trepikoda": "nt Kulunud astmed, katkine käsipuu, lagunev krohv",
-  "Torustik (vesi)": "nt Korrosioon, lekked, vananenud torud",
-  "Kanalisatsioon": "nt Ummistused, lõhnaprobleem, vananenud torud",
-  "Küttesüsteem": "nt Radiaatorid lekivad, katel vananenud, tasakaalustamata",
-  "Elektrisüsteem": "nt Vananenud juhtmed, puuduv maandus, kilp amortiseerunud",
-  "Ventilatsioon": "nt Lõõrid ummistunud, puuduv sundventilatsioon",
-  "Kelder": "nt Niiskus, hallitus, puuduv hüdroisolatsioon",
-  "Lift": "nt Vananenud, sagedased rikked, ei vasta nõuetele",
-  "Õueala": "nt Lagunev kõnnitee, puuduv valgustus, haljastus hooldamata",
-  "Parkla": "nt Pragud asfaldis, puuduv märgistus, veeloigud",
-  "Muu": "Kirjelda puudused",
+  "Katus":           "nt lekked, läbiviikude kahjustused",
+  "Fassaad":         "nt praod, krohvikahjustused",
+  "Aknad":           "nt udune klaaspakett, katkised tihendid",
+  "Trepp/trepikoda": "nt kulunud pinnad, valgustuse puudused",
+  "Torustik (vesi)": "nt lekked, rooste, surveprobleemid",
+  "Kanalisatsioon":  "nt ummistused, lõhnaprobleemid",
+  "Küttesüsteem":    "nt ebaühtlane soojus, rikked",
+  "Elektrisüsteem":  "nt vananenud juhtmestik, rikked",
+  "Ventilatsioon":   "nt puudulik õhuvahetus, ummistused",
+  "Kelder":          "nt niiskus, hallitus",
+  "Lift":            "nt sagedased rikked, ei vasta nõuetele",
+  "Õueala":          "nt lagunev kõnnitee, puuduv valgustus",
+  "Parkla":          "nt pragud asfaldis, puuduv märgistus",
 };
 
 // ── LAYOUT ──
@@ -469,7 +507,7 @@ export default function App() {
   const [sec, setSec] = useState(0);
   const [plan, setPlan] = useState(() => seedDefaultKommunaalRows(defaultPlan()));
   const [preset, setPreset] = useState("BALANCED");
-  const [kyData, setKyData] = useState({ nimi: "", registrikood: "", aadress: "", kyAadress: "", kyAadressEdited: false, ehrKood: "", ehitusaasta: "", suletudNetopind: "", koetavPind: "", korteriteArv: "", korrusteArv: "" });
+  const [kyData, setKyData] = useState({ nimi: "", registrikood: "", aadress: "", kyAadress: "", kyAadressEdited: false, ehrKood: "", ehitusaasta: "", suletudNetopind: "", koetavPind: "", korteriteArv: "", korrusteArv: "", ehrPind: null, ehrArv: null });
   const seisukord = plan.assetCondition?.items || [];
   // muudInvesteeringud → eemaldatud; kõik investeeringud elavad plan.investments.items
   const [tab1InfoOpen, setTab1InfoOpen] = useState(false);
@@ -477,6 +515,7 @@ export default function App() {
   const [aastaInfoOpen, setAastaInfoOpen] = useState(null);
   const [tab0PindalaInfoOpen, setTab0PindalaInfoOpen] = useState(false);
   const [tab0PerioodInfoOpen, setTab0PerioodInfoOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null); // { message, confirmLabel, cancelLabel?, onConfirm, onCancel? }
   const [repairFundSaldo, setRepairFundSaldo] = useState(""); // tagasiühilduvus
   const [remondifond, setRemondifond] = useState({
     saldoAlgus: "",
@@ -1221,25 +1260,30 @@ export default function App() {
   const handleApartmentsLoaded = (apartmentsFromEHR) => {
     const ehrSum = apartmentsFromEHR.reduce((s, a) => s + (parseFloat(a.area) || 0), 0);
     setEhrTotalAreaM2(Math.round(ehrSum * 100) / 100);
+    const ehrPind = ehrSum > 0 ? Math.round(ehrSum * 100) / 100 : null;
+    const ehrArv = String(apartmentsFromEHR.length);
     setKyData(prev => ({
       ...prev,
-      korteriteArv: String(apartmentsFromEHR.length),
-      ...(ehrSum > 0 ? { suletudNetopind: Math.round(ehrSum * 100) / 100 } : {}),
+      korteriteArv: ehrArv,
+      ...(ehrPind != null ? { suletudNetopind: ehrPind } : {}),
+      ehrPind,
+      ehrArv,
     }));
-    setPlan(p => {
-      const existing = p.building.apartments;
-      const hasReal = existing.some(a => a.areaM2 > 0 || (a.label && a.label !== "1"));
-      if (hasReal && existing.length > 0) {
-        const ok = window.confirm(
-          `Hoones leiti ${apartmentsFromEHR.length} korterit. Kas asendada olemasolevad ${existing.length} korterit?`
-        );
-        if (!ok) return p;
-      }
-      const newApts = apartmentsFromEHR.map(a =>
-        mkApartment({ label: a.number, areaM2: a.area })
+    const doLoadApts = () => setPlan(p => ({
+      ...p,
+      building: { ...p.building, apartments: apartmentsFromEHR.map(a => mkApartment({ label: a.number, areaM2: a.area })) },
+    }));
+    const existing = plan.building.apartments;
+    const hasReal = existing.some(a => a.areaM2 > 0 || (a.label && a.label !== "1"));
+    if (hasReal && existing.length > 0) {
+      askConfirm(
+        `Hoones leiti ${apartmentsFromEHR.length} korterit. Kas asendada olemasolevad ${existing.length} korterit?`,
+        "Asenda",
+        doLoadApts
       );
-      return { ...p, building: { ...p.building, apartments: newApts } };
-    });
+    } else {
+      doLoadApts();
+    }
   };
 
   const addRow = (side, overrides = {}) => {
@@ -1372,17 +1416,36 @@ export default function App() {
     }));
   };
 
+  const seisukordRidaOnAndmeid = (rida) => Boolean(
+    rida.ese || rida.seisukordVal || rida.prioriteet ||
+    rida.puudused?.trim() || rida.tegevus?.trim() ||
+    Number(rida.eeldatavKulu) > 0 || rida.tegevusAasta
+  );
+
+  const tühjendaSeisukordRida = (id) => {
+    setPlan(p => ({
+      ...p,
+      assetCondition: {
+        ...p.assetCondition,
+        items: (p.assetCondition?.items || []).map(r =>
+          r.id !== id ? r : { ...r, ese: "", seisukordVal: "", puudused: "", prioriteet: "", eeldatavKulu: 0, tegevus: "", tegevusAasta: "" }
+        ),
+      },
+    }));
+  };
+
 
   const eemaldaInvesteering = (sourceRefId) => {
-    if (!window.confirm("Kas soovid investeeringu eemaldada?")) return;
-    setPlan(p => {
-      const inv = p.investments.items.find(i => i.sourceRefId === sourceRefId);
-      const hasLoan = (inv?.fundingPlan || []).some(fp => fp.source === "Laen");
-      return {
-        ...p,
-        investments: { ...p.investments, items: p.investments.items.filter(i => i.sourceRefId !== sourceRefId) },
-        loans: hasLoan ? p.loans.filter(l => l.sepiiriostudInvId !== sourceRefId) : p.loans,
-      };
+    askConfirm("Kas soovid investeeringu eemaldada?", "Eemalda", () => {
+      setPlan(p => {
+        const inv = p.investments.items.find(i => i.sourceRefId === sourceRefId);
+        const hasLoan = (inv?.fundingPlan || []).some(fp => fp.source === "Laen");
+        return {
+          ...p,
+          investments: { ...p.investments, items: p.investments.items.filter(i => i.sourceRefId !== sourceRefId) },
+          loans: hasLoan ? p.loans.filter(l => l.sepiiriostudInvId !== sourceRefId) : p.loans,
+        };
+      });
     });
   };
 
@@ -1560,12 +1623,16 @@ export default function App() {
     const seotud = plan.loans.find(l => l.sepiiriostudInvId === investeeringId);
     if (!seotud) return;
     if (seotud.annualRatePct || seotud.termMonths) {
-      if (!window.confirm("Eemaldada ka seotud laenurida Rahastamine sektsioonist?")) {
-        setPlan(p => ({ ...p, loans: p.loans.map(l =>
+      askConfirm(
+        "Eemaldada ka seotud laenurida Rahastamine sektsioonist?",
+        "Eemalda laen",
+        () => setPlan(p => ({ ...p, loans: p.loans.filter(l => l.sepiiriostudInvId !== investeeringId) })),
+        "Säilita laen",
+        () => setPlan(p => ({ ...p, loans: p.loans.map(l =>
           l.sepiiriostudInvId === investeeringId ? { ...l, sepiiriostudInvId: null } : l
-        )}));
-        return;
-      }
+        )}))
+      );
+      return;
     }
     setPlan(p => ({ ...p, loans: p.loans.filter(l => l.sepiiriostudInvId !== investeeringId) }));
   };
@@ -1588,30 +1655,26 @@ export default function App() {
 
   const removeLoan = (loanId) => {
     const ln = plan.loans.find(l => l.id === loanId);
-    if (ln?.sepiiriostudInvId) {
-      if (!window.confirm("See laen on seotud investeeringuga. Eemaldada?")) return;
-    }
-    setPlan(p => {
+    const doRemove = () => setPlan(p => {
       const loan = p.loans.find(l => l.id === loanId);
       const linkedInvId = loan?.sepiiriostudInvId ?? null;
-
       const updatedLoans = p.loans.filter(l => l.id !== loanId);
-
       const updatedInvestments = linkedInvId
         ? {
             ...p.investments,
             items: p.investments.items.map(inv => {
               if (inv.id !== linkedInvId && inv.sourceRefId !== linkedInvId) return inv;
-              return {
-                ...inv,
-                fundingPlan: (inv.fundingPlan || []).filter(fp => fp.source !== "Laen"),
-              };
+              return { ...inv, fundingPlan: (inv.fundingPlan || []).filter(fp => fp.source !== "Laen") };
             }),
           }
         : p.investments;
-
       return { ...p, loans: updatedLoans, investments: updatedInvestments };
     });
+    if (ln?.sepiiriostudInvId) {
+      askConfirm("See laen on seotud investeeringuga. Eemaldada?", "Eemalda", doRemove);
+    } else {
+      doRemove();
+    }
   };
 
   // Auto-add one empty row when section is empty (setPlan, not addX — idempotent even if effect fires twice)
@@ -1715,8 +1778,12 @@ export default function App() {
 
   const SECS = ["Üldandmed", "Seisukord ja plaan", "Tulud ja kulud", "Kommunaalid", "Fondid", "Kohustuste jaotus", "Majanduskava"];
 
+  const askConfirm = useCallback((message, confirmLabel, onConfirm, cancelLabel = "Loobu", onCancel) => {
+    setConfirmModal({ message, confirmLabel, cancelLabel, onConfirm, onCancel: onCancel ?? null });
+  }, []);
+
   const clearSection = (tabIdx) => {
-    if (!window.confirm("Kas soovid selle jaotise andmed kustutada? Seda ei saa tagasi võtta.")) return;
+    askConfirm("Kas oled kindel, et soovid selle jaotise andmed tühjendada?", "Tühjenda", () => {
     if (tabIdx === 0) { setKyData({ nimi: "", registrikood: "", aadress: "", kyAadress: "", kyAadressEdited: false, ehrKood: "", ehitusaasta: "", suletudNetopind: "", koetavPind: "", korteriteArv: "", korrusteArv: "" }); }
     setPlan(p => {
       if (tabIdx === 0) return { ...p, period: { ...p.period, start: "", end: "" }, building: { ...p.building, apartments: [] } };
@@ -1736,6 +1803,7 @@ export default function App() {
       if (tabIdx === 2) return { ...p, budget: { ...p.budget, costRows: [], incomeRows: [] } };
       if (tabIdx === 4) { setRepairFundSaldo(""); setRemondifond({ saldoAlgus: "", kogumisViis: "eraldi", pangaKoefitsient: 1.15, pangaMaarOverride: null, maarOverride: null, maarKorterKuu: null, planeeritudKogumine: "", soovitudSaldoLopp: "" }); setResKap({ saldoAlgus: "", kasutamine: "", pohjendus: "", usesReserveDuringPeriod: false }); return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, loans: [], allocationPolicies: defaultPlan().allocationPolicies }; }
       return p;
+    });
     });
   };
   const clearBtn = (tabIdx) => (
@@ -1769,11 +1837,24 @@ export default function App() {
     plan.period.start ||
     plan.period.end
   );
+  const tab1MultiYear = Boolean(
+    plan.period.start && plan.period.end &&
+    Number(plan.period.end.slice(0, 4)) > Number(plan.period.start.slice(0, 4))
+  );
+
   const tabStatus = [
     // 0: Üldandmed
     tab0AllFilled ? "valid" : tab0AnyTouched ? "invalid" : "",
     // 1: Hoone seisukord ja tööd
-    seisukord.some(r => r.ese) ? "valid" : "",
+    (() => {
+      const active = seisukord.filter(r => r.ese);
+      if (active.length === 0) return "";
+      const allComplete = active.every(r =>
+        r.seisukordVal && r.prioriteet && r.puudused?.trim() && r.tegevus?.trim() &&
+        Number(r.eeldatavKulu) > 0 && (!tab1MultiYear || r.tegevusAasta)
+      );
+      return allComplete ? "valid" : "invalid";
+    })(),
     // 2: Kavandatud kulud
     hasRealCost ? "valid" : plan.budget.costRows.length > 0 ? "invalid" : "",
     // 3: Kommunaalid
@@ -2105,7 +2186,10 @@ export default function App() {
       }}>
         <div style={{ padding: "24px 16px 24px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: "#ddd" }}>Majanduskava</div>
-          <div style={{ fontSize: 14, color: N.sub, marginTop: 8 }}>{plan.period.start && plan.period.end ? formatDateEE(plan.period.start) + "–" + formatDateEE(plan.period.end) : plan.period.start ? formatDateEE(plan.period.start) : ""}</div>
+          {kyData.nimi?.trim() && (
+            <div style={{ fontSize: 13, color: "#bbb", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{kyData.nimi.trim()}</div>
+          )}
+          <div style={{ fontSize: 14, color: N.sub, marginTop: 4 }}>{plan.period.start && plan.period.end ? formatDateEE(plan.period.start) + "–" + formatDateEE(plan.period.end) : plan.period.start ? formatDateEE(plan.period.start) : ""}</div>
         </div>
 
         <div style={{ padding: "8px 0", flex: 1 }}>
@@ -2235,7 +2319,11 @@ export default function App() {
                   </div>
                   <div style={fieldLabel}>Korteriomandite arv</div>
                   <NumberInput value={kyData.suletudNetopind} onChange={(v) => setKyData(prev => ({ ...prev, suletudNetopind: v }))} style={numStyle} />
-                  <div style={{ ...numStyle, lineHeight: "38px" }}>{kyData.korteriteArv || ""}</div>
+                  <NumberInput value={kyData.korteriteArv} onChange={(v) => setKyData(prev => ({ ...prev, korteriteArv: v === "" || v == null ? "" : String(Math.max(0, Math.round(Number(v) || 0))) }))} style={numStyle} />
+                  {kyData.ehrPind != null && String(kyData.suletudNetopind) !== String(kyData.ehrPind) &&
+                    <button onClick={() => setKyData(prev => ({ ...prev, suletudNetopind: prev.ehrPind }))} style={{ gridColumn: "1", fontSize: 12, color: N.sub, background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline", textAlign: "left" }}>Taasta EHR väärtus</button>}
+                  {kyData.ehrArv != null && String(kyData.korteriteArv) !== String(kyData.ehrArv) &&
+                    <button onClick={() => setKyData(prev => ({ ...prev, korteriteArv: prev.ehrArv }))} style={{ gridColumn: "2", fontSize: 12, color: N.sub, background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline", textAlign: "left" }}>Taasta EHR väärtus</button>}
                 </div>
               </div>
             </div>
@@ -2358,6 +2446,8 @@ export default function App() {
                   ? (rida.tegevusAasta && Number(rida.tegevusAasta) >= sy && Number(rida.tegevusAasta) <= ey
                       ? rida.tegevusAasta : String(sy))
                   : rida.tegevusAasta;
+                const isAktiivne = Boolean(rida.ese);
+                const rb = (empty) => isAktiivne && empty ? { border: "1px solid #fca5a5" } : {};
                 return (
                   <div key={rida.id} style={{ border: `1px solid ${N.rule}`, borderRadius: 8, padding: 12, marginBottom: 8 }}>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
@@ -2370,14 +2460,14 @@ export default function App() {
                       </div>
                       <div style={{ flex: 1, minWidth: 140 }}>
                         <div style={fieldLabel}>Seisukord</div>
-                        <select value={rida.seisukordVal} onChange={(e) => uuendaSeisukord(rida.id, "seisukordVal", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
+                        <select value={rida.seisukordVal} onChange={(e) => uuendaSeisukord(rida.id, "seisukordVal", e.target.value)} style={{ ...selectStyle, width: "100%", ...rb(!rida.seisukordVal) }}>
                           <option value="">Vali…</option>
                           {SEISUKORD_VALIKUD.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                       </div>
                       <div style={{ flex: 1, minWidth: 140 }}>
                         <div style={fieldLabel}>Prioriteet</div>
-                        <select value={rida.prioriteet} onChange={(e) => uuendaSeisukord(rida.id, "prioriteet", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
+                        <select value={rida.prioriteet} onChange={(e) => uuendaSeisukord(rida.id, "prioriteet", e.target.value)} style={{ ...selectStyle, width: "100%", ...rb(!rida.prioriteet) }}>
                           <option value="">Vali…</option>
                           {PRIORITEEDID.map(p => <option key={p} value={p}>{p}</option>)}
                         </select>
@@ -2386,35 +2476,44 @@ export default function App() {
                     <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                       <div style={{ flex: 1 }}>
                         <div style={fieldLabel}>Puudused</div>
-                        <textarea placeholder={PUUDUSED_PLACEHOLDERS[rida.ese] || "Kirjelda puudused"} value={rida.puudused}
+                        <AutoGrowTextarea placeholder={PUUDUSED_PLACEHOLDERS[rida.ese] || "nt kirjelda kaasomandi eseme puudus"} value={rida.puudused}
                           onChange={(e) => uuendaSeisukord(rida.id, "puudused", e.target.value)}
                           onBlur={(e) => normalizeIfChanged(e.target.value, (next) => uuendaSeisukord(rida.id, "puudused", next))}
-                          style={{ ...inputStyle, height: "auto", minHeight: 38, padding: "8px 12px", resize: "vertical", lineHeight: 1.4 }} />
+                          style={{ ...inputStyle, minHeight: 38, padding: "8px 12px", lineHeight: 1.4, ...rb(!rida.puudused?.trim()) }} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={fieldLabel}>Kavandatav toiming</div>
-                        <textarea placeholder={TEGEVUS_PLACEHOLDERS[rida.ese] || "Kirjelda kavandatav toiming"} value={rida.tegevus}
+                        <AutoGrowTextarea placeholder={TEGEVUS_PLACEHOLDERS[rida.ese] || "nt kirjelda kavandatav toiming"} value={rida.tegevus}
                           onChange={(e) => uuendaSeisukord(rida.id, "tegevus", e.target.value)}
                           onBlur={(e) => normalizeIfChanged(e.target.value, (next) => uuendaSeisukord(rida.id, "tegevus", next))}
-                          style={{ ...inputStyle, height: "auto", minHeight: 38, padding: "8px 12px", resize: "vertical", lineHeight: 1.4 }} />
+                          style={{ ...inputStyle, minHeight: 38, padding: "8px 12px", lineHeight: 1.4, ...rb(!rida.tegevus?.trim()) }} />
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                       <div style={{ flex: "0 1 200px" }}>
                         <div style={fieldLabel}>Eeldatav maksumus (€)</div>
-                        <EuroInput value={rida.eeldatavKulu} onChange={(v) => uuendaSeisukord(rida.id, "eeldatavKulu", v)} style={numStyle} />
+                        <EuroInput value={rida.eeldatavKulu} onChange={(v) => uuendaSeisukord(rida.id, "eeldatavKulu", v)} style={{ ...numStyle, ...rb(!(Number(rida.eeldatavKulu) > 0)) }} />
                       </div>
                       {isMultiYear && (
                         <div style={{ flex: "0 1 140px", minWidth: 90 }}>
                           <div style={fieldLabel}>Aasta</div>
-                          <select value={effectiveAasta} onChange={(e) => uuendaSeisukord(rida.id, "tegevusAasta", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
+                          <select value={effectiveAasta} onChange={(e) => uuendaSeisukord(rida.id, "tegevusAasta", e.target.value)} style={{ ...selectStyle, width: "100%", ...rb(!rida.tegevusAasta) }}>
                             {periodYears.map(y => <option key={y} value={String(y)}>{y}</option>)}
                           </select>
                         </div>
                       )}
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <button style={btnRemove} onClick={() => eemaldaSeisukordRida(rida.id)}>Eemalda rida</button>
+                      {seisukord.length <= 1
+                        ? <button style={btnRemove} onClick={() => {
+                            if (!seisukordRidaOnAndmeid(rida)) { tühjendaSeisukordRida(rida.id); return; }
+                            askConfirm("Kas oled kindel, et soovid selle kaasomandi eseme andmed kustutada?", "Kustuta", () => tühjendaSeisukordRida(rida.id));
+                          }}>Tühjenda</button>
+                        : <button style={btnRemove} onClick={() => {
+                            if (!seisukordRidaOnAndmeid(rida)) { eemaldaSeisukordRida(rida.id); return; }
+                            askConfirm("Kas oled kindel, et soovid selle kaasomandi eseme andmed kustutada?", "Kustuta", () => eemaldaSeisukordRida(rida.id));
+                          }}>Eemalda ese</button>
+                      }
                     </div>
                   </div>
                 );
@@ -2600,7 +2699,7 @@ export default function App() {
 
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
-                <button onClick={() => { if (window.confirm("Kas soovid tuluread kustutada?")) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [] } })); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: N.dim, textDecoration: "underline", padding: 0 }}>Tühjenda</button>
+                <button onClick={() => askConfirm("Kas soovid tuluread kustutada?", "Kustuta", () => setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [] } })))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: N.dim, textDecoration: "underline", padding: 0 }}>Tühjenda</button>
               </div>
               <div style={card}>
                 <div style={{ ...H2_STYLE, marginTop: 0 }}>Kavandatavad kulud</div>
@@ -4905,6 +5004,15 @@ export default function App() {
         </div>
       )}
       </main>
+      {confirmModal && (
+        <ConfirmModal
+          message={confirmModal.message}
+          confirmLabel={confirmModal.confirmLabel}
+          cancelLabel={confirmModal.cancelLabel}
+          onConfirm={() => { const fn = confirmModal.onConfirm; setConfirmModal(null); fn(); }}
+          onCancel={() => { const fn = confirmModal.onCancel; setConfirmModal(null); if (fn) fn(); }}
+        />
+      )}
     </div>
   );
 }
