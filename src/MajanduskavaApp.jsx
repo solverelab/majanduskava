@@ -472,6 +472,7 @@ export default function App() {
   const [kyData, setKyData] = useState({ nimi: "", registrikood: "", aadress: "", kyAadress: "", kyAadressEdited: false, ehrKood: "", ehitusaasta: "", suletudNetopind: "", koetavPind: "", korteriteArv: "", korrusteArv: "" });
   const seisukord = plan.assetCondition?.items || [];
   // muudInvesteeringud → eemaldatud; kõik investeeringud elavad plan.investments.items
+  const [tab1InfoOpen, setTab1InfoOpen] = useState(false);
   const [repairFundSaldo, setRepairFundSaldo] = useState(""); // tagasiühilduvus
   const [remondifond, setRemondifond] = useState({
     saldoAlgus: "",
@@ -2336,8 +2337,24 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(1)}</div>
             <h1 style={H1_STYLE}>Ülevaade kaasomandi eseme seisukorrast ja kavandatavatest toimingutest</h1>
             <div style={card}>
-              <div style={{ ...H2_STYLE, marginTop: 0 }}>Kaasomandi esemed</div>
-              <div style={{ ...helperText, marginBottom: 16, textAlign: "justify" }}>Sisesta ainult kaasomandi esemega seotud seisukord ja kavandatavad toimingud. Korteriomaniku eriomandi ehk korterisisese osa puudusi siia ei lisata, v.a juhul kui puudus puudutab kaasomandi eset või ühist tehnosüsteemi.</div>
+              <div style={{ ...H2_STYLE, marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                Kaasomandi esemed
+                <span
+                  style={{ position: "relative", display: "inline-flex" }}
+                  onMouseEnter={() => setTab1InfoOpen(true)}
+                  onMouseLeave={() => setTab1InfoOpen(false)}
+                >
+                  <button
+                    onClick={() => setTab1InfoOpen(v => !v)}
+                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", border: `1px solid ${N.border}`, background: N.surface, fontSize: 12, color: N.dim, cursor: "help", padding: 0, fontWeight: 600, flexShrink: 0 }}
+                  >i</button>
+                  {tab1InfoOpen && (
+                    <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: N.text, width: 340, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", lineHeight: 1.55, fontWeight: 400 }}>
+                      Kirjelda siin maja ühiste osade seisukorda ja nendega seotud kavandatavaid töid. Korteri sees olevaid puudusi siia ei lisata, välja arvatud juhul, kui need puudutavad maja ühist osa või ühist tehnosüsteemi, näiteks torustikku, küttesüsteemi või ventilatsiooni.
+                    </div>
+                  )}
+                </span>
+              </div>
 
               {seisukord.map((rida) => (
                 <div key={rida.id} style={{ border: `1px solid ${N.rule}`, borderRadius: 8, padding: 12, marginBottom: 8 }}>
