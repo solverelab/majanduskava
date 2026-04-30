@@ -469,7 +469,7 @@ export default function App() {
   const [sec, setSec] = useState(0);
   const [plan, setPlan] = useState(() => seedDefaultKommunaalRows(defaultPlan()));
   const [preset, setPreset] = useState("BALANCED");
-  const [kyData, setKyData] = useState({ nimi: "", registrikood: "", aadress: "", ehrKood: "", ehitusaasta: "", suletudNetopind: "", koetavPind: "", korteriteArv: "", korrusteArv: "" });
+  const [kyData, setKyData] = useState({ nimi: "", registrikood: "", aadress: "", kyAadress: "", kyAadressEdited: false, ehrKood: "", ehitusaasta: "", suletudNetopind: "", koetavPind: "", korteriteArv: "", korrusteArv: "" });
   const seisukord = plan.assetCondition?.items || [];
   // muudInvesteeringud → eemaldatud; kõik investeeringud elavad plan.investments.items
   const [repairFundSaldo, setRepairFundSaldo] = useState(""); // tagasiühilduvus
@@ -1757,7 +1757,7 @@ export default function App() {
 
   const clearSection = (tabIdx) => {
     if (!window.confirm("Kas soovid selle jaotise andmed kustutada? Seda ei saa tagasi võtta.")) return;
-    if (tabIdx === 0) { setKyData({ nimi: "", registrikood: "", aadress: "", ehrKood: "", ehitusaasta: "", suletudNetopind: "", koetavPind: "", korteriteArv: "", korrusteArv: "" }); }
+    if (tabIdx === 0) { setKyData({ nimi: "", registrikood: "", aadress: "", kyAadress: "", kyAadressEdited: false, ehrKood: "", ehitusaasta: "", suletudNetopind: "", koetavPind: "", korteriteArv: "", korrusteArv: "" }); }
     setPlan(p => {
       if (tabIdx === 0) return { ...p, period: { ...p.period, start: "", end: "" }, building: { ...p.building, apartments: [] } };
       if (tabIdx === 1) {
@@ -2210,12 +2210,14 @@ export default function App() {
             {/* KÜ andmed */}
             <div style={card}>
               <div style={{ ...H2_STYLE, marginTop: 0 }}>Korteriühistu andmed</div>
-              <div style={{ marginBottom: 12 }}>
+              <div style={{ marginBottom: 12, background: "#fdf8ee", border: "1px dashed #c5a84d", borderRadius: 8, padding: "10px 12px" }}>
                 <AddressSearch
                   value={kyData.aadress}
                   onChange={(addr) => setKyData(prev => ({ ...prev, aadress: addr }))}
                   onApartmentsLoaded={handleApartmentsLoaded}
+                  onAddressSelected={(addr) => setKyData(prev => prev.kyAadressEdited ? prev : { ...prev, kyAadress: addr })}
                 />
+                <div style={{ fontSize: 12, color: "#92400e", marginTop: 6 }}>Ajutine EHR aadress läbimänguks. Hiljem peidetakse.</div>
               </div>
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12 }}>
                 <div style={{ flex: "1 1 180px" }}>
@@ -2229,12 +2231,20 @@ export default function App() {
               </div>
               <div style={{ marginBottom: 12 }}>
                 <div style={fieldLabel}>KÜ aadress</div>
-                <input type="text" value={kyData.aadress} onChange={(e) => setKyData(prev => ({ ...prev, aadress: e.target.value }))} style={inputStyle} />
+                <input type="text" value={kyData.kyAadress} onChange={(e) => setKyData(prev => ({ ...prev, kyAadress: e.target.value, kyAadressEdited: true }))} style={inputStyle} />
               </div>
               <div style={{ marginBottom: 0 }}>
-                <div style={fieldLabel}>Korteriomandite pindala kokku (m²)</div>
-                <NumberInput value={kyData.suletudNetopind} onChange={(v) => setKyData(prev => ({ ...prev, suletudNetopind: v }))} style={{ ...numStyle, maxWidth: 200 }} />
-                <div style={{ ...helperText, marginTop: 8, textAlign: "justify" }}>Kulude jaotuse õiguslik alus on kaasomandi osa suurus. Pindalaandmed on võetud EHR-ist ja neid kasutatakse üksnes arvutusliku abinäitajana. Kui EHR-i andmed ei vasta kinnistusraamatu või korteriomandi tegelikele andmetele, tuleb need käsitsi parandada.</div>
+                <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+                  <div style={{ flex: "1 1 180px" }}>
+                    <div style={fieldLabel}>Korteriomandite pindala kokku (m²)</div>
+                    <NumberInput value={kyData.suletudNetopind} onChange={(v) => setKyData(prev => ({ ...prev, suletudNetopind: v }))} style={{ ...numStyle, maxWidth: 200 }} />
+                    <div style={{ ...helperText, marginTop: 8, textAlign: "justify" }}>Korteriomandite pindalaandmed on võetud EHR-ist. Kulude jaotuse õiguslik alus on kaasomandi osa suurus. Pindalaandmeid kasutatakse siin ainult arvutusliku abinäitajana. Vajadusel kontrolli andmed Kinnistusraamatust üle ja paranda käsitsi.</div>
+                  </div>
+                  <div style={{ flex: "1 1 180px" }}>
+                    <div style={fieldLabel}>Korteriomandite arv</div>
+                    <div style={{ ...inputBase, display: "flex", alignItems: "center", justifyContent: "flex-end", fontFamily: "monospace", maxWidth: 200 }}>{kyData.korteriteArv || "—"}</div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -2266,7 +2276,7 @@ export default function App() {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                <div style={{ width: 200 }}>
+                <div style={{ flex: "1 1 180px" }}>
                   <div style={fieldLabel}>Algus</div>
                   <DateInput
                     value={plan.period.start || ""}
@@ -2278,7 +2288,7 @@ export default function App() {
                     placeholder=""
                   />
                 </div>
-                <div style={{ width: 200 }}>
+                <div style={{ flex: "1 1 180px" }}>
                   <div style={fieldLabel}>Lõpp</div>
                   <DateInput
                     value={plan.period.end || ""}
@@ -2290,7 +2300,7 @@ export default function App() {
                   />
                 </div>
               </div>
-              <div style={{ ...helperText, marginTop: 8 }}>Vajadusel muuda kuupäevi käsitsi</div>
+              <div style={{ ...helperText, marginTop: 8, textAlign: "justify" }}>Vajadusel muuda kuupäevi käsitsi</div>
               {plan.period.start && plan.period.end && (
                 <div style={{ ...helperText, marginTop: 8 }}>
                   {formatDateEE(plan.period.start)} – {formatDateEE(plan.period.end)}
