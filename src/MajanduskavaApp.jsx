@@ -1094,7 +1094,9 @@ export default function App() {
 
         if (needsMigration) {
           const investments = [];
-          // 1. seisukord → condition_item investments
+          // Legacy condition_item investments are preserved for backward compatibility,
+          // but Tab 1 no longer creates, displays, or syncs them.
+          // 1. seisukord → condition_item investments (legacy import only)
           importedSeisukord.forEach(r => {
             if (r.investeering) {
               investments.push({
@@ -1408,11 +1410,6 @@ export default function App() {
         ...p.assetCondition,
         items: (p.assetCondition?.items || []).filter(r => r.id !== id),
       },
-      investments: {
-        ...p.investments,
-        items: p.investments.items.filter(i => i.sourceRefId !== id),
-      },
-      loans: p.loans.filter(l => l.sepiiriostudInvId !== id),
     }));
   };
 
@@ -1787,19 +1784,7 @@ export default function App() {
     if (tabIdx === 0) { setKyData({ nimi: "", registrikood: "", aadress: "", kyAadress: "", kyAadressEdited: false, ehrKood: "", ehitusaasta: "", suletudNetopind: "", koetavPind: "", korteriteArv: "", korrusteArv: "" }); }
     setPlan(p => {
       if (tabIdx === 0) return { ...p, period: { ...p.period, start: "", end: "" }, building: { ...p.building, apartments: [] } };
-      if (tabIdx === 1) {
-        const removedInvIds = new Set(
-          p.investments.items
-            .filter(i => i.sourceType === "condition_item")
-            .flatMap(i => [i.id, i.sourceRefId].filter(Boolean))
-        );
-        return {
-          ...p,
-          assetCondition: { items: [] },
-          investments: { ...p.investments, items: p.investments.items.filter(i => i.sourceType !== "condition_item") },
-          loans: p.loans.filter(l => !removedInvIds.has(l.sepiiriostudInvId)),
-        };
-      }
+      if (tabIdx === 1) return { ...p, assetCondition: { items: [] } };
       if (tabIdx === 2) return { ...p, budget: { ...p.budget, costRows: [], incomeRows: [] } };
       if (tabIdx === 4) { setRepairFundSaldo(""); setRemondifond({ saldoAlgus: "", kogumisViis: "eraldi", pangaKoefitsient: 1.15, pangaMaarOverride: null, maarOverride: null, maarKorterKuu: null, planeeritudKogumine: "", soovitudSaldoLopp: "" }); setResKap({ saldoAlgus: "", kasutamine: "", pohjendus: "", usesReserveDuringPeriod: false }); return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, loans: [], allocationPolicies: defaultPlan().allocationPolicies }; }
       return p;
@@ -3049,9 +3034,9 @@ export default function App() {
                             onClick={() => setSec(1)}
                             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#6366f1", padding: 0 }}
                           >
-                            Hoone seisukord ja plaanitud tööd
+                            Seisukord ja kavandatavad toimingud
                           </button>
-                          {" "}tabisse, et lisada planeeritud tööd.
+                          {" "}tabisse, et lisada kavandatavad tööd.
                         </div>
                       ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
