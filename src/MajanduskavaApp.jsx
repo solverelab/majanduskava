@@ -473,6 +473,10 @@ export default function App() {
   const seisukord = plan.assetCondition?.items || [];
   // muudInvesteeringud → eemaldatud; kõik investeeringud elavad plan.investments.items
   const [tab1InfoOpen, setTab1InfoOpen] = useState(false);
+  const [kuluInfoOpen, setKuluInfoOpen] = useState(null);
+  const [aastaInfoOpen, setAastaInfoOpen] = useState(null);
+  const [tab0PindalaInfoOpen, setTab0PindalaInfoOpen] = useState(false);
+  const [tab0PerioodInfoOpen, setTab0PerioodInfoOpen] = useState(false);
   const [repairFundSaldo, setRepairFundSaldo] = useState(""); // tagasiühilduvus
   const [remondifond, setRemondifond] = useState({
     saldoAlgus: "",
@@ -1318,7 +1322,7 @@ export default function App() {
 
   // --- SEISUKORD ---
   const lisaSeisukordRida = () => {
-    const y = plan.period.start ? plan.period.start.slice(0, 4) : "";
+    const y = plan.period.year ? String(plan.period.year) : "";
     setPlan(p => ({
       ...p,
       assetCondition: {
@@ -2254,11 +2258,29 @@ export default function App() {
               </div>
               <div style={{ marginBottom: 0 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-                  <div style={fieldLabel}>Korteriomandite pindala kokku (m²)</div>
+                  <div style={{ ...fieldLabel, display: "flex", alignItems: "center", gap: 4 }}>
+                    Korteriomandite pindala kokku (m²)
+                    <span style={{ position: "relative", display: "inline-flex" }}
+                      onMouseEnter={() => setTab0PindalaInfoOpen(true)}
+                      onMouseLeave={() => setTab0PindalaInfoOpen(false)}>
+                      <button onClick={() => setTab0PindalaInfoOpen(v => !v)} aria-label="Näita selgitust"
+                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          width: 16, height: 16, borderRadius: "50%", border: `1px solid ${N.border}`,
+                          background: N.surface, fontSize: 11, color: N.dim, cursor: "help",
+                          padding: 0, fontWeight: 600, fontStyle: "italic", flexShrink: 0, lineHeight: 1 }}>i</button>
+                      {tab0PindalaInfoOpen && (
+                        <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20,
+                          background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8,
+                          padding: "10px 14px", fontSize: 13, color: N.text, width: 320,
+                          boxShadow: "0 4px 16px rgba(0,0,0,0.10)", lineHeight: 1.55, fontWeight: 400 }}>
+                          Korteriomandite pindalaandmed on võetud EHR-ist. Kulude jaotuse õiguslik alus on kaasomandi osa suurus. Pindalaandmeid kasutatakse siin ainult arvutusliku abinäitajana. Vajadusel kontrolli andmed Kinnistusraamatust üle ja paranda käsitsi.
+                        </div>
+                      )}
+                    </span>
+                  </div>
                   <div style={fieldLabel}>Korteriomandite arv</div>
                   <NumberInput value={kyData.suletudNetopind} onChange={(v) => setKyData(prev => ({ ...prev, suletudNetopind: v }))} style={numStyle} />
                   <div style={{ ...numStyle, lineHeight: "38px" }}>{kyData.korteriteArv || ""}</div>
-                  <div style={{ ...helperText, marginTop: 8, textAlign: "justify" }}>Korteriomandite pindalaandmed on võetud EHR-ist. Kulude jaotuse õiguslik alus on kaasomandi osa suurus. Pindalaandmeid kasutatakse siin ainult arvutusliku abinäitajana. Vajadusel kontrolli andmed Kinnistusraamatust üle ja paranda käsitsi.</div>
                 </div>
               </div>
             </div>
@@ -2267,7 +2289,26 @@ export default function App() {
               <div style={{ ...H2_STYLE, marginTop: 0 }}>Majanduskava periood</div>
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12, alignItems: "flex-start" }}>
                 <div>
-                  <div style={fieldLabel}>Majandusaasta</div>
+                  <div style={{ ...fieldLabel, display: "flex", alignItems: "center", gap: 4 }}>
+                    Majandusaasta
+                    <span style={{ position: "relative", display: "inline-flex" }}
+                      onMouseEnter={() => setTab0PerioodInfoOpen(true)}
+                      onMouseLeave={() => setTab0PerioodInfoOpen(false)}>
+                      <button onClick={() => setTab0PerioodInfoOpen(v => !v)} aria-label="Näita selgitust"
+                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          width: 16, height: 16, borderRadius: "50%", border: `1px solid ${N.border}`,
+                          background: N.surface, fontSize: 11, color: N.dim, cursor: "help",
+                          padding: 0, fontWeight: 600, fontStyle: "italic", flexShrink: 0, lineHeight: 1 }}>i</button>
+                      {tab0PerioodInfoOpen && (
+                        <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20,
+                          background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8,
+                          padding: "10px 14px", fontSize: 13, color: N.text, width: 320,
+                          boxShadow: "0 4px 16px rgba(0,0,0,0.10)", lineHeight: 1.55, fontWeight: 400 }}>
+                          Majanduskava võib vajaduse korral kehtestada ka tagasiulatuvalt, kuid varasema perioodi maksed muutuvad sissenõutavaks kõige varem alates üldkoosoleku otsusest, millega majanduskava kehtestati.
+                        </div>
+                      )}
+                    </span>
+                  </div>
                   <select
                     value={(() => {
                       const s = plan.period.start, e = plan.period.end;
@@ -2285,9 +2326,6 @@ export default function App() {
                       <option key={y} value={String(y)}>{y}</option>
                     ))}
                   </select>
-                </div>
-                <div style={{ flex: "1 1 200px" }}>
-                  <div style={{ ...helperText, paddingTop: 30, textAlign: "justify" }}>Majanduskava võib vajaduse korral kehtestada ka tagasiulatuvalt, kuid varasema perioodi maksed muutuvad sissenõutavaks kõige varem alates üldkoosoleku otsusest, millega majanduskava kehtestati.</div>
                 </div>
               </div>
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
@@ -2338,15 +2376,15 @@ export default function App() {
             <h1 style={H1_STYLE}>Ülevaade kaasomandi eseme seisukorrast ja kavandatavatest toimingutest</h1>
             <div style={card}>
               <div style={{ ...H2_STYLE, marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                Kaasomandi esemed
+                Kaasomandi ese
                 <span
                   style={{ position: "relative", display: "inline-flex" }}
                   onMouseEnter={() => setTab1InfoOpen(true)}
                   onMouseLeave={() => setTab1InfoOpen(false)}
                 >
                   <button
-                    onClick={() => setTab1InfoOpen(v => !v)}
-                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", border: `1px solid ${N.border}`, background: N.surface, fontSize: 12, color: N.dim, cursor: "help", padding: 0, fontWeight: 600, flexShrink: 0 }}
+                    onClick={() => setTab1InfoOpen(v => !v)} aria-label="Näita selgitust"
+                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 16, height: 16, borderRadius: "50%", border: `1px solid ${N.border}`, background: N.surface, fontSize: 11, color: N.dim, cursor: "help", padding: 0, fontWeight: 600, fontStyle: "italic", flexShrink: 0, lineHeight: 1 }}
                   >i</button>
                   {tab1InfoOpen && (
                     <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: N.text, width: 340, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", lineHeight: 1.55, fontWeight: 400 }}>
@@ -2391,23 +2429,57 @@ export default function App() {
                       <input type="text" placeholder={TEGEVUS_PLACEHOLDERS[rida.ese] || "Kirjelda kavandatav toiming"} value={rida.tegevus} onChange={(e) => uuendaSeisukord(rida.id, "tegevus", e.target.value)} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => uuendaSeisukord(rida.id, "tegevus", next))} style={inputStyle} />
                     </div>
                     <div style={{ flex: "1 1 160px" }}>
-                      <div style={fieldLabel}>Maksumuse hinnang (€)</div>
+                      <div style={{ ...fieldLabel, display: "flex", alignItems: "center", gap: 4 }}>
+                        Maksumuse hinnang (€)
+                        <span style={{ position: "relative", display: "inline-flex" }}
+                          onMouseEnter={() => setKuluInfoOpen(rida.id)}
+                          onMouseLeave={() => setKuluInfoOpen(null)}>
+                          <button onClick={() => setKuluInfoOpen(v => v === rida.id ? null : rida.id)} aria-label="Näita selgitust"
+                            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center",
+                              width: 16, height: 16, borderRadius: "50%", border: `1px solid ${N.border}`,
+                              background: N.surface, fontSize: 11, color: N.dim, cursor: "help",
+                              padding: 0, fontWeight: 600, fontStyle: "italic", flexShrink: 0, lineHeight: 1 }}>i</button>
+                          {kuluInfoOpen === rida.id && (
+                            <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 20,
+                              background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8,
+                              padding: "10px 14px", fontSize: 13, color: N.text, width: 300,
+                              boxShadow: "0 4px 16px rgba(0,0,0,0.10)", lineHeight: 1.55, fontWeight: 400 }}>
+                              See summa on ainult hinnang. See ei lähe automaatselt majanduskava kuludesse, fondidesse ega rahastamisse. Lisa summa eraldi vastavasse plokki, kui see peab mõjutama makseid.
+                            </div>
+                          )}
+                        </span>
+                      </div>
                       <EuroInput value={rida.eeldatavKulu} onChange={(v) => uuendaSeisukord(rida.id, "eeldatavKulu", v)} style={numStyle} />
-                      <div style={{ ...helperText, marginTop: 6, textAlign: "justify" }}>Siin märgitud summa on informatiivne hinnang. Kulu kajastatakse majanduskava tulude-kulude, fondide või rahastamise osas ainult siis, kui see lisatakse vastavasse plokki.</div>
                     </div>
                     <div style={{ flex: "0 1 140px", minWidth: 90 }}>
-                      <div style={fieldLabel}>Aasta</div>
-                      <select value={rida.tegevusAasta || String(plan.period.year || new Date().getFullYear())} onChange={(e) => uuendaSeisukord(rida.id, "tegevusAasta", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
+                      <div style={{ ...fieldLabel, display: "flex", alignItems: "center", gap: 4 }}>
+                        Aasta
+                        <span style={{ position: "relative", display: "inline-flex" }}
+                          onMouseEnter={() => setAastaInfoOpen(rida.id)}
+                          onMouseLeave={() => setAastaInfoOpen(null)}>
+                          <button onClick={() => setAastaInfoOpen(v => v === rida.id ? null : rida.id)} aria-label="Näita selgitust"
+                            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center",
+                              width: 16, height: 16, borderRadius: "50%", border: `1px solid ${N.border}`,
+                              background: N.surface, fontSize: 11, color: N.dim, cursor: "help",
+                              padding: 0, fontWeight: 600, fontStyle: "italic", flexShrink: 0, lineHeight: 1 }}>i</button>
+                          {aastaInfoOpen === rida.id && (
+                            <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 20,
+                              background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8,
+                              padding: "10px 14px", fontSize: 13, color: N.text, width: 280,
+                              boxShadow: "0 4px 16px rgba(0,0,0,0.10)", lineHeight: 1.55, fontWeight: 400 }}>
+                              Kui töö jääb sellest majanduskava perioodist välja, kuvatakse see ainult ülevaates. See ei lähe automaatselt selle perioodi kuludesse ega maksetesse.
+                            </div>
+                          )}
+                        </span>
+                      </div>
+                      <select value={rida.tegevusAasta || ""} onChange={(e) => uuendaSeisukord(rida.id, "tegevusAasta", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
+                        <option value="">Vali ...</option>
                         {(() => { const y = plan.period.year || new Date().getFullYear(); return [y, y + 1, y + 2, y + 3].map(v => <option key={v} value={String(v)}>{v}</option>); })()}
                       </select>
-                      <div style={{ ...helperText, marginTop: 6, textAlign: "justify" }}>Kui toiming ei ole kavandatud majanduskava perioodil, jääb see seisukorra ülevaatesse informatiivse märkusena ega lähe perioodi kulude hulka automaatselt.</div>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <button style={btnRemove} onClick={() => eemaldaSeisukordRida(rida.id)}>Eemalda rida</button>
-                    {rida.ese && (rida.eeldatavKulu > 0 || rida.tegevus) && !plan.investments.items.some(i => i.sourceRefId === rida.id) && (
-                      <button style={{ fontSize: 14, color: "#2563eb", background: "none", border: "1px solid #2563eb", borderRadius: 4, padding: "2px 8px", cursor: "pointer" }} onClick={() => handleLooInvesteering(rida)}>Loo investeering</button>
-                    )}
                   </div>
 
                   {(() => {
@@ -4453,7 +4525,7 @@ export default function App() {
           <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 24 }}>{printMode === "apartments" ? "Korteripõhine maksete lisa" : "Majanduskava eelnõu"}</h1>
 
           {printMode === "full" && (<>
-          {/* Kaasomandi esemed */}
+          {/* Kaasomandi ese */}
           <div className="print-section">
             <h2 className="print-section-title">Ülevaade kaasomandi eseme seisukorrast ja kavandatavatest toimingutest</h2>
             {seisukord.length > 0 && seisukord.some(r => r.ese) ? (
