@@ -336,7 +336,7 @@ const TEGEVUS_PLACEHOLDERS = {
   "Lift": "nt Lifti moderniseerimine",
   "Õueala": "nt Haljastuse ja valgustuse uuendamine",
   "Parkla": "nt Parkla asfalteerimine",
-  "Muu": "Kirjelda planeeritud tegevus",
+  "Muu": "Kirjelda kavandatav toiming",
 };
 
 const PUUDUSED_PLACEHOLDERS = {
@@ -2337,6 +2337,7 @@ export default function App() {
             <h1 style={H1_STYLE}>Ülevaade kaasomandi eseme seisukorrast ja kavandatavatest toimingutest</h1>
             <div style={card}>
               <div style={{ ...H2_STYLE, marginTop: 0 }}>Kaasomandi esemed</div>
+              <div style={{ ...helperText, marginBottom: 16, textAlign: "justify" }}>Sisesta ainult kaasomandi esemega seotud seisukord ja kavandatavad toimingud. Korteriomaniku eriomandi ehk korterisisese osa puudusi siia ei lisata, v.a juhul kui puudus puudutab kaasomandi eset või ühist tehnosüsteemi.</div>
 
               {seisukord.map((rida) => (
                 <div key={rida.id} style={{ border: `1px solid ${N.rule}`, borderRadius: 8, padding: 12, marginBottom: 8 }}>
@@ -2369,18 +2370,20 @@ export default function App() {
                       <input type="text" placeholder={PUUDUSED_PLACEHOLDERS[rida.ese] || "Kirjelda puudused"} value={rida.puudused} onChange={(e) => uuendaSeisukord(rida.id, "puudused", e.target.value)} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => uuendaSeisukord(rida.id, "puudused", next))} style={inputStyle} />
                     </div>
                     <div style={{ flex: 2, minWidth: 180 }}>
-                      <div style={fieldLabel}>Planeeritud tegevus</div>
-                      <input type="text" placeholder={TEGEVUS_PLACEHOLDERS[rida.ese] || "Kirjelda planeeritud tegevus"} value={rida.tegevus} onChange={(e) => uuendaSeisukord(rida.id, "tegevus", e.target.value)} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => uuendaSeisukord(rida.id, "tegevus", next))} style={inputStyle} />
+                      <div style={fieldLabel}>Kavandatav toiming</div>
+                      <input type="text" placeholder={TEGEVUS_PLACEHOLDERS[rida.ese] || "Kirjelda kavandatav toiming"} value={rida.tegevus} onChange={(e) => uuendaSeisukord(rida.id, "tegevus", e.target.value)} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => uuendaSeisukord(rida.id, "tegevus", next))} style={inputStyle} />
                     </div>
-                    <div style={{ width: 160 }}>
-                      <div style={fieldLabel}>Eeldatav kulu €</div>
+                    <div style={{ flex: "1 1 160px" }}>
+                      <div style={fieldLabel}>Maksumuse hinnang (€)</div>
                       <EuroInput value={rida.eeldatavKulu} onChange={(v) => uuendaSeisukord(rida.id, "eeldatavKulu", v)} style={numStyle} />
+                      <div style={{ ...helperText, marginTop: 6, textAlign: "justify" }}>Siin märgitud summa on informatiivne hinnang. Kulu kajastatakse majanduskava tulude-kulude, fondide või rahastamise osas ainult siis, kui see lisatakse vastavasse plokki.</div>
                     </div>
-                    <div style={{ width: 90 }}>
+                    <div style={{ flex: "0 1 140px", minWidth: 90 }}>
                       <div style={fieldLabel}>Aasta</div>
                       <select value={rida.tegevusAasta || String(plan.period.year || new Date().getFullYear())} onChange={(e) => uuendaSeisukord(rida.id, "tegevusAasta", e.target.value)} style={{ ...selectStyle, width: "100%" }}>
                         {(() => { const y = plan.period.year || new Date().getFullYear(); return [y, y + 1, y + 2, y + 3].map(v => <option key={v} value={String(v)}>{v}</option>); })()}
                       </select>
+                      <div style={{ ...helperText, marginTop: 6, textAlign: "justify" }}>Kui toiming ei ole kavandatud majanduskava perioodil, jääb see seisukorra ülevaatesse informatiivse märkusena ega lähe perioodi kulude hulka automaatselt.</div>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -3698,35 +3701,27 @@ export default function App() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                     <thead>
                       <tr style={thRow}>
-                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Objekt</th>
-                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Seisukorra lühiselgitus</th>
-                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Kavandatav tegevus</th>
-                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Periood</th>
-                        <th style={{ padding: "8px 12px 8px 0", textAlign: "right" }}>Maksumus</th>
-                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Muud investeeringud</th>
-                        <th style={{ padding: "8px 0", textAlign: "left" }}>Finantseerimisallikas</th>
+                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Ese</th>
+                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Seisukord</th>
+                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Prioriteet</th>
+                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Puudused</th>
+                        <th style={{ padding: "8px 12px 8px 0", textAlign: "left" }}>Kavandatav toiming</th>
+                        <th style={{ padding: "8px 12px 8px 0", textAlign: "right" }}>Maksumuse hinnang</th>
+                        <th style={{ padding: "8px 0", textAlign: "left" }}>Aasta</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {seisukord.filter(r => r.ese).map(s => {
-                        const inv = plan.investments.items.find(i => i.sourceRefId === s.id);
-                        const invCounted = inv && isInvestmentCounted(inv);
-                        const maksumus = invCounted ? euroEE(inv.totalCostEUR) : (s.eeldatavKulu ? euroEE(s.eeldatavKulu) : "");
-                        const allikad = invCounted
-                          ? (inv.fundingPlan || []).filter(fp => (fp.source || "").trim()).map(fp => `${fp.source}: ${euroEE(fp.amountEUR)}`).join(", ")
-                          : "";
-                        return (
-                          <tr key={s.id} style={tdSep}>
-                            <td style={{ padding: "8px 12px 8px 0" }}>{s.ese}</td>
-                            <td style={{ padding: "8px 12px 8px 0" }}>{s.seisukordVal || ""}</td>
-                            <td style={{ padding: "8px 12px 8px 0" }}>{s.tegevus || ""}</td>
-                            <td style={{ padding: "8px 12px 8px 0" }}>{s.tegevusAasta || ""}</td>
-                            <td style={{ padding: "8px 12px 8px 0", textAlign: "right", fontFamily: "monospace" }}>{maksumus}</td>
-                            <td style={{ padding: "8px 12px 8px 0" }}>{invCounted ? (inv.name || "—") : ""}</td>
-                            <td style={{ padding: "8px 0" }}>{allikad}</td>
-                          </tr>
-                        );
-                      })}
+                      {seisukord.filter(r => r.ese).map(s => (
+                        <tr key={s.id} style={tdSep}>
+                          <td style={{ padding: "8px 12px 8px 0" }}>{s.ese}</td>
+                          <td style={{ padding: "8px 12px 8px 0" }}>{s.seisukordVal || ""}</td>
+                          <td style={{ padding: "8px 12px 8px 0" }}>{s.prioriteet || ""}</td>
+                          <td style={{ padding: "8px 12px 8px 0" }}>{s.puudused || ""}</td>
+                          <td style={{ padding: "8px 12px 8px 0" }}>{s.tegevus || ""}</td>
+                          <td style={{ padding: "8px 12px 8px 0", textAlign: "right", fontFamily: "monospace" }}>{s.eeldatavKulu ? euroEE(s.eeldatavKulu) : ""}</td>
+                          <td style={{ padding: "8px 0" }}>{s.tegevusAasta || ""}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -4452,28 +4447,23 @@ export default function App() {
                     <th style={{ padding: "4px 8px" }}>Seisukord</th>
                     <th style={{ padding: "4px 8px" }}>Prioriteet</th>
                     <th style={{ padding: "4px 8px" }}>Puudused</th>
-                    <th style={{ padding: "4px 8px", textAlign: "right" }}>Eeldatav kulu</th>
-                    <th style={{ padding: "4px 8px" }}>Tegevus</th>
-                    <th style={{ padding: "4px 8px" }}>Aeg</th>
-                    <th style={{ padding: "4px 8px" }}>Investeering</th>
+                    <th style={{ padding: "4px 8px" }}>Kavandatav toiming</th>
+                    <th style={{ padding: "4px 8px", textAlign: "right" }}>Maksumuse hinnang</th>
+                    <th style={{ padding: "4px 8px" }}>Aasta</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {seisukord.filter(r => r.ese).map((s) => {
-                    const inv = plan.investments.items.find(i => i.sourceRefId === s.id);
-                    return (
+                  {seisukord.filter(r => r.ese).map((s) => (
                     <tr key={s.id} style={{ borderBottom: "1px solid #ccc" }}>
                       <td style={{ padding: "4px 8px" }}>{s.ese}</td>
                       <td style={{ padding: "4px 8px" }}>{s.seisukordVal || ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.prioriteet || ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.puudused || ""}</td>
-                      <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{s.eeldatavKulu ? euroEE(s.eeldatavKulu) : ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.tegevus || ""}</td>
+                      <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{s.eeldatavKulu ? euroEE(s.eeldatavKulu) : ""}</td>
                       <td style={{ padding: "4px 8px" }}>{s.tegevusAasta || ""}</td>
-                      <td style={{ padding: "4px 8px" }}>{inv && isInvestmentCounted(inv) ? <>{inv.name || "—"} · {euroEE(inv.totalCostEUR)}{(inv.fundingPlan || []).filter(fp => (fp.source || "").trim()).length > 0 && <> ({inv.fundingPlan.filter(fp => (fp.source || "").trim()).map(fp => `${fp.source}: ${euroEE(fp.amountEUR)}`).join(", ")})</>}</> : ""}</td>
                     </tr>
-                    );
-                  })}
+                  ))}
                 </tbody>
               </table>
             ) : (
