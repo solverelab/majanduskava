@@ -2234,16 +2234,12 @@ export default function App() {
                 <input type="text" value={kyData.kyAadress} onChange={(e) => setKyData(prev => ({ ...prev, kyAadress: e.target.value, kyAadressEdited: true }))} style={inputStyle} />
               </div>
               <div style={{ marginBottom: 0 }}>
-                <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
-                  <div style={{ flex: "1 1 180px" }}>
-                    <div style={fieldLabel}>Korteriomandite pindala kokku (m²)</div>
-                    <NumberInput value={kyData.suletudNetopind} onChange={(v) => setKyData(prev => ({ ...prev, suletudNetopind: v }))} style={{ ...numStyle, maxWidth: 200 }} />
-                    <div style={{ ...helperText, marginTop: 8, textAlign: "justify" }}>Korteriomandite pindalaandmed on võetud EHR-ist. Kulude jaotuse õiguslik alus on kaasomandi osa suurus. Pindalaandmeid kasutatakse siin ainult arvutusliku abinäitajana. Vajadusel kontrolli andmed Kinnistusraamatust üle ja paranda käsitsi.</div>
-                  </div>
-                  <div style={{ flex: "1 1 180px" }}>
-                    <div style={fieldLabel}>Korteriomandite arv</div>
-                    <div style={{ ...inputBase, display: "flex", alignItems: "center", justifyContent: "flex-end", fontFamily: "monospace", maxWidth: 200 }}>{kyData.korteriteArv || "—"}</div>
-                  </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                  <div style={fieldLabel}>Korteriomandite pindala kokku (m²)</div>
+                  <div style={fieldLabel}>Korteriomandite arv</div>
+                  <NumberInput value={kyData.suletudNetopind} onChange={(v) => setKyData(prev => ({ ...prev, suletudNetopind: v }))} style={numStyle} />
+                  <div style={{ ...numStyle, lineHeight: "38px" }}>{kyData.korteriteArv || ""}</div>
+                  <div style={{ ...helperText, marginTop: 8, textAlign: "justify" }}>Korteriomandite pindalaandmed on võetud EHR-ist. Kulude jaotuse õiguslik alus on kaasomandi osa suurus. Pindalaandmeid kasutatakse siin ainult arvutusliku abinäitajana. Vajadusel kontrolli andmed Kinnistusraamatust üle ja paranda käsitsi.</div>
                 </div>
               </div>
             </div>
@@ -2477,11 +2473,11 @@ export default function App() {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "baseline" }}>
                 <div style={{ width: 220 }}>
                   <div style={fieldLabel}>Kategooria</div>
-                  <div style={{ ...inputBase, width: "100%", background: N.muted, color: N.text, fontWeight: 600 }}>{label}</div>
+                  <div style={{ ...inputBase, width: "100%", lineHeight: "38px", background: N.muted, color: N.text, fontWeight: 600 }}>{label}</div>
                 </div>
                 <div style={{ width: 140 }}>
                   <div style={fieldLabel}>Maksumus €/periood</div>
-                  <div style={{ ...numStyle, background: N.muted, fontWeight: 600 }}>{fmtEur(value)}</div>
+                  <div style={{ ...numStyle, lineHeight: "38px", background: N.muted, fontWeight: 600 }}>{fmtEur(value)}</div>
                 </div>
               </div>
             </div>
@@ -2503,7 +2499,7 @@ export default function App() {
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <div style={{ width: 220 }}>
                             <div style={fieldLabel}>Kategooria</div>
-                            <div style={{ ...inputBase, width: "100%", background: N.muted, color: N.text, fontWeight: 600 }}>Muu tulu</div>
+                            <div style={{ ...inputBase, width: "100%", lineHeight: "38px", background: N.muted, color: N.text, fontWeight: 600 }}>Muu tulu</div>
                           </div>
                           <div style={{ flex: 2 }}>
                             <div style={fieldLabel}>Nimetus</div>
@@ -3000,7 +2996,7 @@ export default function App() {
                     {/* ── Fondi suunatud muu tulu ── */}
                     <div style={{ borderTop: `1px solid ${N.border}`, marginTop: 16, paddingTop: 12 }}>
                       <div style={fieldLabel}>Fondi suunatud muu tulu</div>
-                      <div style={{ ...numStyle, background: N.muted, width: 160, fontWeight: 600 }}>{euroEE(fondiMuuTuluFromTab2)}</div>
+                      <div style={{ ...numStyle, lineHeight: "38px", background: N.muted, width: 160, fontWeight: 600 }}>{euroEE(fondiMuuTuluFromTab2)}</div>
                       <div style={{ fontSize: 13, color: N.dim, marginTop: 4 }}>Muudetav Tab 2 tulu suunamise kaudu.</div>
                     </div>
 
@@ -3392,7 +3388,7 @@ export default function App() {
                   {/* 4. Laenumakse perioodis — readonly, arvutatud */}
                   <div style={{ marginBottom: 16 }}>
                     <div style={fieldLabel}>Laenumakse perioodis</div>
-                    <div style={{ ...numStyle, padding: "10px 12px", background: N.muted, color: N.text, fontWeight: 600 }}>
+                    <div style={{ ...numStyle, lineHeight: "38px", background: N.muted, color: N.text, fontWeight: 600 }}>
                       {euroEE(arvutaKuumakse(ln.principalEUR, ln.annualRatePct, parseInt(ln.termMonths) || 0) * (derived.period.monthEq || 12))}
                     </div>
                   </div>
