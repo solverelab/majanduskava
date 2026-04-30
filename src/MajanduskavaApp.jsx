@@ -1791,9 +1791,27 @@ export default function App() {
   const hasRealCost = plan.budget.costRows.some(r => (parseFloat(r.summaInput) || 0) > 0);
   const kommunaalRows = plan.budget.costRows.filter(r => KOMMUNAALTEENUSED.includes(r.category));
   const hasFondidData = plan.loans.length > 0 || plan.funds.repairFund.monthlyRateEurPerM2 > 0;
+  const tab0AllFilled = Boolean(
+    kyData.registrikood?.trim() &&
+    kyData.nimi?.trim() &&
+    kyData.aadress?.trim() &&
+    parseFloat(kyData.suletudNetopind) > 0 &&
+    kyData.korteriteArv &&
+    plan.period.start &&
+    plan.period.end
+  );
+  const tab0AnyTouched = Boolean(
+    kyData.registrikood?.trim() ||
+    kyData.nimi?.trim() ||
+    kyData.aadress?.trim() ||
+    parseFloat(kyData.suletudNetopind) > 0 ||
+    kyData.korteriteArv ||
+    plan.period.start ||
+    plan.period.end
+  );
   const tabStatus = [
     // 0: Üldandmed
-    (hasPeriod && hasRealApt) ? "valid" : (plan.period.start || plan.period.end || hasAnyApt) ? "invalid" : "",
+    tab0AllFilled ? "valid" : tab0AnyTouched ? "invalid" : "",
     // 1: Hoone seisukord ja tööd
     seisukord.some(r => r.ese) ? "valid" : "",
     // 2: Kavandatud kulud
