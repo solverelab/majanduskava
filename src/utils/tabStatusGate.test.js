@@ -18,8 +18,21 @@ function computeTabStatus(plan) {
     (hasPeriod && hasRealApt) ? "done" : (plan.period.start || plan.period.end || hasAnyApt) ? "partial" : "empty",
     // 1: Hoone seisukord ja tööd
     seisukord.some(r => r.ese) ? "done" : "empty",
-    // 2: Kavandatud kulud
-    hasRealCost ? "done" : plan.budget.costRows.length > 0 ? "partial" : "empty",
+    // 2: Kavandatavad tulud ja kulud (kommunaalread ja uued planeeritavad laenud ei loe)
+    (() => {
+      const KOMM = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus", "Muu kommunaalteenus"];
+      const tab2Costs = (plan.budget?.costRows || []).filter(r => !KOMM.includes(r.category));
+      const loans2 = (plan.loans || []).filter(l => !l.sepiiriostudInvId);
+      const activeIncomes = (plan.budget?.incomeRows || []).filter(r => (r.category && r.category !== "Muu tulu") || (parseFloat(r.summaInput) || 0) > 0 || r.name?.trim());
+      const activeCosts = tab2Costs.filter(r => r.category || (parseFloat(r.summaInput) || 0) > 0);
+      const activeLoans = loans2.filter(l => l.laenuandja || l.name || (parseFloat(l.pohiosPerioodis) || 0) + (parseFloat(l.intressPerioodis) || 0) + (parseFloat(l.teenustasudPerioodis) || 0) > 0);
+      if (!activeIncomes.length && !activeCosts.length && !activeLoans.length) return "empty";
+      const ok =
+        activeIncomes.every(r => r.category && (parseFloat(r.summaInput) || 0) > 0) &&
+        activeCosts.every(r => r.category && (parseFloat(r.summaInput) || 0) > 0) &&
+        activeLoans.every(l => (l.laenuandja || l.name) && (parseFloat(l.pohiosPerioodis) || 0) + (parseFloat(l.intressPerioodis) || 0) + (parseFloat(l.teenustasudPerioodis) || 0) > 0);
+      return ok ? "done" : "partial";
+    })(),
     // 3: Kavandatud tulud
     plan.budget.incomeRows.some(r => (parseFloat(r.summaInput) || 0) > 0) ? "done" : plan.budget.incomeRows.length > 0 ? "partial" : "empty",
     // 4: Fondid ja laen
@@ -78,39 +91,76 @@ describe("Tab 0 (Üldandmed): korteri pindala gate", () => {
   });
 });
 
-// ── Kulurida gate ──
+// ── Tab 2 (Kavandatavad tulud ja kulud): kombineeritud gate ──
 
-describe("Tab 2 (Kulud): tühi kulurida gate", () => {
-  it("ainult auto-seeded tühi rida → partial, mitte done", () => {
+describe("Tab 2 (Tulud ja kulud): kombineeritud gate — kommunaalread ei loe", () => {
+  it("ainult kommunaalread summadega → empty (ei loe Tab 2 staatuse hulka)", () => {
     const plan = basePlan({
-      budget: { costRows: [{ id: "r1", category: "", name: "", summaInput: 0 }], incomeRows: [] },
+      budget: { costRows: [{ id: "r1", category: "Soojus", summaInput: "12000" }], incomeRows: [] },
+    });
+    expect(computeTabStatus(plan)[2]).toBe("empty");
+  });
+
+  it("tühi kava (pole Tab 2 ridu) → empty", () => {
+    expect(computeTabStatus(basePlan())[2]).toBe("empty");
+  });
+
+  it("tühi kululiigiga rida (ei kategooriat, ei summat) → empty (ei loe aktiivseks)", () => {
+    const plan = basePlan({
+      budget: { costRows: [{ id: "r1", category: "", summaInput: 0 }], incomeRows: [] },
+    });
+    expect(computeTabStatus(plan)[2]).toBe("empty");
+  });
+
+  it("halduskulu kategooriaga, summa 0 → partial (poolik)", () => {
+    const plan = basePlan({
+      budget: { costRows: [{ id: "r1", category: "Valitseja / halduri tasu", summaInput: 0 }], incomeRows: [] },
     });
     expect(computeTabStatus(plan)[2]).toBe("partial");
   });
 
-  it("ainult kategooriaga, summa 0 → partial (poolik töövoog)", () => {
+  it("halduskulu kategooria + summa → done", () => {
     const plan = basePlan({
-      budget: { costRows: [{ id: "r1", category: "Soojus", name: "", summaInput: 0 }], incomeRows: [] },
+      budget: { costRows: [{ id: "r1", category: "Valitseja / halduri tasu", summaInput: "2400" }], incomeRows: [] },
+    });
+    expect(computeTabStatus(plan)[2]).toBe("done");
+  });
+
+  it("tulurida kategooria + summa → done", () => {
+    const plan = basePlan({
+      budget: { costRows: [], incomeRows: [{ id: "i1", category: "Üüritulu", summaInput: "500" }] },
+    });
+    expect(computeTabStatus(plan)[2]).toBe("done");
+  });
+
+  it("tulurida kategooriaga, summa 0 → partial", () => {
+    const plan = basePlan({
+      budget: { costRows: [], incomeRows: [{ id: "i1", category: "Üüritulu", summaInput: 0 }] },
     });
     expect(computeTabStatus(plan)[2]).toBe("partial");
   });
 
-  it("kulurida kategooria + summaga → done", () => {
+  it("olemasolev laen laenuandja + summaga → done", () => {
     const plan = basePlan({
-      budget: { costRows: [{ id: "r1", category: "Soojus", name: "", summaInput: "12000" }], incomeRows: [] },
+      loans: [{ id: "l1", sepiiriostudInvId: null, laenuandja: "Swedbank", name: "", pohiosPerioodis: 500, intressPerioodis: 0, teenustasudPerioodis: 0 }],
     });
     expect(computeTabStatus(plan)[2]).toBe("done");
   });
 
-  it("kulurida ainult summaga → done", () => {
+  it("kaks rida, üks poolik → partial", () => {
     const plan = basePlan({
-      budget: { costRows: [{ id: "r1", category: "", name: "", summaInput: "500" }], incomeRows: [] },
+      budget: {
+        costRows: [{ id: "r1", category: "Valitseja / halduri tasu", summaInput: "2400" }],
+        incomeRows: [{ id: "i1", category: "Üüritulu", summaInput: 0 }],
+      },
     });
-    expect(computeTabStatus(plan)[2]).toBe("done");
+    expect(computeTabStatus(plan)[2]).toBe("partial");
   });
 
-  it("tühjad read puuduvad → empty", () => {
-    const plan = basePlan({ budget: { costRows: [], incomeRows: [] } });
+  it("uue laenu planeerimine (sepiiriostudInvId) ei loe Tab 2 staatuse hulka", () => {
+    const plan = basePlan({
+      loans: [{ id: "l1", sepiiriostudInvId: "inv-xyz", laenuandja: "Swedbank", pohiosPerioodis: 500, intressPerioodis: 100 }],
+    });
     expect(computeTabStatus(plan)[2]).toBe("empty");
   });
 });

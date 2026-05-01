@@ -18,7 +18,20 @@ function computeTabStatus(plan) {
   return {
     tab0: (hasPeriod && hasRealApt) ? "done" : (plan.period.start || plan.period.end || hasAnyApt) ? "partial" : "empty",
     tab1: seisukord.some(r => r.ese) ? "done" : "empty",
-    tab2: hasRealCost ? "done" : plan.budget.costRows.length > 0 ? "partial" : "empty",
+    tab2: (() => {
+      const KOMM = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus", "Muu kommunaalteenus"];
+      const tab2Costs = (plan.budget?.costRows || []).filter(r => !KOMM.includes(r.category));
+      const loans2 = (plan.loans || []).filter(l => !l.sepiiriostudInvId);
+      const activeIncomes = (plan.budget?.incomeRows || []).filter(r => (r.category && r.category !== "Muu tulu") || (parseFloat(r.summaInput) || 0) > 0 || r.name?.trim());
+      const activeCosts = tab2Costs.filter(r => r.category || (parseFloat(r.summaInput) || 0) > 0);
+      const activeLoans = loans2.filter(l => l.laenuandja || l.name || (parseFloat(l.pohiosPerioodis) || 0) + (parseFloat(l.intressPerioodis) || 0) + (parseFloat(l.teenustasudPerioodis) || 0) > 0);
+      if (!activeIncomes.length && !activeCosts.length && !activeLoans.length) return "empty";
+      const ok =
+        activeIncomes.every(r => r.category && (parseFloat(r.summaInput) || 0) > 0) &&
+        activeCosts.every(r => r.category && (parseFloat(r.summaInput) || 0) > 0) &&
+        activeLoans.every(l => (l.laenuandja || l.name) && (parseFloat(l.pohiosPerioodis) || 0) + (parseFloat(l.intressPerioodis) || 0) + (parseFloat(l.teenustasudPerioodis) || 0) > 0);
+      return ok ? "done" : "partial";
+    })(),
     tab3: plan.budget.incomeRows.some(r => (parseFloat(r.summaInput) || 0) > 0) ? "done" : plan.budget.incomeRows.length > 0 ? "partial" : "empty",
     tab4: (plan.loans.length > 0 || plan.funds.repairFund.monthlyRateEurPerM2 > 0) ? "done" : "empty",
     tab5: (hasRealApt && hasPeriod) ? "done" : hasAnyApt ? "partial" : "empty",
@@ -125,8 +138,9 @@ describe("3. Kulud ja tulud", () => {
     },
   };
 
-  it("gate: tab2 = done (üks summaga rida piisab)", () => {
-    expect(computeTabStatus(plan).tab2).toBe("done");
+  it("gate: tab2 = partial (on aktiivseid poolikuid ridu — kõik peavad olema täidetud done jaoks)", () => {
+    // plan sisaldab poolikuid ridu (Haldus sum=0, Muu tulu sum=0) → partial
+    expect(computeTabStatus(plan).tab2).toBe("partial");
   });
 
   it("gate: tab3 = done (üks summaga rida piisab)", () => {

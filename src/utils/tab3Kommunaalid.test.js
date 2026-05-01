@@ -474,3 +474,55 @@ describe("clearKommunaalid: UI ja handler", () => {
     expect(tab2Only).not.toContain("loans: []");
   });
 });
+
+// ── Tab 2 nuppude tekstid ─────────────────────────────────────────────────────
+
+describe("Tab 2 nuppude tekstid vastavad Tab 1 mustrile", () => {
+  let tab2Block;
+
+  beforeAll(() => {
+    const sec2Idx = src.indexOf("sec === 2 && (() => {");
+    const sec4Idx = src.indexOf("sec === 4 && (", sec2Idx);
+    tab2Block = src.slice(sec2Idx, sec4Idx);
+  });
+
+  it("üldine clearBtn(2) on Tab 2 ploki alguses (üleval paremal)", () => {
+    const clearBtnIdx = tab2Block.indexOf("clearBtn(2)");
+    const h1Idx = tab2Block.indexOf("Kavandatavad tulud ja kulud");
+    expect(clearBtnIdx).toBeGreaterThan(-1);
+    expect(clearBtnIdx).toBeLessThan(h1Idx);
+  });
+
+  it("tulureal on 'Eemalda tulu' nupp", () => {
+    expect(tab2Block).toContain(">Eemalda tulu<");
+  });
+
+  it("kulureal on 'Eemalda kulu' nupp", () => {
+    expect(tab2Block).toContain(">Eemalda kulu<");
+  });
+
+  it("laenureal on 'Eemalda laen' nupp", () => {
+    expect(tab2Block).toContain(">Eemalda laen<");
+  });
+
+  it("halduskulude lisamisnupp on '+ Lisa halduskulu'", () => {
+    expect(tab2Block).toContain("+ Lisa halduskulu");
+  });
+
+  it("muude kulude lisamisnupp on '+ Lisa muu kulu'", () => {
+    expect(tab2Block).toContain("+ Lisa muu kulu");
+  });
+
+  it("tulude lisamisnupp on '+ Lisa tulu'", () => {
+    expect(tab2Block).toContain("+ Lisa tulu");
+  });
+
+  it("laenude lisamisnupp on '+ Lisa olemasolev laen'", () => {
+    expect(tab2Block).toContain("+ Lisa olemasolev laen");
+  });
+
+  it("Tab 2-s pole tulude eraldi Tühjenda nuppu (incomeRows: [] kustutav askConfirm)", () => {
+    // Duplikaatne tulude Tühjenda on eemaldatud — ainult clearBtn(2) üleval
+    expect(tab2Block).not.toContain("Kas soovid tuluread kustutada?");
+  });
+});

@@ -1683,7 +1683,7 @@ export default function App() {
   useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [mkApartment({ label: "1" })] } })); }, [plan.building.apartments.length]);
   // Investeeringud algavad tühjana — luuakse ainult "Loo investeering" või "+ Lisa investeering" kaudu
   useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0, selgitus: "", forecastAdjustmentEnabled: false, forecastAdjustmentType: null, forecastAdjustmentPercent: null, forecastAdjustmentNote: "", allocationBasis: "m2", legalBasisBylaws: false, legalBasisSpecialAgreement: false, allocationExplanation: "", settledPostHoc: false }] } })); }, [plan.budget.costRows.length]);
-  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME" }), category: "Muu tulu", arvutus: "aastas", summaInput: "" }] } })); }, [plan.budget.incomeRows.length]);
+  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME" }), category: "", arvutus: "aastas", summaInput: "" }] } })); }, [plan.budget.incomeRows.length]);
 
   // Migreeri vanad tulukategooriad → Muu tulu või eemalda
   useEffect(() => {
@@ -1844,8 +1844,20 @@ export default function App() {
       );
       return allComplete ? "valid" : "invalid";
     })(),
-    // 2: Kavandatud kulud
-    hasRealCost ? "valid" : plan.budget.costRows.length > 0 ? "invalid" : "",
+    // 2: Kavandatavad tulud ja kulud (kommunaalread ja uued planeeritavad laenud ei loe)
+    (() => {
+      const tab2Costs = plan.budget.costRows.filter(r => !KOMMUNAALTEENUSED.includes(r.category));
+      const tab2ExistingLoans = plan.loans.filter(l => !l.sepiiriostudInvId);
+      const activeIncomes = plan.budget.incomeRows.filter(r => (r.category && r.category !== "Muu tulu") || (parseFloat(r.summaInput) || 0) > 0 || r.name?.trim());
+      const activeCosts = tab2Costs.filter(r => r.category || (parseFloat(r.summaInput) || 0) > 0);
+      const activeLoans = tab2ExistingLoans.filter(l => l.laenuandja || l.name || (parseFloat(l.pohiosPerioodis) || 0) + (parseFloat(l.intressPerioodis) || 0) + (parseFloat(l.teenustasudPerioodis) || 0) > 0);
+      if (!activeIncomes.length && !activeCosts.length && !activeLoans.length) return "";
+      const ok =
+        activeIncomes.every(r => r.category && (parseFloat(r.summaInput) || 0) > 0) &&
+        activeCosts.every(r => r.category && (parseFloat(r.summaInput) || 0) > 0) &&
+        activeLoans.every(l => (l.laenuandja || l.name) && (parseFloat(l.pohiosPerioodis) || 0) + (parseFloat(l.intressPerioodis) || 0) + (parseFloat(l.teenustasudPerioodis) || 0) > 0);
+      return ok ? "valid" : "invalid";
+    })(),
     // 3: Kommunaalid
     kommunaalRows.some(r => (parseFloat(r.summaInput) || 0) > 0) ? "valid" : kommunaalRows.length > 0 ? "invalid" : "",
     // 4: Fondid ja laen
@@ -2562,7 +2574,7 @@ export default function App() {
                     <div style={fieldLabel}>Summa (€/periood)</div>
                     <EuroInput value={r.summaInput} onChange={(v) => updateRow("COST", r.id, { summaInput: v })} style={numStyle} />
                   </div>
-                  <div style={{ alignSelf: "end" }}><button style={btnRemove} onClick={() => removeRow("COST", r.id)}>Eemalda</button></div>
+                  <div style={{ alignSelf: "end" }}><button style={btnRemove} onClick={() => removeRow("COST", r.id)}>Eemalda kulu</button></div>
                 </div>
                 {isMuuTeenus && (
                   <div style={{ marginTop: 6 }}>
@@ -2621,60 +2633,69 @@ export default function App() {
           }, 0);
           return (
             <div style={tabStack}>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(2)}</div>
               <h1 style={H1_STYLE}>Kavandatavad tulud ja kulud</h1>
 
               {/* ── 1. Tulud ── */}
               <div style={card}>
                 <div style={{ ...H2_STYLE, marginTop: 0 }}>Tulud</div>
-                <div style={{ fontSize: 13, color: N.sub, marginBottom: 12 }}>Korteriomanike maksed arvutatakse kavandatud kulude, fondimaksete ja jaotuse aluste põhjal.</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {plan.budget.incomeRows.map(r => {
-                    const isMarkusOpenR = !!r.note || openRfMarkusId === ("income_" + r.id);
-                    return (
-                      <div key={r.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
-                        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-                          <div style={{ width: 180 }}>
-                            <div style={fieldLabel}>Kategooria</div>
-                            <select value={r.category || ""} onChange={(e) => updateRow("INCOME", r.id, { category: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
-                              <option value="" disabled>Vali...</option>
-                              {TULU_KATEGORIAD_TAB2.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
+                <div style={{ fontSize: 13, color: N.text, marginBottom: 16 }}>Siia sisestatakse korteriühistu muud tulud. Korteriomanike maksed arvutatakse kavandatud kulude, fondimaksete ja jaotuse aluste põhjal.</div>
+                <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 16, marginTop: 8 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 8 }}>Muud tulud</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    {plan.budget.incomeRows.map(r => {
+                      const isMarkusOpenR = !!r.note || openRfMarkusId === ("income_" + r.id);
+                      return (
+                        <div key={r.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
+                          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+                            <div style={{ width: 180 }}>
+                              <div style={fieldLabel}>Kategooria</div>
+                              <select value={r.category || ""} onChange={(e) => updateRow("INCOME", r.id, { category: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
+                                <option value="" disabled>Vali...</option>
+                                {TULU_KATEGORIAD_TAB2.map(c => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                            </div>
+                            <div style={{ flex: 2, minWidth: 160 }}>
+                              <div style={fieldLabel}>Nimetus</div>
+                              <input value={r.name || ""} onChange={(e) => updateRow("INCOME", r.id, { name: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("INCOME", r.id, { name: next }))} style={inputStyle} />
+                            </div>
+                            <div style={{ width: 150 }}>
+                              <div style={fieldLabel}>Summa perioodis (€)</div>
+                              <EuroInput value={r.summaInput} onChange={(v) => {
+                                const updates = { summaInput: v, arvutus: "aastas" };
+                                if (r.incomeAllocation === "targeted" && (r.incomeAllocations || []).length > 0) {
+                                  const first = r.incomeAllocations[0];
+                                  updates.incomeAllocations = [{ id: first.id || crypto.randomUUID(), target: first.target, amount: v }];
+                                }
+                                updateRow("INCOME", r.id, updates);
+                              }} style={numStyle} />
+                            </div>
                           </div>
-                          <div style={{ flex: 2, minWidth: 160 }}>
-                            <div style={fieldLabel}>Nimetus</div>
-                            <input value={r.name || ""} onChange={(e) => updateRow("INCOME", r.id, { name: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("INCOME", r.id, { name: next }))} style={inputStyle} />
-                          </div>
-                          <div style={{ width: 150 }}>
-                            <div style={fieldLabel}>Summa perioodis (€)</div>
-                            <EuroInput value={r.summaInput} onChange={(v) => {
-                              const updates = { summaInput: v, arvutus: "aastas" };
-                              if (r.incomeAllocation === "targeted" && (r.incomeAllocations || []).length > 0) {
-                                const first = r.incomeAllocations[0];
-                                updates.incomeAllocations = [{ id: first.id || crypto.randomUUID(), target: first.target, amount: v }];
-                              }
-                              updateRow("INCOME", r.id, updates);
-                            }} style={numStyle} />
-                          </div>
-                          <div>
-                            <button style={btnRemove} onClick={() => removeRow("INCOME", r.id)}>Eemalda</button>
+                          {!isMarkusOpenR && <button onClick={() => setOpenRfMarkusId("income_" + r.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: N.text, padding: "4px 0" }}>+ Lisa märkus</button>}
+                          {isMarkusOpenR && (
+                            <div style={{ marginTop: 8 }}>
+                              <div style={fieldLabel}>Märkus (valikuline)</div>
+                              <input value={r.note || ""} onChange={(e) => updateRow("INCOME", r.id, { note: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("INCOME", r.id, { note: next }))} style={inputStyle} />
+                              <button onClick={() => { updateRow("INCOME", r.id, { note: "" }); setOpenRfMarkusId(null); }} style={{ ...btnRemove, marginTop: 4 }}>Eemalda märkus</button>
+                            </div>
+                          )}
+                          <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+                            <button style={btnRemove} onClick={() => askConfirm("Kas oled kindel, et soovid selle tulu andmed kustutada?", "Kustuta", () => removeRow("INCOME", r.id))}>Eemalda tulu</button>
                           </div>
                         </div>
-                        {!isMarkusOpenR && <button onClick={() => setOpenRfMarkusId("income_" + r.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#6366f1", padding: "4px 0" }}>+ Lisa märkus</button>}
-                        {isMarkusOpenR && <div style={{ marginTop: 8 }}><div style={fieldLabel}>Märkus (valikuline)</div><input value={r.note || ""} onChange={(e) => updateRow("INCOME", r.id, { note: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("INCOME", r.id, { note: next }))} style={inputStyle} /></div>}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <button style={btnAdd} onClick={() => addRow("INCOME")}>+ Lisa tulu</button>
-                  <button onClick={() => askConfirm("Kas soovid tuluread kustutada?", "Kustuta", () => setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [] } })))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: N.dim, textDecoration: "underline", padding: 0 }}>Tühjenda</button>
-                </div>
-                {muudTuludSum > 0 && (
-                  <div style={{ marginTop: 12, paddingTop: 8, borderTop: `1px solid ${N.rule}`, fontSize: 14, display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
-                    <span>Muud tulud perioodis:</span>
-                    <span style={{ fontFamily: "monospace" }}>{euro(muudTuludSum)}</span>
+                      );
+                    })}
                   </div>
-                )}
+                  <div style={{ marginTop: 12 }}>
+                    <button style={btnAdd} onClick={() => addRow("INCOME")}>+ Lisa tulu</button>
+                  </div>
+                  {muudTuludSum > 0 && (
+                    <div style={{ marginTop: 12, paddingTop: 8, borderTop: `1px solid ${N.rule}`, fontSize: 14, display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
+                      <span>Muud tulud perioodis:</span>
+                      <span style={{ fontFamily: "monospace" }}>{euro(muudTuludSum)}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* ── 2. Kulud ── */}
@@ -2689,7 +2710,7 @@ export default function App() {
                     {haldusRead.map(r => tab2KuluRida(r, HALDUS_UI_KULULIIGID))}
                   </div>
                   <div style={{ marginTop: 12 }}>
-                    <button style={btnAdd} onClick={() => addRow("COST", { _inSection: "haldus", allocationBasis: "m2", legalBasisSeadus: true })}>+ Lisa kulu</button>
+                    <button style={btnAdd} onClick={() => addRow("COST", { _inSection: "haldus", allocationBasis: "m2", legalBasisSeadus: true })}>+ Lisa halduskulu</button>
                   </div>
                 </div>
 
@@ -2700,7 +2721,7 @@ export default function App() {
                     {muudRead.map(r => tab2KuluRida(r, MUUD_MAJANDAMISKULUD_KATEGORIAD))}
                   </div>
                   <div style={{ marginTop: 12 }}>
-                    <button style={btnAdd} onClick={() => addRow("COST", { allocationBasis: "m2", legalBasisSeadus: true })}>+ Lisa kulu</button>
+                    <button style={btnAdd} onClick={() => addRow("COST", { allocationBasis: "m2", legalBasisSeadus: true })}>+ Lisa muu kulu</button>
                   </div>
                 </div>
 
@@ -2760,7 +2781,7 @@ export default function App() {
                                   <input value={ln.eesmärkKirjeldus || ""} onChange={(e) => updateLoan(ln.id, { eesmärkKirjeldus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateLoan(ln.id, { eesmärkKirjeldus: next }))} placeholder="Kirjelda eesmärki" style={{ ...inputStyle, marginTop: 4, width: "100%" }} />
                                 )}
                               </div>
-                              <div style={{ alignSelf: "end" }}><button style={btnRemove} onClick={() => removeLoan(ln.id)}>Eemalda</button></div>
+                              <div style={{ alignSelf: "end" }}><button style={btnRemove} onClick={() => removeLoan(ln.id)}>Eemalda laen</button></div>
                             </div>
                             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                               <div style={{ width: 130 }}>
@@ -2849,7 +2870,6 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>{clearBtn(2)}</div>
             </div>
           );
         })()}
