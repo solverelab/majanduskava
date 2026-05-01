@@ -12,7 +12,9 @@ import { describe, it, expect } from "vitest";
 // 6. Lõppdokumendi tugev kontroll: kuvab puudused täpselt
 // ══════════════════════════════════════════════════════════════════════
 
-// ── Staatuse arvutusvalem (sama loogika mis MajanduskavaApp.jsx tabStatus[0]) ──
+// ── Staatuse arvutusvalem (peegeldab MajanduskavaApp.jsx tab0AllFilled / tab0AnyTouched loogika) ──
+// Kohustuslikud väljad: nimi, registrikood, aadress, korteriteArv, suletudNetopind, periood
+// ehrKood EI ole kohustuslik (ei kuulu tab0AllFilled kontrollitavate hulka)
 
 function computeTab0Status({ hasPeriod, kyData }) {
   const allRequired = !!(
@@ -20,7 +22,7 @@ function computeTab0Status({ hasPeriod, kyData }) {
     kyData.nimi?.trim() &&
     kyData.registrikood?.trim() &&
     kyData.aadress?.trim() &&
-    kyData.ehrKood?.trim() &&
+    kyData.korteriteArv &&
     parseFloat(kyData.suletudNetopind) > 0
   );
   const anyFilled = !!(
@@ -28,7 +30,7 @@ function computeTab0Status({ hasPeriod, kyData }) {
     kyData.nimi ||
     kyData.registrikood ||
     kyData.aadress ||
-    kyData.ehrKood ||
+    kyData.korteriteArv ||
     kyData.suletudNetopind
   );
   if (allRequired) return "valid";
@@ -36,7 +38,7 @@ function computeTab0Status({ hasPeriod, kyData }) {
   return "notStarted";
 }
 
-// ── Lõppdokumendi puuduste loend (sama loogika mis sec === 6 IIFE) ──
+// ── Lõppdokumendi puuduste loend (peegeldab MajanduskavaApp.jsx tab0AllFilled nõudeid) ──
 
 function computeTab0Missing(plan, kyData) {
   const missing = [];
@@ -44,15 +46,15 @@ function computeTab0Missing(plan, kyData) {
   if (!kyData.nimi?.trim()) missing.push("KÜ nimi");
   if (!kyData.registrikood?.trim()) missing.push("Registrikood");
   if (!kyData.aadress?.trim()) missing.push("Hoone aadress");
-  if (!kyData.ehrKood?.trim()) missing.push("EHR kood");
+  if (!kyData.korteriteArv) missing.push("Korterite arv");
   if (!(parseFloat(kyData.suletudNetopind) > 0)) missing.push("Korteriomandite pindala kokku");
   return missing;
 }
 
 // ── Vaikimisi tühjad andmed ──
 
-const EMPTY_KY = { nimi: "", registrikood: "", aadress: "", ehrKood: "", suletudNetopind: "" };
-const FULL_KY = { nimi: "Kuldne Tuba KÜ", registrikood: "80012345", aadress: "Tartu mnt 1", ehrKood: "EHR-001", suletudNetopind: "1234" };
+const EMPTY_KY = { nimi: "", registrikood: "", aadress: "", korteriteArv: "", suletudNetopind: "" };
+const FULL_KY = { nimi: "Kuldne Tuba KÜ", registrikood: "80012345", aadress: "Tartu mnt 1", korteriteArv: "24", suletudNetopind: "1234" };
 const EMPTY_PERIOD = { period: { start: "", end: "" } };
 const FULL_PERIOD = { period: { start: "2027-01-01", end: "2027-12-31" } };
 
@@ -79,7 +81,7 @@ describe("Tab 0 invalid: alustatud aga puudulik", () => {
     expect(computeTab0Status({ hasPeriod: true, kyData: EMPTY_KY })).toBe("invalid");
   });
 
-  it("periood + nimi + aadress, puudub registrikood ja EHR → invalid", () => {
+  it("periood + nimi + aadress, puudub registrikood ja korterite arv → invalid", () => {
     expect(computeTab0Status({ hasPeriod: true, kyData: { ...EMPTY_KY, nimi: "KÜ", aadress: "Tamme 1" } })).toBe("invalid");
   });
 
@@ -93,6 +95,10 @@ describe("Tab 0 invalid: alustatud aga puudulik", () => {
 
   it("suletudNetopind = 0 → invalid (null ei käi)", () => {
     expect(computeTab0Status({ hasPeriod: true, kyData: { ...FULL_KY, suletudNetopind: "0" } })).toBe("invalid");
+  });
+
+  it("kõik täidetud peale korteriteArv → invalid", () => {
+    expect(computeTab0Status({ hasPeriod: true, kyData: { ...FULL_KY, korteriteArv: "" } })).toBe("invalid");
   });
 });
 
@@ -110,15 +116,20 @@ describe("Tab 0 valid: kõik kohustuslikud väljad olemas", () => {
   it("suletudNetopind on number 500 → valid", () => {
     expect(computeTab0Status({ hasPeriod: true, kyData: { ...FULL_KY, suletudNetopind: 500 } })).toBe("valid");
   });
+
+  it("ehrKood puudumine ei takista valid staatust — ehrKood ei ole kohustuslik", () => {
+    expect(computeTab0Status({ hasPeriod: true, kyData: { ...FULL_KY, ehrKood: "" } })).toBe("valid");
+  });
+
+  it("ehrKood puudumine üldse kyData-st ei takista valid staatust", () => {
+    const { ehrKood: _unused, ...kyWithoutEhr } = { ...FULL_KY, ehrKood: "anything" };
+    expect(computeTab0Status({ hasPeriod: true, kyData: FULL_KY })).toBe("valid");
+  });
 });
 
 // ── 4. Periood ei blokeeri navigeerimist — loogika on eraldi ─────────────
 
 describe("Tab 0 perioodi puudumine ei blokeeri navigeerimist", () => {
-  // Navigeerimisblokeering oli tingimus: sec === 0 && i !== 0 && (!period.start || !period.end)
-  // Selle kontrolli eemaldamisel on navigeerimine perioodist sõltumatu.
-  // Test kinnitab, et staatuse loogika ja navigeerimisloogika on lahutatud.
-
   it("computeTab0Status ei tagasta 'blocked' ega 'locked' — puuduv periood annab invalid/notStarted", () => {
     const status = computeTab0Status({ hasPeriod: false, kyData: EMPTY_KY });
     expect(["notStarted", "invalid", "valid"]).toContain(status);
@@ -144,7 +155,7 @@ describe("lõppdokumendi kontroll: puuduvate väljade loend", () => {
     expect(missing).toContain("KÜ nimi");
     expect(missing).toContain("Registrikood");
     expect(missing).toContain("Hoone aadress");
-    expect(missing).toContain("EHR kood");
+    expect(missing).toContain("Korterite arv");
     expect(missing).toContain("Korteriomandite pindala kokku");
     expect(missing).toHaveLength(6);
   });
@@ -159,9 +170,15 @@ describe("lõppdokumendi kontroll: puuduvate väljade loend", () => {
     expect(missing).toEqual(["Korteriomandite pindala kokku"]);
   });
 
-  it("puudub ainult EHR kood → loend sisaldab ainult EHR kood", () => {
+  it("puudub ainult korterite arv → loend sisaldab ainult korterite arv", () => {
+    const missing = computeTab0Missing(FULL_PERIOD, { ...FULL_KY, korteriteArv: "" });
+    expect(missing).toEqual(["Korterite arv"]);
+  });
+
+  it("ehrKood puudumine ei ilmu puuduste loendis — ehrKood ei ole kohustuslik", () => {
     const missing = computeTab0Missing(FULL_PERIOD, { ...FULL_KY, ehrKood: "" });
-    expect(missing).toEqual(["EHR kood"]);
+    expect(missing).toEqual([]);
+    expect(missing).not.toContain("EHR kood");
   });
 
   it("periood algus puudub (lõpp olemas) → periood on puuduste loendis", () => {
@@ -200,18 +217,23 @@ describe("kohustuslike väljade nimekiri on täpne", () => {
     expect(missing).toHaveLength(6);
   });
 
-  it("kohustuslikud väljad on: periood, KÜ nimi, registrikood, aadress, EHR kood, pindala", () => {
+  it("kohustuslikud väljad on: periood, KÜ nimi, registrikood, aadress, korterite arv, pindala", () => {
     const missing = computeTab0Missing(EMPTY_PERIOD, EMPTY_KY);
     expect(missing).toContain("Majanduskava periood");
     expect(missing).toContain("KÜ nimi");
     expect(missing).toContain("Registrikood");
     expect(missing).toContain("Hoone aadress");
-    expect(missing).toContain("EHR kood");
+    expect(missing).toContain("Korterite arv");
     expect(missing).toContain("Korteriomandite pindala kokku");
   });
 
-  it("korterite arv EI ole kohustuslik (ei ole puuduste loendis)", () => {
+  it("EHR kood EI ole kohustuslik (ei ole puuduste loendis)", () => {
     const missing = computeTab0Missing(EMPTY_PERIOD, EMPTY_KY);
-    expect(missing).not.toContain("Korterite arv");
+    expect(missing).not.toContain("EHR kood");
+  });
+
+  it("korterite arv ON kohustuslik (on puuduste loendis kui puudub)", () => {
+    const missing = computeTab0Missing(FULL_PERIOD, { ...FULL_KY, korteriteArv: "" });
+    expect(missing).toContain("Korterite arv");
   });
 });
