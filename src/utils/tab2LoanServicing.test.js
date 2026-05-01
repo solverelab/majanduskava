@@ -191,6 +191,31 @@ describe("Tab 2 'Kulud kokku perioodis' = haldus + muud + laenu teenindamine", (
     expect(tab2KuludKokku).toBe(1800);
   });
 
+  it("auto-arvutatud laen (principalEUR>0, pohiosPerioodis=0): olemasolevadLaenudPeriood = servicingPeriodEUR", () => {
+    // Kinnitab, et UI-muutuja olemasolevadLaenudPeriood kasutab derived.loans.items.servicingPeriodEUR
+    // (mitte arvutaKuumakseExact otse), kuna need peavad näitama sama arvu.
+    const plan = {
+      ...BASE,
+      budget: {
+        costRows: [
+          { id: "h1", side: "COST", category: "Valitseja / halduri tasu", summaInput: "1000",
+            calc: { type: "FIXED_PERIOD", params: { amountEUR: 1000 } } },
+        ],
+        incomeRows: [],
+      },
+      loans: [{
+        ...mkLoan({ principalEUR: 12000, annualRatePct: 0, termMonths: 12, startYM: "2027-01" }),
+        sepiiriostudInvId: null, pohiosPerioodis: 0, intressPerioodis: 0, teenustasudPerioodis: 0,
+      }],
+    };
+    const d = computePlan(plan);
+    // servicingPeriodEUR on allikas, mida UI kasutab olemasolevadLaenudPeriood arvutuses
+    expect(d.loans.items[0].servicingPeriodEUR).toBeCloseTo(12000, 0);
+    // Tab 2 kokkuvõte: haldus(1000) + laen(~12000)
+    const tab2KuludKokku = d.totals.costPeriodEUR + (d.loans?.servicePeriodEUR || 0);
+    expect(tab2KuludKokku).toBeCloseTo(13000, 0);
+  });
+
   it("ilma laenuta: kulud kokku = ainult costRows summa", () => {
     const plan = {
       ...BASE,

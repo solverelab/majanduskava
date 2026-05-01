@@ -1789,7 +1789,7 @@ export default function App() {
     setPlan(p => {
       if (tabIdx === 0) return { ...p, period: { ...p.period, start: "", end: "" }, building: { ...p.building, apartments: [] } };
       if (tabIdx === 1) return { ...p, assetCondition: { items: [] } };
-      if (tabIdx === 2) return { ...p, budget: { ...p.budget, costRows: [], incomeRows: [] } };
+      if (tabIdx === 2) return { ...p, budget: { ...p.budget, costRows: p.budget.costRows.filter(r => KOMMUNAALTEENUSED.includes(r.category)), incomeRows: [] } };
       if (tabIdx === 4) { setRepairFundSaldo(""); setRemondifond({ saldoAlgus: "", kogumisViis: "eraldi", pangaKoefitsient: 1.15, pangaMaarOverride: null, maarOverride: null, maarKorterKuu: null, planeeritudKogumine: "", soovitudSaldoLopp: "" }); setResKap({ saldoAlgus: "", kasutamine: "", pohjendus: "", usesReserveDuringPeriod: false }); return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, loans: [], allocationPolicies: defaultPlan().allocationPolicies }; }
       return p;
     });
@@ -2543,7 +2543,7 @@ export default function App() {
             const isMuuTeenus = r.category === "Muu teenus" || r.category === "Muu haldusteenus";
             return (
               <div key={r.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <div style={{ width: 200 }}>
                     <div style={fieldLabel}>Kululiik</div>
                     <select value={r.category || ""} onChange={(e) => updateRow("COST", r.id, { category: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
@@ -2556,7 +2556,7 @@ export default function App() {
                   </div>
                   <div style={{ flex: 1, minWidth: 120 }}>
                     <div style={fieldLabel}>Nimetus</div>
-                    <input value={r.name || ""} onChange={(e) => updateRow("COST", r.id, { name: e.target.value })} placeholder="Kirjelda lühidalt" style={inputStyle} />
+                    <input value={r.name || ""} onChange={(e) => updateRow("COST", r.id, { name: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { name: next }))} placeholder="Kirjelda lühidalt" style={inputStyle} />
                   </div>
                   <div style={{ width: 130 }}>
                     <div style={fieldLabel}>Summa (€/periood)</div>
@@ -2567,7 +2567,7 @@ export default function App() {
                 {isMuuTeenus && (
                   <div style={{ marginTop: 6 }}>
                     <div style={fieldLabel}>Kirjelda teenust</div>
-                    <input value={r.muuTeenusKirjeldus || ""} onChange={(e) => updateRow("COST", r.id, { muuTeenusKirjeldus: e.target.value })} placeholder="Kirjelda teenust" style={{ ...inputStyle, width: "100%" }} />
+                    <input value={r.muuTeenusKirjeldus || ""} onChange={(e) => updateRow("COST", r.id, { muuTeenusKirjeldus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { muuTeenusKirjeldus: next }))} placeholder="Kirjelda teenust" style={{ ...inputStyle, width: "100%" }} />
                   </div>
                 )}
                 <div style={{ marginTop: 8 }}>
@@ -2589,13 +2589,13 @@ export default function App() {
                       <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!r.legalBasisBylaws} onChange={(e) => updateRow("COST", r.id, { "legalBasisBylaws": e.target.checked })} />"Põhikiri"</label>
                       <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!r.legalBasisSpecialAgreement} onChange={(e) => updateRow("COST", r.id, { "legalBasisSpecialAgreement": e.target.checked })} />"Kokkulepe"</label>
                       <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!r.legalBasisMuu} onChange={(e) => updateRow("COST", r.id, { "legalBasisMuu": e.target.checked })} />Muu</label>
-                      {basis === "muu" && <div style={{ marginTop: 4 }}><div style={fieldLabel}>Jaotuse kirjeldus</div><input value={r.allocationBasisMuuKirjeldus || ""} onChange={(e) => updateRow("COST", r.id, { allocationBasisMuuKirjeldus: e.target.value })} placeholder="Kirjelda jaotusviisi" style={{ ...inputStyle, width: "100%" }} /></div>}
-                      <div style={{ marginTop: 4 }}><input value={r.legalBasisTaepsustus || ""} onChange={(e) => updateRow("COST", r.id, { legalBasisTaepsustus: e.target.value })} placeholder={taepsustusPlaceholder} style={{ ...inputStyle, width: "100%" }} /></div>
+                      {basis === "muu" && <div style={{ marginTop: 4 }}><div style={fieldLabel}>Jaotuse kirjeldus</div><input value={r.allocationBasisMuuKirjeldus || ""} onChange={(e) => updateRow("COST", r.id, { allocationBasisMuuKirjeldus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { allocationBasisMuuKirjeldus: next }))} placeholder="Kirjelda jaotusviisi" style={{ ...inputStyle, width: "100%" }} /></div>}
+                      <div style={{ marginTop: 4 }}><input value={r.legalBasisTaepsustus || ""} onChange={(e) => updateRow("COST", r.id, { legalBasisTaepsustus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { legalBasisTaepsustus: next }))} placeholder={taepsustusPlaceholder} style={{ ...inputStyle, width: "100%" }} /></div>
                     </div>
                   )}
                 </div>
                 {!isMarkusOpen2 && <button onClick={() => setOpenTab2TaepsustusId(r.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#6366f1", padding: "4px 0" }}>+ Lisa märkus</button>}
-                {isMarkusOpen2 && <div><div style={fieldLabel}>Märkus (valikuline)</div><input value={r.selgitus || ""} onChange={(e) => updateRow("COST", r.id, { selgitus: e.target.value })} style={inputStyle} /></div>}
+                {isMarkusOpen2 && <div><div style={fieldLabel}>Märkus (valikuline)</div><input value={r.selgitus || ""} onChange={(e) => updateRow("COST", r.id, { selgitus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { selgitus: next }))} style={inputStyle} /></div>}
               </div>
             );
           };
@@ -2612,11 +2612,12 @@ export default function App() {
           const tuludKokku = korteriomanikeMaksedHalduseks + muudTuludSum;
           const laenuPeriood = Math.round(kopiiriondvaade.laenumaksedKokku * (derived.period.monthEq || 12));
           const olemasolevadLaenudPeriood = existingLoans.reduce((s, l) => {
-            const p = parseFloat(l.pohiosPerioodis) || 0;
-            const i = parseFloat(l.intressPerioodis) || 0;
-            const t = parseFloat(l.teenustasudPerioodis) || 0;
-            if (p > 0 || i > 0 || t > 0) return s + p + i + t;
-            return s + Math.round(arvutaKuumakseExact(l.principalEUR, l.annualRatePct, parseInt(l.termMonths) || 0) * (derived.period.monthEq || 12));
+            const lnItem = (derived.loans?.items || []).find(item => item.id === l.id);
+            const lnP = parseFloat(l.pohiosPerioodis) || 0;
+            const lnIr = parseFloat(l.intressPerioodis) || 0;
+            const lnT = parseFloat(l.teenustasudPerioodis) || 0;
+            const hasManual = lnP > 0 || lnIr > 0 || lnT > 0;
+            return s + (hasManual ? lnP + lnIr + lnT : Math.round(lnItem?.servicingPeriodEUR || 0));
           }, 0);
           return (
             <div style={tabStack}>
@@ -2631,7 +2632,7 @@ export default function App() {
                     const isMarkusOpenR = !!r.note || openRfMarkusId === ("income_" + r.id);
                     return (
                       <div key={r.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+                        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
                           <div style={{ width: 180 }}>
                             <div style={fieldLabel}>Kategooria</div>
                             <select value={r.category || ""} onChange={(e) => updateRow("INCOME", r.id, { category: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
@@ -2641,7 +2642,7 @@ export default function App() {
                           </div>
                           <div style={{ flex: 2, minWidth: 160 }}>
                             <div style={fieldLabel}>Nimetus</div>
-                            <input value={r.name || ""} onChange={(e) => updateRow("INCOME", r.id, { name: e.target.value })} style={inputStyle} />
+                            <input value={r.name || ""} onChange={(e) => updateRow("INCOME", r.id, { name: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("INCOME", r.id, { name: next }))} style={inputStyle} />
                           </div>
                           <div style={{ width: 150 }}>
                             <div style={fieldLabel}>Summa perioodis (€)</div>
@@ -2659,7 +2660,7 @@ export default function App() {
                           </div>
                         </div>
                         {!isMarkusOpenR && <button onClick={() => setOpenRfMarkusId("income_" + r.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#6366f1", padding: "4px 0" }}>+ Lisa märkus</button>}
-                        {isMarkusOpenR && <div style={{ marginTop: 8 }}><div style={fieldLabel}>Märkus (valikuline)</div><input value={r.note || ""} onChange={(e) => updateRow("INCOME", r.id, { note: e.target.value })} style={inputStyle} /></div>}
+                        {isMarkusOpenR && <div style={{ marginTop: 8 }}><div style={fieldLabel}>Märkus (valikuline)</div><input value={r.note || ""} onChange={(e) => updateRow("INCOME", r.id, { note: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("INCOME", r.id, { note: next }))} style={inputStyle} /></div>}
                       </div>
                     );
                   })}
@@ -2676,184 +2677,174 @@ export default function App() {
                 )}
               </div>
 
-              {/* ── Kulud ── */}
-              <div style={{ fontSize: 16, fontWeight: 600, color: N.text, marginBottom: 4 }}>Kulud</div>
-              <div style={{ fontSize: 13, color: N.sub, marginBottom: 8 }}>Kommunaalkulud (soojus, vesi, elekter, kütus) sisestatakse eraldi Kommunaalid plokis.</div>
-
-              {/* ── 2. Haldus- ja hoolduskulud ── */}
+              {/* ── 2. Kulud ── */}
               <div style={card}>
-                <div style={{ ...H2_STYLE, marginTop: 0 }}>Haldus- ja hoolduskulud</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {haldusRead.map(r => tab2KuluRida(r, HALDUS_UI_KULULIIGID))}
-                </div>
-                <div style={{ marginTop: 12 }}>
-                  <button style={btnAdd} onClick={() => addRow("COST", { _inSection: "haldus", allocationBasis: "m2", legalBasisSeadus: true })}>+ Lisa kulu</button>
-                </div>
-                {haldusSum > 0 && (
-                  <div style={{ marginTop: 12, paddingTop: 8, borderTop: `1px solid ${N.rule}`, fontSize: 14, display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
-                    <span>Halduskulud perioodis:</span>
-                    <span style={{ fontFamily: "monospace" }}>{euro(haldusSum)}</span>
-                  </div>
-                )}
-              </div>
+                <div style={{ ...H2_STYLE, marginTop: 0 }}>Kulud</div>
+                <div style={{ fontSize: 13, color: N.sub, marginBottom: 16 }}>Kommunaalkulud (soojus, vesi, elekter, kütus) sisestatakse eraldi Kommunaalid plokis.</div>
 
-              {/* ── 3. Muud majandamiskulud ── */}
-              <div style={card}>
-                <div style={{ ...H2_STYLE, marginTop: 0 }}>Muud majandamiskulud</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {muudRead.map(r => tab2KuluRida(r, MUUD_MAJANDAMISKULUD_KATEGORIAD))}
-                </div>
-                <div style={{ marginTop: 12 }}>
-                  <button style={btnAdd} onClick={() => addRow("COST", { allocationBasis: "m2", legalBasisSeadus: true })}>+ Lisa kulu</button>
-                </div>
-                {muudKuluSum > 0 && (
-                  <div style={{ marginTop: 12, paddingTop: 8, borderTop: `1px solid ${N.rule}`, fontSize: 14, display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
-                    <span>Muud kulud perioodis:</span>
-                    <span style={{ fontFamily: "monospace" }}>{euro(muudKuluSum)}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* ── 4. Olemasoleva laenu teenindamine ── */}
-              <div style={card}>
-                <div style={{ ...H2_STYLE, marginTop: 0 }}>Olemasoleva laenu teenindamine</div>
-                <div style={{ fontSize: 13, color: N.sub, marginBottom: 12 }}>Uue laenu planeerimine toimub eraldi rahastamise loogikas.</div>
-                {existingLoans.length > 0 && (
+                {/* ── Haldus- ja hoolduskulud ── */}
+                <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 16, marginTop: 8 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 8 }}>Haldus- ja hoolduskulud</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                    {existingLoans.map(ln => {
-                      const lnBasis = ln.allocationBasis || "m2";
-                      const isLnErand = lnBasis === "apartment" || lnBasis === "muu";
-                      const taepsustusPlaceholder = ln.legalBasisBylaws ? "Nt põhikirja punkt" : ln.legalBasisSpecialAgreement ? "Nt kokkuleppe kirjeldus" : ln.legalBasisMuu ? "Nt muu õiguslik alus või selgitus" : "Lisa täpsustus";
-                      const lnItem = (derived.loans?.items || []).find(i => i.id === ln.id);
-                      const autoKokku = lnItem ? Math.round(lnItem.servicingPeriodEUR || 0) : 0;
-                      const lnP = parseFloat(ln.pohiosPerioodis) || 0;
-                      const lnIr = parseFloat(ln.intressPerioodis) || 0;
-                      const lnT = parseFloat(ln.teenustasudPerioodis) || 0;
-                      const hasManual = lnP > 0 || lnIr > 0 || lnT > 0;
-                      const kokku = hasManual ? lnP + lnIr + lnT : autoKokku;
-                      return (
-                        <div key={ln.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                            <div style={{ width: 210 }}>
-                              <div style={fieldLabel}>Laenuandja</div>
-                              <select value={ln.laenuandja || ""} onChange={(e) => updateLoan(ln.id, { laenuandja: e.target.value, laenuandjaKirjeldus: e.target.value !== "Muu" ? "" : ln.laenuandjaKirjeldus })} style={{ ...selectStyle, width: "100%" }}>
-                                <option value="" disabled>Vali...</option>
-                                <option value="Swedbank">Swedbank</option>
-                                <option value="SEB">SEB</option>
-                                <option value="LHV">LHV</option>
-                                <option value="Coop Pank">Coop Pank</option>
-                                <option value="Bigbank">Bigbank</option>
-                                <option value="KredEx / EIS">KredEx / EIS</option>
-                                <option value="muu pank või krediidiandja">muu pank või krediidiandja</option>
-                                <option value="Muu">Muu</option>
-                              </select>
-                              {ln.laenuandja === "Muu" && (
-                                <input value={ln.laenuandjaKirjeldus || ""} onChange={(e) => updateLoan(ln.id, { laenuandjaKirjeldus: e.target.value })} placeholder="Sisesta laenuandja nimi" style={{ ...inputStyle, marginTop: 4, width: "100%" }} />
-                              )}
-                            </div>
-                            <div style={{ width: 210 }}>
-                              <div style={fieldLabel}>Eesmärk</div>
-                              <select value={ln.eesmärk || ""} onChange={(e) => updateLoan(ln.id, { eesmärk: e.target.value, eesmärkKirjeldus: e.target.value !== "Muu" ? "" : ln.eesmärkKirjeldus })} style={{ ...selectStyle, width: "100%" }}>
-                                <option value="" disabled>Vali...</option>
-                                <option value="renoveerimine">renoveerimine</option>
-                                <option value="katuse remont">katuse remont</option>
-                                <option value="fassaadi remont">fassaadi remont</option>
-                                <option value="küttesüsteemi uuendamine">küttesüsteemi uuendamine</option>
-                                <option value="torustiku vahetus">torustiku vahetus</option>
-                                <option value="elektrisüsteemi uuendamine">elektrisüsteemi uuendamine</option>
-                                <option value="lifti remont / uuendamine">lifti remont / uuendamine</option>
-                                <option value="energiatõhususe töö">energiatõhususe töö</option>
-                                <option value="muu töö">muu töö</option>
-                                <option value="Muu">Muu</option>
-                              </select>
-                              {ln.eesmärk === "Muu" && (
-                                <input value={ln.eesmärkKirjeldus || ""} onChange={(e) => updateLoan(ln.id, { eesmärkKirjeldus: e.target.value })} placeholder="Kirjelda eesmärki" style={{ ...inputStyle, marginTop: 4, width: "100%" }} />
-                              )}
-                            </div>
-                            <div style={{ alignSelf: "end" }}><button style={btnRemove} onClick={() => removeLoan(ln.id)}>Eemalda</button></div>
-                          </div>
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <div style={{ width: 130 }}>
-                              <div style={fieldLabel}>Põhiosa perioodis (€)</div>
-                              <EuroInput value={ln.pohiosPerioodis || ""} onChange={(v) => updateLoan(ln.id, { pohiosPerioodis: v })} style={numStyle} />
-                            </div>
-                            <div style={{ width: 130 }}>
-                              <div style={fieldLabel}>Intress perioodis (€)</div>
-                              <EuroInput value={ln.intressPerioodis || ""} onChange={(v) => updateLoan(ln.id, { intressPerioodis: v })} style={numStyle} />
-                            </div>
-                            <div style={{ width: 130 }}>
-                              <div style={fieldLabel}>Teenustasud perioodis (€)</div>
-                              <EuroInput value={ln.teenustasudPerioodis || ""} onChange={(v) => updateLoan(ln.id, { teenustasudPerioodis: v })} style={numStyle} />
-                            </div>
-                            <div style={{ width: 120 }}>
-                              <div style={fieldLabel}>Kokku (€)</div>
-                              <div style={{ padding: "6px 8px", background: N.muted, borderRadius: 4, fontFamily: "monospace", fontSize: 14, border: `1px solid ${N.border}` }}>{euro(kokku)}</div>
-                            </div>
-                          </div>
-                          <div style={{ fontSize: 13, color: N.dim, marginTop: 4 }}>Täidetakse majanduskava perioodi kohta, mitte kogu laenu kohta.</div>
-                          <div style={{ marginTop: 8 }}>
-                            <div style={fieldLabel}>Tehniline jaotusviis</div>
-                            <select value={lnBasis} onChange={(e) => {
-                              const v = e.target.value;
-                              if (v === "m2") updateLoan(ln.id, { allocationBasis: "m2", legalBasisBylaws: false, legalBasisSpecialAgreement: false, allocationBasisMuuKirjeldus: "" });
-                              else if (v === "apartment") updateLoan(ln.id, { allocationBasis: "apartment", legalBasisSeadus: false });
-                              else updateLoan(ln.id, { allocationBasis: v });
-                            }} style={{ ...selectStyle, width: 260 }}>
-                              <option value="m2">Kaasomandi osa / m² arvestus</option>
-                              <option value="apartment">Korteri kohta (võrdsed osad)</option>
-                              <option value="muu">Muu jaotus</option>
-                            </select>
-                            {lnBasis === "m2" && <div style={{ fontSize: 13, color: N.dim, marginTop: 4 }}>Õiguslik alus: Seadus (KrtS § 40 lg 1).</div>}
-                            {isLnErand && (
-                              <div style={{ marginTop: 8, padding: 8, background: N.muted, borderRadius: 6 }}>
-                                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>Õiguslik alus</div>
-                                <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!ln.legalBasisBylaws} onChange={(e) => updateLoan(ln.id, { legalBasisBylaws: e.target.checked })} />"Põhikiri"</label>
-                                <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!ln.legalBasisSpecialAgreement} onChange={(e) => updateLoan(ln.id, { legalBasisSpecialAgreement: e.target.checked })} />"Kokkulepe"</label>
-                                <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!ln.legalBasisMuu} onChange={(e) => updateLoan(ln.id, { legalBasisMuu: e.target.checked })} />Muu</label>
-                                {lnBasis === "muu" && <div style={{ marginTop: 4 }}><div style={fieldLabel}>Jaotuse kirjeldus</div><input value={ln.allocationBasisMuuKirjeldus || ""} onChange={(e) => updateLoan(ln.id, { allocationBasisMuuKirjeldus: e.target.value })} placeholder="Kirjelda jaotusviisi" style={{ ...inputStyle, width: "100%" }} /></div>}
-                                <div style={{ marginTop: 4 }}><input value={ln.legalBasisTaepsustus || ""} onChange={(e) => updateLoan(ln.id, { legalBasisTaepsustus: e.target.value })} placeholder={taepsustusPlaceholder} style={{ ...inputStyle, width: "100%" }} /></div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {haldusRead.map(r => tab2KuluRida(r, HALDUS_UI_KULULIIGID))}
                   </div>
-                )}
-                <div style={{ marginTop: 12 }}>
-                  <button style={btnAdd} onClick={addExistingLoan}>+ Lisa olemasolev laen</button>
+                  <div style={{ marginTop: 12 }}>
+                    <button style={btnAdd} onClick={() => addRow("COST", { _inSection: "haldus", allocationBasis: "m2", legalBasisSeadus: true })}>+ Lisa kulu</button>
+                  </div>
                 </div>
-                {planeeritudLoans.length > 0 && (
-                  <div style={{ marginTop: 12, fontSize: 13, color: N.sub }}>
-                    {planeeritudLoans.length} planeeritud uut laenu kajastatakse investeeringute tabis.
-                  </div>
-                )}
-              </div>
 
-              {/* ── Kulud kokkuvõte ── */}
-              <div style={card}>
-                <div style={{ ...H2_STYLE, marginTop: 0 }}>Kulud kokkuvõte</div>
-                <div style={{ fontSize: 14, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "monospace" }}>
-                    <span style={{ color: N.sub }}>Haldus- ja hoolduskulud:</span>
-                    <span>{euro(haldusSum)}</span>
+                {/* ── Muud majandamiskulud ── */}
+                <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 16, marginTop: 16 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 8 }}>Muud majandamiskulud</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    {muudRead.map(r => tab2KuluRida(r, MUUD_MAJANDAMISKULUD_KATEGORIAD))}
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "monospace" }}>
-                    <span style={{ color: N.sub }}>Muud majandamiskulud:</span>
-                    <span>{euro(muudKuluSum)}</span>
+                  <div style={{ marginTop: 12 }}>
+                    <button style={btnAdd} onClick={() => addRow("COST", { allocationBasis: "m2", legalBasisSeadus: true })}>+ Lisa kulu</button>
                   </div>
-                  {olemasolevadLaenudPeriood > 0 && (
-                    <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "monospace" }}>
-                      <span style={{ color: N.sub }}>Laenu teenindamine:</span>
-                      <span>{euro(olemasolevadLaenudPeriood)}</span>
+                </div>
+
+                {/* ── Olemasoleva laenu teenindamine ── */}
+                <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 16, marginTop: 16 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 4 }}>Olemasoleva laenu teenindamine</div>
+                  <div style={{ fontSize: 13, color: N.sub, marginBottom: 12 }}>Uue laenu planeerimine toimub eraldi. Siin näidatakse ainult olemasoleva laenu teenindamise kulud.</div>
+                  {existingLoans.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      {existingLoans.map(ln => {
+                        const lnBasis = ln.allocationBasis || "m2";
+                        const isLnErand = lnBasis === "apartment" || lnBasis === "muu";
+                        const taepsustusPlaceholder = ln.legalBasisBylaws ? "Nt põhikirja punkt" : ln.legalBasisSpecialAgreement ? "Nt kokkuleppe kirjeldus" : ln.legalBasisMuu ? "Nt muu õiguslik alus või selgitus" : "Lisa täpsustus";
+                        const lnItem = (derived.loans?.items || []).find(i => i.id === ln.id);
+                        const autoKokku = lnItem ? Math.round(lnItem.servicingPeriodEUR || 0) : 0;
+                        const lnP = parseFloat(ln.pohiosPerioodis) || 0;
+                        const lnIr = parseFloat(ln.intressPerioodis) || 0;
+                        const lnT = parseFloat(ln.teenustasudPerioodis) || 0;
+                        const hasManual = lnP > 0 || lnIr > 0 || lnT > 0;
+                        const kokku = hasManual ? lnP + lnIr + lnT : autoKokku;
+                        return (
+                          <div key={ln.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
+                            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+                              <div style={{ width: 210 }}>
+                                <div style={fieldLabel}>Laenuandja</div>
+                                <select value={ln.laenuandja || ""} onChange={(e) => updateLoan(ln.id, { laenuandja: e.target.value, laenuandjaKirjeldus: e.target.value !== "Muu" ? "" : ln.laenuandjaKirjeldus })} style={{ ...selectStyle, width: "100%" }}>
+                                  <option value="" disabled>Vali...</option>
+                                  <option value="Swedbank">Swedbank</option>
+                                  <option value="SEB">SEB</option>
+                                  <option value="LHV">LHV</option>
+                                  <option value="Coop Pank">Coop Pank</option>
+                                  <option value="Bigbank">Bigbank</option>
+                                  <option value="KredEx / EIS">KredEx / EIS</option>
+                                  <option value="muu pank või krediidiandja">muu pank või krediidiandja</option>
+                                  <option value="Muu">Muu</option>
+                                </select>
+                                {ln.laenuandja === "Muu" && (
+                                  <input value={ln.laenuandjaKirjeldus || ""} onChange={(e) => updateLoan(ln.id, { laenuandjaKirjeldus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateLoan(ln.id, { laenuandjaKirjeldus: next }))} placeholder="Sisesta laenuandja nimi" style={{ ...inputStyle, marginTop: 4, width: "100%" }} />
+                                )}
+                              </div>
+                              <div style={{ width: 210 }}>
+                                <div style={fieldLabel}>Eesmärk</div>
+                                <select value={ln.eesmärk || ""} onChange={(e) => updateLoan(ln.id, { eesmärk: e.target.value, eesmärkKirjeldus: e.target.value !== "Muu" ? "" : ln.eesmärkKirjeldus })} style={{ ...selectStyle, width: "100%" }}>
+                                  <option value="" disabled>Vali...</option>
+                                  <option value="renoveerimine">renoveerimine</option>
+                                  <option value="katuse remont">katuse remont</option>
+                                  <option value="fassaadi remont">fassaadi remont</option>
+                                  <option value="küttesüsteemi uuendamine">küttesüsteemi uuendamine</option>
+                                  <option value="torustiku vahetus">torustiku vahetus</option>
+                                  <option value="elektrisüsteemi uuendamine">elektrisüsteemi uuendamine</option>
+                                  <option value="lifti remont / uuendamine">lifti remont / uuendamine</option>
+                                  <option value="energiatõhususe töö">energiatõhususe töö</option>
+                                  <option value="muu töö">muu töö</option>
+                                  <option value="Muu">Muu</option>
+                                </select>
+                                {ln.eesmärk === "Muu" && (
+                                  <input value={ln.eesmärkKirjeldus || ""} onChange={(e) => updateLoan(ln.id, { eesmärkKirjeldus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateLoan(ln.id, { eesmärkKirjeldus: next }))} placeholder="Kirjelda eesmärki" style={{ ...inputStyle, marginTop: 4, width: "100%" }} />
+                                )}
+                              </div>
+                              <div style={{ alignSelf: "end" }}><button style={btnRemove} onClick={() => removeLoan(ln.id)}>Eemalda</button></div>
+                            </div>
+                            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                              <div style={{ width: 130 }}>
+                                <div style={fieldLabel}>Põhiosa perioodis (€)</div>
+                                <EuroInput value={ln.pohiosPerioodis || ""} onChange={(v) => updateLoan(ln.id, { pohiosPerioodis: v })} style={numStyle} />
+                              </div>
+                              <div style={{ width: 130 }}>
+                                <div style={fieldLabel}>Intress perioodis (€)</div>
+                                <EuroInput value={ln.intressPerioodis || ""} onChange={(v) => updateLoan(ln.id, { intressPerioodis: v })} style={numStyle} />
+                              </div>
+                              <div style={{ width: 130 }}>
+                                <div style={{ ...fieldLabel, display: "flex", alignItems: "center" }}>Teenustasud perioodis (€)<InfoTooltip text="Näited: lepingu haldustasu, kontohaldustasu, laenu administreerimise tasu, maksegraafiku või lepingu muutmise tasu, maksepuhkuse vormistamise tasu, ennetähtaegse tagastamise tasu, muu laenulepingust tulenev teenustasu." /></div>
+                                <EuroInput value={ln.teenustasudPerioodis || ""} onChange={(v) => updateLoan(ln.id, { teenustasudPerioodis: v })} style={numStyle} />
+                              </div>
+                              <div style={{ width: 120 }}>
+                                <div style={fieldLabel}>Kokku (€)</div>
+                                <div style={{ padding: "6px 8px", background: N.muted, borderRadius: 4, fontFamily: "monospace", fontSize: 14, border: `1px solid ${N.border}` }}>{euro(kokku)}</div>
+                              </div>
+                            </div>
+                            <div style={{ fontSize: 13, color: N.dim, marginTop: 4 }}>Täidetakse majanduskava perioodi kohta, mitte kogu laenu kohta.</div>
+                            <div style={{ marginTop: 8 }}>
+                              <div style={fieldLabel}>Tehniline jaotusviis</div>
+                              <select value={lnBasis} onChange={(e) => {
+                                const v = e.target.value;
+                                if (v === "m2") updateLoan(ln.id, { allocationBasis: "m2", legalBasisBylaws: false, legalBasisSpecialAgreement: false, allocationBasisMuuKirjeldus: "" });
+                                else if (v === "apartment") updateLoan(ln.id, { allocationBasis: "apartment", legalBasisSeadus: false });
+                                else updateLoan(ln.id, { allocationBasis: v });
+                              }} style={{ ...selectStyle, width: 260 }}>
+                                <option value="m2">Kaasomandi osa / m² arvestus</option>
+                                <option value="apartment">Korteri kohta (võrdsed osad)</option>
+                                <option value="muu">Muu jaotus</option>
+                              </select>
+                              {lnBasis === "m2" && <div style={{ fontSize: 13, color: N.dim, marginTop: 4 }}>Õiguslik alus: Seadus (KrtS § 40 lg 1).</div>}
+                              {isLnErand && (
+                                <div style={{ marginTop: 8, padding: 8, background: N.muted, borderRadius: 6 }}>
+                                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>Õiguslik alus</div>
+                                  <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!ln.legalBasisBylaws} onChange={(e) => updateLoan(ln.id, { legalBasisBylaws: e.target.checked })} />"Põhikiri"</label>
+                                  <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!ln.legalBasisSpecialAgreement} onChange={(e) => updateLoan(ln.id, { legalBasisSpecialAgreement: e.target.checked })} />"Kokkulepe"</label>
+                                  <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!ln.legalBasisMuu} onChange={(e) => updateLoan(ln.id, { legalBasisMuu: e.target.checked })} />Muu</label>
+                                  {lnBasis === "muu" && <div style={{ marginTop: 4 }}><div style={fieldLabel}>Jaotuse kirjeldus</div><input value={ln.allocationBasisMuuKirjeldus || ""} onChange={(e) => updateLoan(ln.id, { allocationBasisMuuKirjeldus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateLoan(ln.id, { allocationBasisMuuKirjeldus: next }))} placeholder="Kirjelda jaotusviisi" style={{ ...inputStyle, width: "100%" }} /></div>}
+                                  <div style={{ marginTop: 4 }}><input value={ln.legalBasisTaepsustus || ""} onChange={(e) => updateLoan(ln.id, { legalBasisTaepsustus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateLoan(ln.id, { legalBasisTaepsustus: next }))} placeholder={taepsustusPlaceholder} style={{ ...inputStyle, width: "100%" }} /></div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
-                  <div style={{ display: "flex", justifyContent: "space-between", borderTop: `1px solid ${N.rule}`, paddingTop: 8, marginTop: 4, fontWeight: 600, fontFamily: "monospace" }}>
-                    <span>Kulud kokku perioodis:</span>
-                    <span>{euro(haldusSum + muudKuluSum + olemasolevadLaenudPeriood)}</span>
+                  <div style={{ marginTop: 12 }}>
+                    <button style={btnAdd} onClick={addExistingLoan}>+ Lisa olemasolev laen</button>
                   </div>
-                  <div style={{ fontSize: 12, color: N.sub, marginTop: 4 }}>
-                    Kommunaalkulud kajastatakse eraldi Kommunaalid tabis.
+                  {planeeritudLoans.length > 0 && (
+                    <div style={{ marginTop: 12, fontSize: 13, color: N.sub }}>
+                      {planeeritudLoans.length} planeeritud uut laenu kajastatakse investeeringute tabis.
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Kulud kokkuvõte ── */}
+                <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 16, marginTop: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: N.sub, marginBottom: 8 }}>Kulud kokkuvõte</div>
+                  <div style={{ fontSize: 14, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "monospace" }}>
+                      <span style={{ color: N.sub }}>Haldus- ja hoolduskulud:</span>
+                      <span>{euro(haldusSum)}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "monospace" }}>
+                      <span style={{ color: N.sub }}>Muud majandamiskulud:</span>
+                      <span>{euro(muudKuluSum)}</span>
+                    </div>
+                    {olemasolevadLaenudPeriood > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "monospace" }}>
+                        <span style={{ color: N.sub }}>Laenu teenindamine:</span>
+                        <span>{euro(olemasolevadLaenudPeriood)}</span>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", justifyContent: "space-between", borderTop: `1px solid ${N.rule}`, paddingTop: 8, marginTop: 4, fontWeight: 600, fontFamily: "monospace" }}>
+                      <span>Kulud kokku perioodis:</span>
+                      <span>{euro(haldusSum + muudKuluSum + olemasolevadLaenudPeriood)}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: N.sub, marginTop: 4 }}>
+                      Kommunaalkulud kajastatakse eraldi Kommunaalid tabis.
+                    </div>
                   </div>
                 </div>
               </div>

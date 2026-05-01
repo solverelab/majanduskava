@@ -443,12 +443,34 @@ describe("clearKommunaalid: UI ja handler", () => {
     expect(handlerBlock).toContain("removedDefaultKommunaalCategories: []");
   });
 
-  it("Tab 2 clearSection(2) jäi muutmata — kustutab costRows ja incomeRows", () => {
+  it("Tab 2 clearSection(2) kustutab incomeRows täielikult", () => {
     const csIdx = src.indexOf("const clearSection = (tabIdx) => {");
     const csEnd = src.indexOf("const clearBtn = ", csIdx);
     const csBlock = src.slice(csIdx, csEnd);
     const tab2Branch = csBlock.slice(csBlock.indexOf("tabIdx === 2"));
-    expect(tab2Branch).toContain("costRows: []");
     expect(tab2Branch).toContain("incomeRows: []");
+  });
+
+  it("Tab 2 clearSection(2) EI tühjenda costRows täielikult — säilitab kommunaalread", () => {
+    const csIdx = src.indexOf("const clearSection = (tabIdx) => {");
+    const csEnd = src.indexOf("const clearBtn = ", csIdx);
+    const csBlock = src.slice(csIdx, csEnd);
+    const tab2Branch = csBlock.slice(csBlock.indexOf("tabIdx === 2"));
+    // Täielik costRows kustutamine on keelatud — kommunaalread peavad säilima
+    expect(tab2Branch).not.toContain("costRows: []");
+    // Kommunaalikategooriaid filtreeritakse sisse
+    expect(tab2Branch).toContain("KOMMUNAALTEENUSED");
+    expect(tab2Branch).toContain("filter(r => KOMMUNAALTEENUSED.includes");
+  });
+
+  it("Tab 2 clearSection(2) EI kustuta plan.loans", () => {
+    const csIdx = src.indexOf("const clearSection = (tabIdx) => {");
+    const csEnd = src.indexOf("const clearBtn = ", csIdx);
+    const csBlock = src.slice(csIdx, csEnd);
+    const tab2Start = csBlock.indexOf("tabIdx === 2");
+    const tab4Start = csBlock.indexOf("tabIdx === 4");
+    // Ainult Tab 2 haru (lõpp enne tabIdx === 4)
+    const tab2Only = csBlock.slice(tab2Start, tab4Start > tab2Start ? tab4Start : undefined);
+    expect(tab2Only).not.toContain("loans: []");
   });
 });
