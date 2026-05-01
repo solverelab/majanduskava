@@ -317,8 +317,8 @@ describe("Tab 2 jaotusaluse UI — tavajuht ja erandi alus", () => {
     return src.slice(tab2Start, tab2Start + 40000);
   };
 
-  it("tavajuhtumi helper on olemas: 'Kulu jaotatakse KrtS § 40 lg 1 alusel kaasomandi osa suuruse järgi.'", () => {
-    expect(src).toContain("Kulu jaotatakse KrtS § 40 lg 1 alusel kaasomandi osa suuruse järgi.");
+  it("tavajuhtumi helper tekst eemaldatud — KrtS § 40 lg 1 viidet ei kuvata", () => {
+    expect(src).not.toContain("Kulu jaotatakse KrtS § 40 lg 1 alusel kaasomandi osa suuruse järgi.");
   });
 
   it("'Erandi alus' sektsioon on Tab 2-s", () => {

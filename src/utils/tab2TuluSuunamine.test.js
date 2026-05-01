@@ -13,7 +13,7 @@ beforeAll(async () => {
   src = fs.readFileSync(path.resolve(__dirname, "../MajanduskavaApp.jsx"), "utf-8");
   // Kasuta UI-spetsiifilist ankrut — isMarkusOpenR on ainult tulude UI map-is
   const start = src.indexOf("isMarkusOpenR = !!r.note");
-  const end = src.indexOf("+ Lisa tulu", start);
+  const end = src.indexOf("+ Lisa muu tulu", start);
   incomeSection = start >= 0 && end > start ? src.slice(start, end) : "";
 });
 

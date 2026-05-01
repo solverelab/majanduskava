@@ -40,8 +40,8 @@ describe("Remondifondi jaotuse alus — pealkiri ja helper", () => {
     expect(rfSection).toContain("Kaasomandi osa suuruse alusel");
   });
 
-  it("tavajuhtumi helper on 'Kulu jaotatakse KrtS § 40 lg 1 alusel kaasomandi osa suuruse järgi.'", () => {
-    expect(rfSection).toContain("Kulu jaotatakse KrtS § 40 lg 1 alusel kaasomandi osa suuruse järgi.");
+  it("tavajuhtumi helper tekst eemaldatud — KrtS § 40 lg 1 viidet ei kuvata", () => {
+    expect(rfSection).not.toContain("Kulu jaotatakse KrtS § 40 lg 1 alusel kaasomandi osa suuruse järgi.");
   });
 
   it("kuluridadel ei kasutata 'Tehniline jaotusviis' — see label on laenuploki eripärane sõnastus", () => {

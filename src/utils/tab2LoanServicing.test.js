@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { computePlan } from "../engine/computePlan";
 import { defaultPlan, mkLoan } from "../domain/planSchema";
 
@@ -262,5 +262,59 @@ describe("mkLoan sisaldab kõiki vajalikke Tab 2 metaandmete väljasid", () => {
     // Uued väljad olemas vaikeväärtustega
     expect(ln.laenuandja).toBe("");
     expect(ln.legalBasisSeadus).toBe(true);
+  });
+});
+
+// ── 6. Tab 2 "Kulud kokkuvõte" UI: olemasoleva laenu rida ─────────────────
+
+describe("Tab 2 'Kulud kokkuvõte' UI: olemasoleva laenu teenindamine eraldi real", () => {
+  let kokkuvoteSection;
+
+  beforeAll(async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const src = fs.readFileSync(path.resolve(__dirname, "../MajanduskavaApp.jsx"), "utf-8");
+    const start = src.indexOf("Kulud kokkuvõte");
+    const end = src.indexOf("Kommunaalkulud kajastatakse", start);
+    kokkuvoteSection = start >= 0 ? src.slice(start, end > start ? end : start + 2000) : "";
+  });
+
+  it("kokkuvõte sisaldab silti 'Olemasoleva laenu teenindamine'", () => {
+    expect(kokkuvoteSection).toContain("Olemasoleva laenu teenindamine");
+  });
+
+  it("laenu rida on alati nähtav — ei ole peidetud tingimusega > 0", () => {
+    expect(kokkuvoteSection).not.toContain("olemasolevadLaenudPeriood > 0");
+  });
+
+  it("haldus 1000 + muud 500 + laen 300 → kulud kokku perioodis = 1800", () => {
+    const base = {
+      ...defaultPlan({ year: 2027 }),
+      period: { year: 2027, start: "2027-01-01", end: "2027-12-31" },
+      building: { apartments: [{ id: "a1", label: "1", areaM2: 50 }] },
+    };
+    const plan = {
+      ...base,
+      budget: {
+        costRows: [
+          { id: "h1", side: "COST", category: "Valitseja / halduri tasu", summaInput: "1000",
+            calc: { type: "FIXED_PERIOD", params: { amountEUR: 1000 } } },
+          { id: "m1", side: "COST", category: "Jooksev remont", summaInput: "500",
+            calc: { type: "FIXED_PERIOD", params: { amountEUR: 500 } } },
+        ],
+        incomeRows: [],
+      },
+      loans: [{
+        ...mkLoan(), sepiiriostudInvId: null,
+        pohiosPerioodis: 300, intressPerioodis: 0, teenustasudPerioodis: 0,
+      }],
+    };
+    const d = computePlan(plan);
+    // haldusSum = 1000, muudKuluSum = 500 → costPeriodEUR = 1500
+    expect(d.totals.costPeriodEUR).toBe(1500);
+    // olemasolevadLaenudPeriood = 300 (from servicePeriodEUR)
+    expect(d.loans.servicePeriodEUR).toBe(300);
+    // Kulud kokku perioodis = haldus + muud + laen = 1800
+    expect(d.totals.costPeriodEUR + d.loans.servicePeriodEUR).toBe(1800);
   });
 });

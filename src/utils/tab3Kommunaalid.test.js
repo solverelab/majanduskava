@@ -513,8 +513,8 @@ describe("Tab 2 nuppude tekstid vastavad Tab 1 mustrile", () => {
     expect(tab2Block).toContain("+ Lisa muu kulu");
   });
 
-  it("tulude lisamisnupp on '+ Lisa tulu'", () => {
-    expect(tab2Block).toContain("+ Lisa tulu");
+  it("tulude lisamisnupp on '+ Lisa muu tulu'", () => {
+    expect(tab2Block).toContain("+ Lisa muu tulu");
   });
 
   it("laenude lisamisnupp on '+ Lisa olemasolev laen'", () => {

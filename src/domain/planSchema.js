@@ -66,12 +66,14 @@ export function mkLoan({
   legalBasisSpecialAgreement = false,
   legalBasisMuu = false,
   legalBasisTaepsustus = "",
+  note = "",
 } = {}) {
   return {
     id: uid(), name, principalEUR, annualRatePct, termMonths, type, startYM, reservePct, sepiiriostudInvId,
     laenuandja, laenuandjaKirjeldus, eesmärk, eesmärkKirjeldus,
     pohiosPerioodis, intressPerioodis, teenustasudPerioodis,
     allocationBasis, legalBasisSeadus, legalBasisBylaws, legalBasisSpecialAgreement, legalBasisMuu, legalBasisTaepsustus,
+    note,
   };
 }
 

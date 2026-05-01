@@ -169,12 +169,12 @@ describe("Tab 2 UI: olemasoleva laenu teenindamine", () => {
     expect(loanBlock).toContain("energiatõhususe töö");
   });
 
-  it("perioodi helper tekst on laenuplokis", () => {
+  it("perioodi helper tekst eemaldatud laenuplokist", () => {
     const loanBlock = src.slice(
       src.indexOf("Olemasoleva laenu teenindamine"),
       src.indexOf("Kulud kokkuvõte")
     );
-    expect(loanBlock).toContain("Täidetakse majanduskava perioodi kohta");
+    expect(loanBlock).not.toContain("Täidetakse majanduskava perioodi kohta");
   });
 
   it("'Tehniline jaotusviis' label on laenuplokis", () => {

@@ -414,21 +414,24 @@ function InfoTooltip({ text }) {
         style={{
           display: "inline-flex", alignItems: "center", justifyContent: "center",
           width: 15, height: 15, borderRadius: "50%",
-          border: `1px solid ${N.dim}`,
-          fontSize: 10, color: N.dim, cursor: "help",
+          border: `1px solid ${N.border}`,
+          background: N.surface,
+          fontSize: 11, color: N.dim, cursor: "help",
           fontStyle: "italic", fontWeight: 700, lineHeight: 1,
           userSelect: "none", flexShrink: 0,
         }}
       >i</span>
       {open && (
         <div style={{
-          position: "absolute", bottom: "calc(100% + 6px)", left: "50%",
+          position: "absolute", top: "calc(100% + 6px)", left: "50%",
           transform: "translateX(-50%)",
-          background: "#1e293b", color: "#f1f5f9",
-          padding: "8px 12px", borderRadius: 6, fontSize: 12,
-          lineHeight: 1.5, width: 270, zIndex: 200,
-          boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+          background: N.surface, color: N.text,
+          border: `1px solid ${N.border}`,
+          padding: "10px 14px", borderRadius: 8, fontSize: 14,
+          lineHeight: 1.55, width: 300, zIndex: 200,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
           whiteSpace: "normal", pointerEvents: "none",
+          fontWeight: 400,
         }}>
           {text}
         </div>
@@ -511,11 +514,6 @@ export default function App() {
   const [kyData, setKyData] = useState({ nimi: "", registrikood: "", aadress: "", kyAadress: "", kyAadressEdited: false, ehrKood: "", ehitusaasta: "", suletudNetopind: "", koetavPind: "", korteriteArv: "", korrusteArv: "", ehrPind: null, ehrArv: null });
   const seisukord = plan.assetCondition?.items || [];
   // muudInvesteeringud → eemaldatud; kõik investeeringud elavad plan.investments.items
-  const [tab1InfoOpen, setTab1InfoOpen] = useState(false);
-  const [kuluInfoOpen, setKuluInfoOpen] = useState(null);
-  const [aastaInfoOpen, setAastaInfoOpen] = useState(null);
-  const [tab0PindalaInfoOpen, setTab0PindalaInfoOpen] = useState(false);
-  const [tab0PerioodInfoOpen, setTab0PerioodInfoOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null); // { message, confirmLabel, cancelLabel?, onConfirm, onCancel? }
   const [repairFundSaldo, setRepairFundSaldo] = useState(""); // tagasiühilduvus
   const [remondifond, setRemondifond] = useState({
@@ -1683,7 +1681,6 @@ export default function App() {
   useEffect(() => { if (plan.building.apartments.length === 0) setPlan(p => ({ ...p, building: { ...p.building, apartments: [mkApartment({ label: "1" })] } })); }, [plan.building.apartments.length]);
   // Investeeringud algavad tühjana — luuakse ainult "Loo investeering" või "+ Lisa investeering" kaudu
   useEffect(() => { if (plan.budget.costRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, costRows: [{ ...mkCashflowRow({ side: "COST" }), category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0, selgitus: "", forecastAdjustmentEnabled: false, forecastAdjustmentType: null, forecastAdjustmentPercent: null, forecastAdjustmentNote: "", allocationBasis: "m2", legalBasisBylaws: false, legalBasisSpecialAgreement: false, allocationExplanation: "", settledPostHoc: false }] } })); }, [plan.budget.costRows.length]);
-  useEffect(() => { if (plan.budget.incomeRows.length === 0) setPlan(p => ({ ...p, budget: { ...p.budget, incomeRows: [{ ...mkCashflowRow({ side: "INCOME" }), category: "", arvutus: "aastas", summaInput: "" }] } })); }, [plan.budget.incomeRows.length]);
 
   // Migreeri vanad tulukategooriad → Muu tulu või eemalda
   useEffect(() => {
@@ -2298,25 +2295,8 @@ export default function App() {
               </div>
               <div style={{ marginBottom: 0 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-                  <div style={{ ...fieldLabel, display: "flex", alignItems: "center", gap: 4 }}>
-                    Korteriomandite pindala kokku (m²)
-                    <span style={{ position: "relative", display: "inline-flex" }}
-                      onMouseEnter={() => setTab0PindalaInfoOpen(true)}
-                      onMouseLeave={() => setTab0PindalaInfoOpen(false)}>
-                      <button onClick={() => setTab0PindalaInfoOpen(v => !v)} aria-label="Näita selgitust"
-                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center",
-                          width: 16, height: 16, borderRadius: "50%", border: `1px solid ${N.border}`,
-                          background: N.surface, fontSize: 11, color: N.dim, cursor: "help",
-                          padding: 0, fontWeight: 600, fontStyle: "italic", flexShrink: 0, lineHeight: 1 }}>i</button>
-                      {tab0PindalaInfoOpen && (
-                        <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20,
-                          background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8,
-                          padding: "10px 14px", fontSize: 13, color: N.text, width: 320,
-                          boxShadow: "0 4px 16px rgba(0,0,0,0.10)", lineHeight: 1.55, fontWeight: 400 }}>
-                          Korteriomandite pindalaandmed on võetud EHR-ist. Kulude jaotuse õiguslik alus on kaasomandi osa suurus. Pindalaandmeid kasutatakse siin ainult arvutusliku abinäitajana. Vajadusel kontrolli andmed Kinnistusraamatust üle ja paranda käsitsi.
-                        </div>
-                      )}
-                    </span>
+                  <div style={{ ...fieldLabel, display: "flex", alignItems: "center" }}>
+                    Korteriomandite pindala kokku (m²)<InfoTooltip text="Korteriomandite pindalaandmed on võetud EHR-ist. Kulude jaotuse õiguslik alus on kaasomandi osa suurus. Pindalaandmeid kasutatakse siin ainult arvutusliku abinäitajana. Vajadusel kontrolli andmed Kinnistusraamatust üle ja paranda käsitsi." />
                   </div>
                   <div style={fieldLabel}>Korteriomandite arv</div>
                   <NumberInput value={kyData.suletudNetopind} onChange={(v) => setKyData(prev => ({ ...prev, suletudNetopind: v }))} style={numStyle} />
@@ -2333,25 +2313,8 @@ export default function App() {
               <div style={{ ...H2_STYLE, marginTop: 0 }}>Majanduskava periood</div>
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12, alignItems: "flex-start" }}>
                 <div>
-                  <div style={{ ...fieldLabel, display: "flex", alignItems: "center", gap: 4 }}>
-                    Majandusaasta
-                    <span style={{ position: "relative", display: "inline-flex" }}
-                      onMouseEnter={() => setTab0PerioodInfoOpen(true)}
-                      onMouseLeave={() => setTab0PerioodInfoOpen(false)}>
-                      <button onClick={() => setTab0PerioodInfoOpen(v => !v)} aria-label="Näita selgitust"
-                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center",
-                          width: 16, height: 16, borderRadius: "50%", border: `1px solid ${N.border}`,
-                          background: N.surface, fontSize: 11, color: N.dim, cursor: "help",
-                          padding: 0, fontWeight: 600, fontStyle: "italic", flexShrink: 0, lineHeight: 1 }}>i</button>
-                      {tab0PerioodInfoOpen && (
-                        <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20,
-                          background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8,
-                          padding: "10px 14px", fontSize: 13, color: N.text, width: 320,
-                          boxShadow: "0 4px 16px rgba(0,0,0,0.10)", lineHeight: 1.55, fontWeight: 400 }}>
-                          Majanduskava võib vajaduse korral kehtestada ka tagasiulatuvalt, kuid varasema perioodi maksed muutuvad sissenõutavaks kõige varem alates üldkoosoleku otsusest, millega majanduskava kehtestati.
-                        </div>
-                      )}
-                    </span>
+                  <div style={{ ...fieldLabel, display: "flex", alignItems: "center" }}>
+                    Majandusaasta<InfoTooltip text="Majanduskava võib vajaduse korral kehtestada ka tagasiulatuvalt, kuid varasema perioodi maksed muutuvad sissenõutavaks kõige varem alates üldkoosoleku otsusest, millega majanduskava kehtestati." />
                   </div>
                   <select
                     value={(() => {
@@ -2419,23 +2382,8 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(1)}</div>
             <h1 style={H1_STYLE}>Ülevaade kaasomandi eseme seisukorrast ja kavandatavatest toimingutest</h1>
             <div style={card}>
-              <div style={{ ...H2_STYLE, marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                Kaasomandi ese
-                <span
-                  style={{ position: "relative", display: "inline-flex" }}
-                  onMouseEnter={() => setTab1InfoOpen(true)}
-                  onMouseLeave={() => setTab1InfoOpen(false)}
-                >
-                  <button
-                    onClick={() => setTab1InfoOpen(v => !v)} aria-label="Näita selgitust"
-                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 16, height: 16, borderRadius: "50%", border: `1px solid ${N.border}`, background: N.surface, fontSize: 11, color: N.dim, cursor: "help", padding: 0, fontWeight: 600, fontStyle: "italic", flexShrink: 0, lineHeight: 1 }}
-                  >i</button>
-                  {tab1InfoOpen && (
-                    <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, background: N.surface, border: `1px solid ${N.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 14, color: N.text, width: 340, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", lineHeight: 1.55, fontWeight: 400 }}>
-                      Kirjelda siin maja ühiste osade seisukorda ja nendega seotud kavandatavaid töid. Korteri sees olevaid puudusi siia ei lisata, välja arvatud juhul, kui need puudutavad maja ühist osa või ühist tehnosüsteemi, näiteks torustikku, küttesüsteemi või ventilatsiooni.
-                    </div>
-                  )}
-                </span>
+              <div style={{ ...H2_STYLE, marginTop: 0, display: "flex", alignItems: "center" }}>
+                Kaasomandi ese<InfoTooltip text="Kirjelda siin maja ühiste osade seisukorda ja nendega seotud kavandatavaid töid. Korteri sees olevaid puudusi siia ei lisata, välja arvatud juhul, kui need puudutavad maja ühist osa või ühist tehnosüsteemi, näiteks torustikku, küttesüsteemi või ventilatsiooni." />
               </div>
 
               {seisukord.map((rida) => {
@@ -2571,7 +2519,7 @@ export default function App() {
                     <input value={r.name || ""} onChange={(e) => updateRow("COST", r.id, { name: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { name: next }))} placeholder="Kirjelda lühidalt" style={inputStyle} />
                   </div>
                   <div style={{ width: 130 }}>
-                    <div style={fieldLabel}>Summa (€/periood)</div>
+                    <div style={fieldLabel}>Summa perioodis (€)</div>
                     <EuroInput value={r.summaInput} onChange={(v) => updateRow("COST", r.id, { summaInput: v })} style={numStyle} />
                   </div>
                   <div style={{ alignSelf: "end" }}><button style={btnRemove} onClick={() => removeRow("COST", r.id)}>Eemalda kulu</button></div>
@@ -2594,7 +2542,6 @@ export default function App() {
                     <option value="apartment">Korteri kohta</option>
                     <option value="muu">Muu jaotus</option>
                   </select>
-                  {basis === "m2" && <div style={{ fontSize: 13, color: N.dim, marginTop: 4 }}>Kulu jaotatakse KrtS § 40 lg 1 alusel kaasomandi osa suuruse järgi.</div>}
                   {isErand && (
                     <div style={{ marginTop: 8, padding: 8, background: N.muted, borderRadius: 6 }}>
                       <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>Erandi alus</div>
@@ -2606,8 +2553,14 @@ export default function App() {
                     </div>
                   )}
                 </div>
-                {!isMarkusOpen2 && <button onClick={() => setOpenTab2TaepsustusId(r.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#6366f1", padding: "4px 0" }}>+ Lisa märkus</button>}
-                {isMarkusOpen2 && <div><div style={fieldLabel}>Märkus (valikuline)</div><input value={r.selgitus || ""} onChange={(e) => updateRow("COST", r.id, { selgitus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { selgitus: next }))} style={inputStyle} /></div>}
+                {!isMarkusOpen2 && <button onClick={() => setOpenTab2TaepsustusId(r.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: N.text, padding: "4px 0" }}>+ Lisa märkus</button>}
+                {isMarkusOpen2 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={fieldLabel}>Märkus (valikuline)</div>
+                    <input value={r.selgitus || ""} onChange={(e) => updateRow("COST", r.id, { selgitus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { selgitus: next }))} style={inputStyle} />
+                    <button onClick={() => { updateRow("COST", r.id, { selgitus: "" }); setOpenTab2TaepsustusId(null); }} style={{ ...btnRemove, marginTop: 4 }}>Eemalda märkus</button>
+                  </div>
+                )}
               </div>
             );
           };
@@ -2639,9 +2592,8 @@ export default function App() {
               {/* ── 1. Tulud ── */}
               <div style={card}>
                 <div style={{ ...H2_STYLE, marginTop: 0 }}>Tulud</div>
-                <div style={{ fontSize: 13, color: N.text, marginBottom: 16 }}>Siia sisestatakse korteriühistu muud tulud. Korteriomanike maksed arvutatakse kavandatud kulude, fondimaksete ja jaotuse aluste põhjal.</div>
                 <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 16, marginTop: 8 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 8 }}>Muud tulud</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 8, display: "flex", alignItems: "center" }}>Muud tulud<InfoTooltip text="Siia sisestatakse korteriühistu muud tulud. Korteriomanike maksed kujunevad kavandatud kulude, fondimaksete ja jaotuse aluste põhjal." /></div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     {plan.budget.incomeRows.map(r => {
                       const isMarkusOpenR = !!r.note || openRfMarkusId === ("income_" + r.id);
@@ -2670,6 +2622,7 @@ export default function App() {
                                 updateRow("INCOME", r.id, updates);
                               }} style={numStyle} />
                             </div>
+                            <div style={{ alignSelf: "end" }}><button style={btnRemove} onClick={() => askConfirm("Kas oled kindel, et soovid selle tulu andmed kustutada?", "Kustuta", () => removeRow("INCOME", r.id))}>Eemalda tulu</button></div>
                           </div>
                           {!isMarkusOpenR && <button onClick={() => setOpenRfMarkusId("income_" + r.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: N.text, padding: "4px 0" }}>+ Lisa märkus</button>}
                           {isMarkusOpenR && (
@@ -2679,20 +2632,17 @@ export default function App() {
                               <button onClick={() => { updateRow("INCOME", r.id, { note: "" }); setOpenRfMarkusId(null); }} style={{ ...btnRemove, marginTop: 4 }}>Eemalda märkus</button>
                             </div>
                           )}
-                          <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
-                            <button style={btnRemove} onClick={() => askConfirm("Kas oled kindel, et soovid selle tulu andmed kustutada?", "Kustuta", () => removeRow("INCOME", r.id))}>Eemalda tulu</button>
-                          </div>
                         </div>
                       );
                     })}
                   </div>
                   <div style={{ marginTop: 12 }}>
-                    <button style={btnAdd} onClick={() => addRow("INCOME")}>+ Lisa tulu</button>
+                    <button style={btnAdd} onClick={() => addRow("INCOME")}>+ Lisa muu tulu</button>
                   </div>
                   {muudTuludSum > 0 && (
                     <div style={{ marginTop: 12, paddingTop: 8, borderTop: `1px solid ${N.rule}`, fontSize: 14, display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
                       <span>Muud tulud perioodis:</span>
-                      <span style={{ fontFamily: "monospace" }}>{euro(muudTuludSum)}</span>
+                      <span>{euro(muudTuludSum)}</span>
                     </div>
                   )}
                 </div>
@@ -2700,12 +2650,11 @@ export default function App() {
 
               {/* ── 2. Kulud ── */}
               <div style={card}>
-                <div style={{ ...H2_STYLE, marginTop: 0 }}>Kulud</div>
-                <div style={{ fontSize: 13, color: N.sub, marginBottom: 16 }}>Kommunaalkulud (soojus, vesi, elekter, kütus) sisestatakse eraldi Kommunaalid plokis.</div>
+                <div style={{ ...H2_STYLE, marginTop: 0, display: "flex", alignItems: "center" }}>Kulud<InfoTooltip text={'Kommunaalkulud (soojus, vesi, elekter, kütus) sisestatakse eraldi jaotises „Kommunaalid“.'} /></div>
 
                 {/* ── Haldus- ja hoolduskulud ── */}
                 <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 16, marginTop: 8 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 8 }}>Haldus- ja hoolduskulud</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 8, display: "flex", alignItems: "center" }}>Haldus- ja hoolduskulud<InfoTooltip text="Siia sisestatakse korteriühistu tavapärased haldus- ja hoolduskulud." /></div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     {haldusRead.map(r => tab2KuluRida(r, HALDUS_UI_KULULIIGID))}
                   </div>
@@ -2716,7 +2665,7 @@ export default function App() {
 
                 {/* ── Muud majandamiskulud ── */}
                 <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 16, marginTop: 16 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 8 }}>Muud majandamiskulud</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 8, display: "flex", alignItems: "center" }}>Muud majandamiskulud<InfoTooltip text="Siia sisestatakse muud majandamiskulud, mis ei ole kommunaalkulud, fondimaksed ega laenu teenindamise kulud." /></div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     {muudRead.map(r => tab2KuluRida(r, MUUD_MAJANDAMISKULUD_KATEGORIAD))}
                   </div>
@@ -2727,8 +2676,7 @@ export default function App() {
 
                 {/* ── Olemasoleva laenu teenindamine ── */}
                 <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 16, marginTop: 16 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 4 }}>Olemasoleva laenu teenindamine</div>
-                  <div style={{ fontSize: 13, color: N.sub, marginBottom: 12 }}>Uue laenu planeerimine toimub eraldi. Siin näidatakse ainult olemasoleva laenu teenindamise kulud.</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 8, display: "flex", alignItems: "center" }}>Olemasoleva laenu teenindamine<InfoTooltip text={'Uus laen planeeritakse eraldi jaotises „Planeeritav laen". Siin kajastatakse ainult olemasoleva laenu perioodi põhiosa tagasimaksed, intressid ja teenustasud.'} /></div>
                   {existingLoans.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                       {existingLoans.map(ln => {
@@ -2742,9 +2690,10 @@ export default function App() {
                         const lnT = parseFloat(ln.teenustasudPerioodis) || 0;
                         const hasManual = lnP > 0 || lnIr > 0 || lnT > 0;
                         const kokku = hasManual ? lnP + lnIr + lnT : autoKokku;
+                        const isLnMarkusOpen = !!ln.note || openTab2TaepsustusId === ("loan_" + ln.id);
                         return (
                           <div key={ln.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
-                            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+                            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
                               <div style={{ width: 210 }}>
                                 <div style={fieldLabel}>Laenuandja</div>
                                 <select value={ln.laenuandja || ""} onChange={(e) => updateLoan(ln.id, { laenuandja: e.target.value, laenuandjaKirjeldus: e.target.value !== "Muu" ? "" : ln.laenuandjaKirjeldus })} style={{ ...selectStyle, width: "100%" }}>
@@ -2785,23 +2734,23 @@ export default function App() {
                             </div>
                             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                               <div style={{ width: 130 }}>
-                                <div style={fieldLabel}>Põhiosa perioodis (€)</div>
+                                <div style={fieldLabel}>Põhiosa (€)</div>
                                 <EuroInput value={ln.pohiosPerioodis || ""} onChange={(v) => updateLoan(ln.id, { pohiosPerioodis: v })} style={numStyle} />
                               </div>
                               <div style={{ width: 130 }}>
-                                <div style={fieldLabel}>Intress perioodis (€)</div>
+                                <div style={fieldLabel}>Intress (€)</div>
                                 <EuroInput value={ln.intressPerioodis || ""} onChange={(v) => updateLoan(ln.id, { intressPerioodis: v })} style={numStyle} />
                               </div>
                               <div style={{ width: 130 }}>
-                                <div style={{ ...fieldLabel, display: "flex", alignItems: "center" }}>Teenustasud perioodis (€)<InfoTooltip text="Näited: lepingu haldustasu, kontohaldustasu, laenu administreerimise tasu, maksegraafiku või lepingu muutmise tasu, maksepuhkuse vormistamise tasu, ennetähtaegse tagastamise tasu, muu laenulepingust tulenev teenustasu." /></div>
+                                <div style={{ ...fieldLabel, display: "flex", alignItems: "center" }}>Teenustasud (€)<InfoTooltip text="Näited: lepingu haldustasu, kontohaldustasu, laenu administreerimise tasu, maksegraafiku või lepingu muutmise tasu, maksepuhkuse vormistamise tasu, ennetähtaegse tagastamise tasu, muu laenulepingust tulenev teenustasu." /></div>
                                 <EuroInput value={ln.teenustasudPerioodis || ""} onChange={(v) => updateLoan(ln.id, { teenustasudPerioodis: v })} style={numStyle} />
                               </div>
-                              <div style={{ width: 120 }}>
-                                <div style={fieldLabel}>Kokku (€)</div>
-                                <div style={{ padding: "6px 8px", background: N.muted, borderRadius: 4, fontFamily: "monospace", fontSize: 14, border: `1px solid ${N.border}` }}>{euro(kokku)}</div>
+                              <div style={{ width: 130 }}>
+                                <div style={fieldLabel}>Kokku perioodis (€)</div>
+                                <div style={{ padding: "6px 8px", background: N.muted, borderRadius: 4, fontSize: 14, border: `1px solid ${N.border}` }}>{kokku > 0 ? euro(kokku) : ""}</div>
                               </div>
                             </div>
-                            <div style={{ fontSize: 13, color: N.dim, marginTop: 4 }}>Täidetakse majanduskava perioodi kohta, mitte kogu laenu kohta.</div>
+
                             <div style={{ marginTop: 8 }}>
                               <div style={fieldLabel}>Tehniline jaotusviis</div>
                               <select value={lnBasis} onChange={(e) => {
@@ -2811,18 +2760,27 @@ export default function App() {
                                 else updateLoan(ln.id, { allocationBasis: v });
                               }} style={{ ...selectStyle, width: 260 }}>
                                 <option value="m2">Kaasomandi osa / m² arvestus</option>
-                                <option value="apartment">Korteri kohta (võrdsed osad)</option>
-                                <option value="muu">Muu jaotus</option>
+                                <option value="apartment">Korteri kohta</option>
+                                <option value="muu">Muu</option>
                               </select>
-                              {lnBasis === "m2" && <div style={{ fontSize: 13, color: N.dim, marginTop: 4 }}>Õiguslik alus: Seadus (KrtS § 40 lg 1).</div>}
                               {isLnErand && (
                                 <div style={{ marginTop: 8, padding: 8, background: N.muted, borderRadius: 6 }}>
-                                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>Õiguslik alus</div>
+                                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>Erandi alus</div>
                                   <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!ln.legalBasisBylaws} onChange={(e) => updateLoan(ln.id, { legalBasisBylaws: e.target.checked })} />"Põhikiri"</label>
                                   <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!ln.legalBasisSpecialAgreement} onChange={(e) => updateLoan(ln.id, { legalBasisSpecialAgreement: e.target.checked })} />"Kokkulepe"</label>
                                   <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!ln.legalBasisMuu} onChange={(e) => updateLoan(ln.id, { legalBasisMuu: e.target.checked })} />Muu</label>
                                   {lnBasis === "muu" && <div style={{ marginTop: 4 }}><div style={fieldLabel}>Jaotuse kirjeldus</div><input value={ln.allocationBasisMuuKirjeldus || ""} onChange={(e) => updateLoan(ln.id, { allocationBasisMuuKirjeldus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateLoan(ln.id, { allocationBasisMuuKirjeldus: next }))} placeholder="Kirjelda jaotusviisi" style={{ ...inputStyle, width: "100%" }} /></div>}
                                   <div style={{ marginTop: 4 }}><input value={ln.legalBasisTaepsustus || ""} onChange={(e) => updateLoan(ln.id, { legalBasisTaepsustus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateLoan(ln.id, { legalBasisTaepsustus: next }))} placeholder={taepsustusPlaceholder} style={{ ...inputStyle, width: "100%" }} /></div>
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ marginTop: 8 }}>
+                              {!isLnMarkusOpen && <button onClick={() => setOpenTab2TaepsustusId("loan_" + ln.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: N.text, padding: "4px 0" }}>+ Lisa märkus</button>}
+                              {isLnMarkusOpen && (
+                                <div>
+                                  <div style={fieldLabel}>Märkus (valikuline)</div>
+                                  <input value={ln.note || ""} onChange={(e) => updateLoan(ln.id, { note: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateLoan(ln.id, { note: next }))} style={inputStyle} />
+                                  <button onClick={() => { updateLoan(ln.id, { note: "" }); setOpenTab2TaepsustusId(null); }} style={{ ...btnRemove, marginTop: 4 }}>Eemalda märkus</button>
                                 </div>
                               )}
                             </div>
@@ -2845,26 +2803,21 @@ export default function App() {
                 <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 16, marginTop: 16 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: N.sub, marginBottom: 8 }}>Kulud kokkuvõte</div>
                   <div style={{ fontSize: 14, display: "flex", flexDirection: "column", gap: 6 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "monospace" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span style={{ color: N.sub }}>Haldus- ja hoolduskulud:</span>
                       <span>{euro(haldusSum)}</span>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "monospace" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span style={{ color: N.sub }}>Muud majandamiskulud:</span>
                       <span>{euro(muudKuluSum)}</span>
                     </div>
-                    {olemasolevadLaenudPeriood > 0 && (
-                      <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "monospace" }}>
-                        <span style={{ color: N.sub }}>Laenu teenindamine:</span>
-                        <span>{euro(olemasolevadLaenudPeriood)}</span>
-                      </div>
-                    )}
-                    <div style={{ display: "flex", justifyContent: "space-between", borderTop: `1px solid ${N.rule}`, paddingTop: 8, marginTop: 4, fontWeight: 600, fontFamily: "monospace" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: N.sub }}>Olemasoleva laenu teenindamine:</span>
+                      <span>{euro(olemasolevadLaenudPeriood)}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", borderTop: `1px solid ${N.rule}`, paddingTop: 8, marginTop: 4, fontWeight: 600 }}>
                       <span>Kulud kokku perioodis:</span>
                       <span>{euro(haldusSum + muudKuluSum + olemasolevadLaenudPeriood)}</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: N.sub, marginTop: 4 }}>
-                      Kommunaalkulud kajastatakse eraldi Kommunaalid tabis.
                     </div>
                   </div>
                 </div>
@@ -2940,11 +2893,6 @@ export default function App() {
                         <option value="apartment">Korteri kohta (€/korter/kuu)</option>
                         <option value="muu">Muu jaotusviis</option>
                       </select>
-                      {rfSelectVal === "kaasomand" && (
-                        <div style={{ fontSize: 13, color: N.dim, marginTop: 6 }}>
-                          Kulu jaotatakse KrtS § 40 lg 1 alusel kaasomandi osa suuruse järgi.
-                        </div>
-                      )}
 
                       {rfSelectVal === "kaasomand" && (
                         <div style={{ marginTop: 12 }}>
