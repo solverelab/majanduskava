@@ -1774,7 +1774,7 @@ export default function App() {
   }, [plan.period.year]);
 
 
-  const SECS = ["Üldandmed", "Seisukord ja plaan", "Tulud ja kulud", "Kommunaalid", "Fondid", "Kohustuste jaotus", "Majanduskava"];
+  const SECS = ["Üldandmed", "Seisukord ja plaan", "Tulud ja kulud", "Kommunaalid", "Fondid", "Planeeritav laen", "Kohustuste jaotus", "Majanduskava"];
 
   const askConfirm = useCallback((message, confirmLabel, onConfirm, cancelLabel = "Loobu", onCancel) => {
     setConfirmModal({ message, confirmLabel, cancelLabel, onConfirm, onCancel: onCancel ?? null });
@@ -1787,7 +1787,8 @@ export default function App() {
       if (tabIdx === 0) return { ...p, period: { ...p.period, start: "", end: "" }, building: { ...p.building, apartments: [] } };
       if (tabIdx === 1) return { ...p, assetCondition: { items: [] } };
       if (tabIdx === 2) return { ...p, budget: { ...p.budget, costRows: p.budget.costRows.filter(r => KOMMUNAALTEENUSED.includes(r.category)), incomeRows: [] } };
-      if (tabIdx === 4) { setRepairFundSaldo(""); setRemondifond({ saldoAlgus: "", kogumisViis: "eraldi", pangaKoefitsient: 1.15, pangaMaarOverride: null, maarOverride: null, maarKorterKuu: null, planeeritudKogumine: "", soovitudSaldoLopp: "" }); setResKap({ saldoAlgus: "", kasutamine: "", pohjendus: "", usesReserveDuringPeriod: false }); return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, loans: [], allocationPolicies: defaultPlan().allocationPolicies }; }
+      if (tabIdx === 4) { setRepairFundSaldo(""); setRemondifond({ saldoAlgus: "", kogumisViis: "eraldi", pangaKoefitsient: 1.15, pangaMaarOverride: null, maarOverride: null, maarKorterKuu: null, planeeritudKogumine: "", soovitudSaldoLopp: "" }); setResKap({ saldoAlgus: "", kasutamine: "", pohjendus: "", usesReserveDuringPeriod: false }); return { ...p, funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } }, allocationPolicies: defaultPlan().allocationPolicies }; }
+      if (tabIdx === 5) return { ...p, loans: p.loans.filter(l => !l.sepiiriostudInvId) };
       return p;
     });
     });
@@ -1857,11 +1858,13 @@ export default function App() {
     })(),
     // 3: Kommunaalid
     kommunaalRows.some(r => (parseFloat(r.summaInput) || 0) > 0) ? "valid" : kommunaalRows.length > 0 ? "invalid" : "",
-    // 4: Fondid ja laen
-    hasFondidData ? "valid" : "",
-    // 5: Maksed korteritele
+    // 4: Fondid
+    plan.funds.repairFund.monthlyRateEurPerM2 > 0 ? "valid" : "",
+    // 5: Planeeritav laen
+    plan.loans.some(l => l.sepiiriostudInvId) ? "valid" : "",
+    // 6: Kohustuste jaotus
     (hasRealApt && hasPeriod) ? "valid" : hasAnyApt ? "invalid" : "",
-    // 6: Kokkuvõte
+    // 7: Majanduskava
     (() => {
       if (hasRealApt && hasPeriod && hasRealCost) return "valid";
       if (hasAnyApt || hasPeriod || hasRealCost) return "invalid";
@@ -3352,9 +3355,13 @@ export default function App() {
                 </div>
               );
             })()}
+          </div>
+        )}
 
-
-            {(plan.loans.length > 0 || plan.investments.items.some(inv => (inv.fundingPlan || []).some(fp => fp.source === "Laen"))) && (<>
+        {sec === 5 && (
+          <div style={tabStack}>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>{clearBtn(5)}</div>
+            <h1 style={H1_STYLE}>Planeeritav laen</h1>
             <div style={{ ...H2_STYLE, marginTop: 0, marginBottom: 8 }}>Rahastamine</div>
 
             {/* Laenu staatus */}
@@ -3480,7 +3487,6 @@ export default function App() {
                 </div>
               ))}
             </div>
-            </>)}
           </div>
         )}
 
@@ -3560,7 +3566,7 @@ export default function App() {
           );
         })()}
 
-        {sec === 5 && (
+        {sec === 6 && (
           <div style={tabStack}>
             <h1 style={H1_STYLE}>Korteriomanike kohustuste jaotus majandamiskulude kandmisel</h1>
             <div style={{ fontSize: 13, color: N.sub, marginBottom: 8 }}>Kontrollvaade: jaotus arvutatakse teistes tabides sisestatud andmete põhjal. Majanduskava kohustuslik jaotus kuvatakse lõppvaates.</div>
@@ -3728,7 +3734,7 @@ export default function App() {
           </div>
         )}
 
-        {sec === 6 && (
+        {sec === 7 && (
           <div style={tabStack}>
             <h1 style={H1_STYLE}>Majanduskava</h1>
 
