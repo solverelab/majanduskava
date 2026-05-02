@@ -1,6 +1,7 @@
 // src/policy/__tests__/invariants-deletion.test.js
 import { describe, it, expect } from "vitest";
 import { cleanupOrphanLinkedLoans } from "../../utils/planCleanup";
+import { KOMMUNAALTEENUSED } from "../../utils/majanduskavaCalc";
 
 // ── Helpers ──
 
@@ -131,23 +132,30 @@ function applyClearSectionOne(plan) {
   };
 }
 
-/** Mirrors clearSection(tabIdx === 2) in MajanduskavaApp.jsx */
+/** Mirrors clearSection(tabIdx === 2) in MajanduskavaApp.jsx — keeps kommunaal costRows, clears incomeRows */
 function applyClearSectionTwo(plan) {
   return {
     ...plan,
-    budget: { ...plan.budget, costRows: [] },
+    budget: {
+      ...plan.budget,
+      costRows: plan.budget.costRows.filter(r => KOMMUNAALTEENUSED.includes(r.category)),
+      incomeRows: [],
+    },
   };
 }
 
-/** Mirrors clearSection(tabIdx === 3) in MajanduskavaApp.jsx */
-function applyClearSectionThree(plan) {
+/** Mirrors clearKommunaalid() in MajanduskavaApp.jsx — removes kommunaal costRows, keeps non-kommunaal */
+function applyClearKommunaalid(plan) {
   return {
     ...plan,
-    budget: { ...plan.budget, incomeRows: [] },
+    budget: {
+      ...plan.budget,
+      costRows: plan.budget.costRows.filter(r => !KOMMUNAALTEENUSED.includes(r.category)),
+    },
   };
 }
 
-/** Mirrors clearSection(tabIdx === 4) plan-state branch in MajanduskavaApp.jsx */
+/** Mirrors clearSection(tabIdx === 4) plan-state branch in MajanduskavaApp.jsx — resets funds, does not touch loans */
 function applyClearSectionFour(plan) {
   return {
     ...plan,
@@ -155,7 +163,6 @@ function applyClearSectionFour(plan) {
       repairFund: { monthlyRateEurPerM2: 0 },
       reserve: { plannedEUR: 0 },
     },
-    loans: [],
   };
 }
 
@@ -537,7 +544,7 @@ describe("Invariant 4h: eemaldaStandaloneRahpiiriRida removes linked loan only w
 // 4i. clearSection(4) resets funds and removes all loans
 // ══════════════════════════════════════════════════════════════════════
 
-describe("Invariant 4i: clearSection(4) clears funds and all loans", () => {
+describe("Invariant 4i: clearSection(4) clears funds but keeps loans", () => {
   function buildPlan() {
     return {
       funds: { repairFund: { monthlyRateEurPerM2: 1.75 }, reserve: { plannedEUR: 12000 } },
@@ -566,9 +573,9 @@ describe("Invariant 4i: clearSection(4) clears funds and all loans", () => {
     expect(result.funds.reserve.plannedEUR).toBe(0);
   });
 
-  it("removes all loans but leaves investments and assetCondition untouched", () => {
+  it("keeps all loans and leaves investments and assetCondition untouched", () => {
     const result = applyClearSectionFour(buildPlan());
-    expect(result.loans).toEqual([]);
+    expect(result.loans).toHaveLength(3);
     expect(result.investments.items).toHaveLength(2);
     expect(result.assetCondition.items).toHaveLength(1);
   });
@@ -578,7 +585,7 @@ describe("Invariant 4i: clearSection(4) clears funds and all loans", () => {
 // 4j. clearSection(2) and clearSection(3) clear only their budget branch
 // ══════════════════════════════════════════════════════════════════════
 
-describe("Invariant 4j: clearSection(2) and clearSection(3) clear only their own budget branch", () => {
+describe("Invariant 4j: clearSection(2) removes non-kommunaal budget; clearKommunaalid removes kommunaal costRows", () => {
   function buildPlan() {
     return {
       budget: {
@@ -592,10 +599,12 @@ describe("Invariant 4j: clearSection(2) and clearSection(3) clear only their own
     };
   }
 
-  it("clearSection(2) clears only costRows", () => {
+  it("clearSection(2) keeps kommunaal costRows and clears incomeRows", () => {
     const result = applyClearSectionTwo(buildPlan());
-    expect(result.budget.costRows).toEqual([]);
-    expect(result.budget.incomeRows).toHaveLength(1);
+    // "Haldus" ei ole kommunaalteenus → eemaldatakse; "Elekter" on → jääb alles
+    expect(result.budget.costRows).toHaveLength(1);
+    expect(result.budget.costRows[0].category).toBe("Elekter");
+    expect(result.budget.incomeRows).toEqual([]);
   });
 
   it("clearSection(2) leaves loans, investments, assetCondition, and funds untouched", () => {
@@ -607,14 +616,16 @@ describe("Invariant 4j: clearSection(2) and clearSection(3) clear only their own
     expect(result.funds.reserve.plannedEUR).toBe(3000);
   });
 
-  it("clearSection(3) clears only incomeRows", () => {
-    const result = applyClearSectionThree(buildPlan());
-    expect(result.budget.incomeRows).toEqual([]);
-    expect(result.budget.costRows).toHaveLength(2);
+  it("clearKommunaalid removes kommunaal costRows, keeps non-kommunaal and incomeRows", () => {
+    const result = applyClearKommunaalid(buildPlan());
+    // "Elekter" on kommunaalteenus → eemaldatakse; "Haldus" ei ole → jääb alles
+    expect(result.budget.costRows).toHaveLength(1);
+    expect(result.budget.costRows[0].category).toBe("Haldus");
+    expect(result.budget.incomeRows).toHaveLength(1);
   });
 
-  it("clearSection(3) leaves loans, investments, assetCondition, and funds untouched", () => {
-    const result = applyClearSectionThree(buildPlan());
+  it("clearKommunaalid leaves loans, investments, assetCondition, and funds untouched", () => {
+    const result = applyClearKommunaalid(buildPlan());
     expect(result.loans).toHaveLength(1);
     expect(result.investments.items).toHaveLength(1);
     expect(result.assetCondition.items).toHaveLength(1);

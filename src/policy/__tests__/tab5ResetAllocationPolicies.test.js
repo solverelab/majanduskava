@@ -1,20 +1,20 @@
 // src/policy/__tests__/tab5ResetAllocationPolicies.test.js
 // Mirrors the `tabIdx === 4` branch of clearSection() in MajanduskavaApp.jsx
-// (around line 1577) — only the plan-level return, not the local-state setters.
+// (Tab 4 = Fondid) — only the plan-level return, not the local-state setters.
+// clearSection(4) resets funds and allocationPolicies but does NOT touch loans.
 
 import { describe, it, expect } from "vitest";
 import { defaultPlan, getEffectiveAllocationBasis, patchAllocationPolicy } from "../../domain/planSchema";
 
-function tab5ResetPlan(p) {
+function fondiTabResetPlan(p) {
   return {
     ...p,
     funds: { repairFund: { monthlyRateEurPerM2: 0 }, reserve: { plannedEUR: 0 } },
-    loans: [],
     allocationPolicies: defaultPlan().allocationPolicies,
   };
 }
 
-describe("Tab 5 reset → allocationPolicies taastub defaulti", () => {
+describe("Tab 4 (Fondid) reset → allocationPolicies taastub defaulti, laenud jäävad", () => {
   it("override all three → reset taastab kõik kolm defaulti", () => {
     let plan = defaultPlan();
     plan = patchAllocationPolicy(plan, "maintenance", { overrideBasis: "korter", legalBasis: "pohikiri", legalBasisNote: "§12" });
@@ -26,7 +26,7 @@ describe("Tab 5 reset → allocationPolicies taastub defaulti", () => {
     expect(getEffectiveAllocationBasis(plan.allocationPolicies.remondifond)).toBe("korter");
     expect(getEffectiveAllocationBasis(plan.allocationPolicies.reserve)).toBe("korter");
 
-    const reset = tab5ResetPlan(plan);
+    const reset = fondiTabResetPlan(plan);
 
     for (const key of ["maintenance", "remondifond", "reserve"]) {
       const pol = reset.allocationPolicies[key];
@@ -39,14 +39,20 @@ describe("Tab 5 reset → allocationPolicies taastub defaulti", () => {
   });
 
   it("reset'i allikas on defaultPlan() — struktuur peab ühtima", () => {
-    const reset = tab5ResetPlan({});
+    const reset = fondiTabResetPlan({});
     expect(reset.allocationPolicies).toEqual(defaultPlan().allocationPolicies);
   });
 
-  it("reset ei puutu teisi plaani välju peale funds/loans/allocationPolicies", () => {
-    const plan = { ...defaultPlan(), profile: { name: "X" }, building: { apartments: [{ id: "a", areaM2: 50 }] } };
-    const reset = tab5ResetPlan(plan);
+  it("reset ei puutu teisi plaani välju peale funds/allocationPolicies — laenud jäävad", () => {
+    const plan = {
+      ...defaultPlan(),
+      profile: { name: "X" },
+      building: { apartments: [{ id: "a", areaM2: 50 }] },
+      loans: [{ id: "loan-1", sepiiriostudInvId: "inv-1", principalEUR: 25000 }],
+    };
+    const reset = fondiTabResetPlan(plan);
     expect(reset.profile.name).toBe("X");
     expect(reset.building.apartments).toHaveLength(1);
+    expect(reset.loans).toHaveLength(1);
   });
 });

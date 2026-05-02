@@ -74,13 +74,14 @@ describe("sec === X sisu plokid", () => {
 // ── 3. tabStatus indeksite sidumine ──────────────────────────────────────────
 
 describe("tabStatus indeksid", () => {
-  it("tabStatus index 3 on Kommunaalid staatus (kommunaalRows.some)", () => {
+  it("tabStatus index 3 on Kommunaalid staatus, index 4 on Fondid staatus", () => {
     const tsStart = src.indexOf('const tabStatus = [');
     const tsEnd = src.indexOf('];', tsStart);
     const tsBlock = src.slice(tsStart, tsEnd);
-    // kommunaalRows.some must appear before hasFondidData in tabStatus
+    // tabStatus[3] = Kommunaalid: kommunaalRows.some(...)
+    // tabStatus[4] = Fondid: plan.funds.repairFund.monthlyRateEurPerM2 > 0
     const kommunaalStatusIdx = tsBlock.indexOf('kommunaalRows.some');
-    const fondidStatusIdx = tsBlock.indexOf('hasFondidData');
+    const fondidStatusIdx = tsBlock.indexOf('plan.funds.repairFund.monthlyRateEurPerM2 > 0');
     expect(kommunaalStatusIdx).toBeGreaterThan(-1);
     expect(fondidStatusIdx).toBeGreaterThan(-1);
     expect(kommunaalStatusIdx).toBeLessThan(fondidStatusIdx);
