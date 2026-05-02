@@ -1,7 +1,7 @@
 // src/utils/majanduskavaCalc.js
 // Pure financial calculation functions extracted from MajanduskavaApp.jsx
 
-export const KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus", "Muu kommunaalteenus"];
+export const KOMMUNAALTEENUSED = ["Soojus", "Vesi", "Kanalisatsioon", "Elekter", "Kütus", "Muu kommunaalteenus"];
 export const HALDUSTEENUSED = [
   // Legacy values kept for backward compat with saved plans
   "Haldus", "Hooldus", "Muu haldusteenus",
@@ -19,7 +19,8 @@ export const LAENUMAKSED = ["Laenumakse"];
 export const UTILITY_TYPE_BY_CATEGORY = {
   "Soojus": "heat",
   "Kütus": "fuel",
-  "Vesi ja kanalisatsioon": "water_sewer",
+  "Vesi": "water",
+  "Kanalisatsioon": "sewer",
   "Elekter": "electricity",
   "Muu kommunaalteenus": "other",
 };
@@ -351,13 +352,13 @@ export function computeRemondifondiArvutus({
 export const KOMMUNAAL_VAIKE_UHIK = {
   "Kütus": "m³",
   "Soojus": "MWh",
-  "Vesi ja kanalisatsioon": "m³",
+  "Vesi": "m³",
+  "Kanalisatsioon": "m³",
   "Elekter": "kWh",
 };
 
 // KrtS § 41 lg 1 p 5 — kohustuslikud standardteenused uuel plaanil.
-// Kütus on vabatahtlik — lisa eraldi nupu kaudu.
-export const KOMMUNAAL_DEFAULT_CATEGORIES = ["Soojus", "Vesi ja kanalisatsioon", "Elekter"];
+export const KOMMUNAAL_DEFAULT_CATEGORIES = ["Soojus", "Vesi", "Kanalisatsioon", "Elekter", "Kütus"];
 
 const _uid = () => Math.random().toString(36).slice(2, 9);
 
@@ -398,23 +399,52 @@ export function makeKommunaalRow(category) {
   };
 }
 
+// Migrates legacy "Vesi ja kanalisatsioon" category to "Vesi".
+// Idempotent: no-op if no legacy row exists.
+// Also updates removedDefaultKommunaalCategories if needed.
+export function migrateLegacyKommunaalCategories(plan) {
+  const costRows = plan.budget?.costRows || [];
+  const removedCats = plan.removedDefaultKommunaalCategories || [];
+  const hasLegacyRow = costRows.some(r => r.category === "Vesi ja kanalisatsioon");
+  const hasLegacyRemoved = removedCats.includes("Vesi ja kanalisatsioon");
+  if (!hasLegacyRow && !hasLegacyRemoved) return plan;
+  const patch = {};
+  if (hasLegacyRow) {
+    patch.budget = {
+      ...plan.budget,
+      costRows: costRows.map(r =>
+        r.category === "Vesi ja kanalisatsioon" ? { ...r, category: "Vesi" } : r
+      ),
+    };
+  }
+  if (hasLegacyRemoved) {
+    const updated = removedCats
+      .filter(c => c !== "Vesi ja kanalisatsioon")
+      .concat(["Vesi", "Kanalisatsioon"]);
+    patch.removedDefaultKommunaalCategories = [...new Set(updated)];
+  }
+  return { ...plan, ...patch };
+}
+
 // Idempotent: seeds missing standard kommunaalread into a plan without duplicating.
+// Applies legacy category migration first.
 // Respects plan.removedDefaultKommunaalCategories — categories the user has intentionally removed.
 // "Tühjenda" resets removedDefaultKommunaalCategories: [] before calling this.
 export function seedDefaultKommunaalRows(plan) {
-  const removed = new Set(plan.removedDefaultKommunaalCategories || []);
+  const migrated = migrateLegacyKommunaalCategories(plan);
+  const removed = new Set(migrated.removedDefaultKommunaalCategories || []);
   const existing = new Set(
-    (plan.budget?.costRows || [])
+    (migrated.budget?.costRows || [])
       .filter(r => KOMMUNAAL_DEFAULT_CATEGORIES.includes(r.category))
       .map(r => r.category)
   );
   const missing = KOMMUNAAL_DEFAULT_CATEGORIES.filter(cat => !existing.has(cat) && !removed.has(cat));
-  if (missing.length === 0) return plan;
+  if (missing.length === 0) return migrated;
   return {
-    ...plan,
+    ...migrated,
     budget: {
-      ...plan.budget,
-      costRows: [...(plan.budget?.costRows || []), ...missing.map(makeKommunaalRow)],
+      ...migrated.budget,
+      costRows: [...(migrated.budget?.costRows || []), ...missing.map(makeKommunaalRow)],
     },
   };
 }

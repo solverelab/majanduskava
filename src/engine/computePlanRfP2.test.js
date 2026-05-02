@@ -66,7 +66,7 @@ describe("p2 RF mitte-kommunaal kulu suurendab rfOutflowThisYearEUR-i", () => {
 
 describe("p2 RF kommunaal ei suurenda rfOutflowThisYearEUR-i", () => {
   const KOMMUNAAL_CATEGORIES = [
-    "Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus", "Muu kommunaalteenus",
+    "Soojus", "Vesi", "Kanalisatsioon", "Elekter", "Kütus", "Muu kommunaalteenus",
   ];
 
   for (const cat of KOMMUNAAL_CATEGORIES) {

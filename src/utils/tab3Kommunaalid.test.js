@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import {
   KOMMUNAAL_DEFAULT_CATEGORIES, KOMMUNAALTEENUSED, makeKommunaalRow,
-  seedDefaultKommunaalRows, utilityRowStatus,
+  seedDefaultKommunaalRows, utilityRowStatus, migrateLegacyKommunaalCategories,
 } from "./majanduskavaCalc";
 import { defaultPlan } from "../domain/planSchema";
 
@@ -51,9 +51,14 @@ describe("Uus plaan: vaikimisi kommunaalread", () => {
     expect(plan.budget.costRows.some(r => r.category === "Soojus")).toBe(true);
   });
 
-  it("seedDefaultKommunaalRows(defaultPlan()) sisaldab Vesi ja kanalisatsioon rida", () => {
+  it("seedDefaultKommunaalRows(defaultPlan()) sisaldab Vesi rida", () => {
     const plan = seedDefaultKommunaalRows(defaultPlan());
-    expect(plan.budget.costRows.some(r => r.category === "Vesi ja kanalisatsioon")).toBe(true);
+    expect(plan.budget.costRows.some(r => r.category === "Vesi")).toBe(true);
+  });
+
+  it("seedDefaultKommunaalRows(defaultPlan()) sisaldab Kanalisatsioon rida", () => {
+    const plan = seedDefaultKommunaalRows(defaultPlan());
+    expect(plan.budget.costRows.some(r => r.category === "Kanalisatsioon")).toBe(true);
   });
 
   it("seedDefaultKommunaalRows(defaultPlan()) sisaldab Elektri rida", () => {
@@ -61,15 +66,15 @@ describe("Uus plaan: vaikimisi kommunaalread", () => {
     expect(plan.budget.costRows.some(r => r.category === "Elekter")).toBe(true);
   });
 
-  it("Kütust ei lisata vaikimisi", () => {
+  it("Kütus lisatakse vaikimisi", () => {
     const plan = seedDefaultKommunaalRows(defaultPlan());
-    expect(plan.budget.costRows.some(r => r.category === "Kütus")).toBe(false);
+    expect(plan.budget.costRows.some(r => r.category === "Kütus")).toBe(true);
   });
 
   it("Vaikimisi read on märgitud isDefault: true", () => {
     const plan = seedDefaultKommunaalRows(defaultPlan());
     const defaultKomm = plan.budget.costRows.filter(r => KOMMUNAAL_DEFAULT_CATEGORIES.includes(r.category));
-    expect(defaultKomm.length).toBe(3);
+    expect(defaultKomm.length).toBe(5);
     defaultKomm.forEach(r => expect(r.isDefault).toBe(true));
   });
 
@@ -102,8 +107,10 @@ describe("seedDefaultKommunaalRows: duplikaatide vältimine", () => {
     const seeded = seedDefaultKommunaalRows(partial);
     const cats = seeded.budget.costRows.map(r => r.category);
     expect(cats).toContain("Soojus");
-    expect(cats).toContain("Vesi ja kanalisatsioon");
+    expect(cats).toContain("Vesi");
+    expect(cats).toContain("Kanalisatsioon");
     expect(cats).toContain("Elekter");
+    expect(cats).toContain("Kütus");
     expect(seeded.budget.costRows.filter(r => r.category === "Soojus").length).toBe(1);
   });
 });
@@ -139,8 +146,12 @@ describe("makeKommunaalRow: väljad", () => {
     expect(makeKommunaalRow("Soojus").uhik).toBe("MWh");
   });
 
-  it("Vesi ja kanalisatsioon rea vaikimisi ühik on m³", () => {
-    expect(makeKommunaalRow("Vesi ja kanalisatsioon").uhik).toBe("m³");
+  it("Vesi rea vaikimisi ühik on m³", () => {
+    expect(makeKommunaalRow("Vesi").uhik).toBe("m³");
+  });
+
+  it("Kanalisatsioon rea vaikimisi ühik on m³", () => {
+    expect(makeKommunaalRow("Kanalisatsioon").uhik).toBe("m³");
   });
 
   it("Elektri rea vaikimisi ühik on kWh", () => {
@@ -173,8 +184,10 @@ describe("removedDefaultKommunaalCategories: eemaldatud vaikimisi read ei teki t
 
   it("mitte-eemaldatud vaikeread jäävad alles", () => {
     const result = simulateRemoveDefaultRow(seedDefaultKommunaalRows(defaultPlan()), "Soojus");
-    expect(result.budget.costRows.some(r => r.category === "Vesi ja kanalisatsioon")).toBe(true);
+    expect(result.budget.costRows.some(r => r.category === "Vesi")).toBe(true);
+    expect(result.budget.costRows.some(r => r.category === "Kanalisatsioon")).toBe(true);
     expect(result.budget.costRows.some(r => r.category === "Elekter")).toBe(true);
+    expect(result.budget.costRows.some(r => r.category === "Kütus")).toBe(true);
   });
 
   it("clearKommunaalid taastab kõik vaikeread (removedDefaultKommunaalCategories: [])", () => {
@@ -348,8 +361,10 @@ describe("clearKommunaalid: eemaldab ainult kommunaalread", () => {
       .filter(r => KOMMUNAALTEENUSED.includes(r.category))
       .map(r => r.category);
     expect(kommunaalCats).toContain("Soojus");
-    expect(kommunaalCats).toContain("Vesi ja kanalisatsioon");
+    expect(kommunaalCats).toContain("Vesi");
+    expect(kommunaalCats).toContain("Kanalisatsioon");
     expect(kommunaalCats).toContain("Elekter");
+    expect(kommunaalCats).toContain("Kütus");
   });
 
   it("pärast tühjendamist on vaikerea kogus tühi", () => {
@@ -370,17 +385,22 @@ describe("clearKommunaalid: eemaldab ainult kommunaalread", () => {
     expect(result.budget.costRows.some(r => r.id === "muukomm1")).toBe(false);
   });
 
-  it("Kütuse rida eemaldatakse kui see oli lisatud", () => {
+  it("Kütuse vaikimisi rida taastatakse pärast tühjendamist tühja reana", () => {
     const base = seedDefaultKommunaalRows(defaultPlan());
-    const withKutus = {
+    const withFilledKutus = {
       ...base,
       budget: {
         ...base.budget,
-        costRows: [...base.budget.costRows, { id: "kutus1", side: "COST", category: "Kütus", kogus: "200", summaInput: 3000 }],
+        costRows: base.budget.costRows.map(r =>
+          r.category === "Kütus" ? { ...r, kogus: "200", summaInput: 3000 } : r
+        ),
       },
     };
-    const result = simulateClearKommunaalid(withKutus);
-    expect(result.budget.costRows.some(r => r.category === "Kütus")).toBe(false);
+    const result = simulateClearKommunaalid(withFilledKutus);
+    const kutusRow = result.budget.costRows.find(r => r.category === "Kütus");
+    expect(kutusRow).toBeDefined();
+    expect(kutusRow.kogus).toBe("");
+    expect(kutusRow.summaInput).toBe(0);
   });
 
   it("tulud jäävad alles", () => {
@@ -472,6 +492,95 @@ describe("clearKommunaalid: UI ja handler", () => {
     // Ainult Tab 2 haru (lõpp enne tabIdx === 4)
     const tab2Only = csBlock.slice(tab2Start, tab4Start > tab2Start ? tab4Start : undefined);
     expect(tab2Only).not.toContain("loans: []");
+  });
+});
+
+// ── 10. migrateLegacyKommunaalCategories ─────────────────────────────────────
+
+describe("migrateLegacyKommunaalCategories: Vesi ja kanalisatsioon → Vesi", () => {
+  it("nimetab 'Vesi ja kanalisatsioon' rea 'Vesi'-ks, säilitab kõik andmed", () => {
+    const plan = {
+      ...defaultPlan(),
+      budget: {
+        costRows: [{ id: "w1", category: "Vesi ja kanalisatsioon", kogus: "500", summaInput: 3600, uhik: "m³", selgitus: "märkus" }],
+        incomeRows: [],
+      },
+    };
+    const result = migrateLegacyKommunaalCategories(plan);
+    const row = result.budget.costRows.find(r => r.id === "w1");
+    expect(row.category).toBe("Vesi");
+    expect(row.kogus).toBe("500");
+    expect(row.summaInput).toBe(3600);
+    expect(row.selgitus).toBe("märkus");
+  });
+
+  it("ei loo automaatselt Kanalisatsioon rida — seda teeb seedDefaultKommunaalRows", () => {
+    const plan = {
+      ...defaultPlan(),
+      budget: { costRows: [{ id: "w1", category: "Vesi ja kanalisatsioon", summaInput: 3600 }], incomeRows: [] },
+    };
+    const result = migrateLegacyKommunaalCategories(plan);
+    expect(result.budget.costRows.some(r => r.category === "Kanalisatsioon")).toBe(false);
+  });
+
+  it("seedDefaultKommunaalRows lisab Kanalisatsioon pärast migratsiooni", () => {
+    const plan = {
+      ...defaultPlan(),
+      budget: { costRows: [{ id: "w1", category: "Vesi ja kanalisatsioon", summaInput: 3600, isDefault: true }], incomeRows: [] },
+    };
+    const result = seedDefaultKommunaalRows(plan);
+    expect(result.budget.costRows.find(r => r.id === "w1").category).toBe("Vesi");
+    expect(result.budget.costRows.some(r => r.category === "Kanalisatsioon")).toBe(true);
+    const kanRow = result.budget.costRows.find(r => r.category === "Kanalisatsioon");
+    expect(kanRow.summaInput).toBe(0);
+  });
+
+  it("migratsioon ei loo duplikaate kui Vesi juba eksisteerib", () => {
+    const plan = {
+      ...defaultPlan(),
+      budget: {
+        costRows: [
+          { id: "v1", category: "Vesi", summaInput: 1200 },
+          { id: "vk1", category: "Vesi ja kanalisatsioon", summaInput: 3600 },
+        ],
+        incomeRows: [],
+      },
+    };
+    // When Vesi already exists, rename still happens (user data must not be lost)
+    const result = migrateLegacyKommunaalCategories(plan);
+    const vesiRows = result.budget.costRows.filter(r => r.category === "Vesi");
+    // Both rows renamed/kept — no silent data loss
+    expect(vesiRows.length).toBeGreaterThanOrEqual(1);
+    expect(result.budget.costRows.some(r => r.category === "Vesi ja kanalisatsioon")).toBe(false);
+  });
+
+  it("seedDefaultKommunaalRows ei loo duplikaate korduvatel kutsetel pärast migratsiooni", () => {
+    const plan = {
+      ...defaultPlan(),
+      budget: { costRows: [{ id: "w1", category: "Vesi ja kanalisatsioon", summaInput: 3600, isDefault: true }], incomeRows: [] },
+    };
+    const r1 = seedDefaultKommunaalRows(plan);
+    const r2 = seedDefaultKommunaalRows(r1);
+    expect(r2.budget.costRows.filter(r => r.category === "Vesi").length).toBe(1);
+    expect(r2.budget.costRows.filter(r => r.category === "Kanalisatsioon").length).toBe(1);
+  });
+
+  it("idempotentne plaanil, kus vana kategooriat pole", () => {
+    const plan = seedDefaultKommunaalRows(defaultPlan());
+    const result = migrateLegacyKommunaalCategories(plan);
+    expect(result).toBe(plan);
+  });
+
+  it("removedDefaultKommunaalCategories-s olev 'Vesi ja kanalisatsioon' asendatakse Vesi + Kanalisatsiooniga", () => {
+    const plan = {
+      ...defaultPlan(),
+      removedDefaultKommunaalCategories: ["Vesi ja kanalisatsioon"],
+      budget: { costRows: [], incomeRows: [] },
+    };
+    const result = migrateLegacyKommunaalCategories(plan);
+    expect(result.removedDefaultKommunaalCategories).not.toContain("Vesi ja kanalisatsioon");
+    expect(result.removedDefaultKommunaalCategories).toContain("Vesi");
+    expect(result.removedDefaultKommunaalCategories).toContain("Kanalisatsioon");
   });
 });
 

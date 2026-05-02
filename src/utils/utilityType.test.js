@@ -13,7 +13,8 @@ describe("UTILITY_TYPE_BY_CATEGORY mapping", () => {
   it("katab kõik p 5 liiki", () => {
     expect(UTILITY_TYPE_BY_CATEGORY["Soojus"]).toBe("heat");
     expect(UTILITY_TYPE_BY_CATEGORY["Kütus"]).toBe("fuel");
-    expect(UTILITY_TYPE_BY_CATEGORY["Vesi ja kanalisatsioon"]).toBe("water_sewer");
+    expect(UTILITY_TYPE_BY_CATEGORY["Vesi"]).toBe("water");
+    expect(UTILITY_TYPE_BY_CATEGORY["Kanalisatsioon"]).toBe("sewer");
     expect(UTILITY_TYPE_BY_CATEGORY["Elekter"]).toBe("electricity");
     expect(UTILITY_TYPE_BY_CATEGORY["Muu kommunaalteenus"]).toBe("other");
   });
@@ -40,9 +41,9 @@ describe("utilityTypeForRow", () => {
     expect(utilityTypeForRow({})).toBeNull();
   });
 
-  it("vana rida ilma utilityType väljata → category fallback", () => {
-    const vanaRida = { id: "x", category: "Vesi ja kanalisatsioon", summaInput: 500 };
-    expect(utilityTypeForRow(vanaRida)).toBe("water_sewer");
+  it("Vesi rida ilma utilityType väljata → category fallback", () => {
+    expect(utilityTypeForRow({ category: "Vesi" })).toBe("water");
+    expect(utilityTypeForRow({ category: "Kanalisatsioon" })).toBe("sewer");
   });
 });
 

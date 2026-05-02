@@ -307,18 +307,20 @@ const TULU_KATEGOORIA_MAP = {
 const KOMMUNAAL_UHIKUD = {
   "Kütus": ["m³", "l", "t"],
   "Soojus": ["MWh", "kWh"],
-  "Vesi ja kanalisatsioon": ["m³"],
+  "Vesi": ["m³"],
+  "Kanalisatsioon": ["m³"],
   "Elekter": ["kWh", "MWh"],
 };
 
 const KOMMUNAAL_VAIKE_UHIK = {
   "Kütus": "m³",
   "Soojus": "MWh",
-  "Vesi ja kanalisatsioon": "m³",
+  "Vesi": "m³",
+  "Kanalisatsioon": "m³",
   "Elekter": "kWh",
 };
 
-const P5_KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus"];
+const P5_KOMMUNAALTEENUSED = ["Soojus", "Vesi", "Kanalisatsioon", "Elekter", "Kütus"];
 
 const LAENU_LIIGID = ["Remondilaen", "Investeerimislaen", "Kapitalirent", "Laen omanikelt", "Muu"];
 
@@ -345,7 +347,8 @@ const PRIORITEEDID = ["Madal", "Keskmine", "Kõrge", "Kriitiline"];
 const KULU_NIMETUS_PLACEHOLDERS = {
   "Kütus": "nt Gaasiküte, puuküte",
   "Soojus": "nt Kaugküte",
-  "Vesi ja kanalisatsioon": "nt Veevarustus ja kanalisatsioon",
+  "Vesi": "nt Veevarustus",
+  "Kanalisatsioon": "nt Kanalisatsioon",
   "Elekter": "nt Üldelekter",
   "Prügivedu": "nt Jäätmevedu",
   "Haldus": "nt Majahalduri tasu",

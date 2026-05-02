@@ -50,7 +50,7 @@ describe("Tab 2: kommunaalide detailprognoos ei dubleeru tavakuludesse", () => {
   it("kommunaalteenuse kategooriaga rida ei jõua muudRows-i", () => {
     const rows = [
       { id: "k1", category: "Soojus", summaInput: "5000" },
-      { id: "k2", category: "Vesi ja kanalisatsioon", summaInput: "3000" },
+      { id: "k2", category: "Vesi", summaInput: "3000" },
       { id: "m1", category: "Muu majandamiskulu", summaInput: "1000" },
     ];
     const { muudRows } = classifyTab2Rows(rows);
