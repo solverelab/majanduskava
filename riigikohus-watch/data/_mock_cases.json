@@ -1,0 +1,19 @@
+[
+  {
+    "caseNumber": "2-23-204/40",
+    "date": "2026-01-07",
+    "keyword": "majanduskava",
+    "era": "KrtS",
+    "text": "KrtS § 41 alusel korteriühistu üldkoosolek kinnitab majanduskava tagasiulatuvalt.",
+    "proposedBullet": "Majanduskava võib vajadusel kinnitada ka tagasiulatuvalt.",
+    "citations": [{ "caseNumber": "2-23-204", "points": "14-17" }]
+  },
+  {
+    "caseNumber": "2-18-12753/34",
+    "date": "2026-02-15",
+    "keyword": "majanduskava",
+    "era": "KrtS",
+    "text": "KrtS § 40 kohaselt on korteriühistu majandamiskulude kandmine ja kulude jaotus reguleeritud.",
+    "proposedBullet": "Majanduskavas ei saa kulude jaotust suvaliselt ümber teha."
+  }
+]

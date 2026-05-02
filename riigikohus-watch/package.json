@@ -1,0 +1,24 @@
+{
+  "name": "riigikohus-watch",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Igakuine Riigikohtu lahendite jälgimine majanduskava reeglite jaoks.",
+  "scripts": {
+    "check": "tsx src/cli/check.ts",
+    "pending": "tsx src/cli/pending.ts",
+    "approve": "tsx src/cli/approve.ts",
+    "reject": "tsx src/cli/reject.ts",
+    "edit-approve": "tsx src/cli/editApprove.ts",
+    "report": "tsx src/cli/report.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.9"
+  }
+}

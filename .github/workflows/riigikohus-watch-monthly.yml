@@ -1,0 +1,44 @@
+name: Riigikohus watch monthly
+
+on:
+  schedule:
+    # 1st of each month, 07:00 UTC
+    - cron: '0 7 1 * *'
+  workflow_dispatch:
+
+jobs:
+  check-and-report:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./riigikohus-watch
+    env:
+      RIIGIKOHUS_ADAPTER: real
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Run monthly check (live real adapter)
+        run: npm run check
+
+      - name: Generate report
+        run: npm run report
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: riigikohus-watch-report-${{ github.run_id }}
+          path: |
+            riigikohus-watch/data/report.md
+            riigikohus-watch/data/last_run_summary.json
+          if-no-files-found: error
+          retention-days: 90

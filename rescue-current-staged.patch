@@ -1,0 +1,816 @@
+diff --git a/.claude/settings.local.json b/.claude/settings.local.json
+index a0487bb..db56b0c 100644
+--- a/.claude/settings.local.json
++++ b/.claude/settings.local.json
+@@ -25,7 +25,36 @@
+       "WebFetch(domain:tormi.gitbooks.io)",
+       "WebFetch(domain:avaandmed.ee)",
+       "WebFetch(domain:data.europa.eu)",
+-      "WebFetch(domain:geoportaal.maaamet.ee)"
++      "WebFetch(domain:geoportaal.maaamet.ee)",
++      "Bash(node:*)",
++      "Bash(npx vitest:*)",
++      "Bash(npx vite:*)",
++      "Bash(python3:*)",
++      "Bash(ls:*)",
++      "Bash(npm run *)",
++      "Bash(npm install *)",
++      "Bash(wait)",
++      "Bash(npm test *)",
++      "Bash(cat)",
++      "Bash(npx tsx *)",
++      "Bash(rm ./_debug.mjs)",
++      "Read(//tmp/**)",
++      "Bash(RIIGIKOHUS_ADAPTER=real npm run check)",
++      "Bash(git diff *)",
++      "Bash(awk -F: 'NR>=1 && $1>=3198 && $1<=4300')",
++      "Bash(awk -F: '$1>=3198 && $1<=4300')",
++      "Bash(awk -F: '$1>=3268 && $1<=3310')",
++      "Bash(awk -F: '$1>=3989 && $1<=4040')",
++      "Bash(awk -F: '$1>=3304 && $1<=3410')",
++      "Bash(awk -F: '$1>=3922 && $1<=4310')",
++      "Bash(awk -F: '$1>=3988 && $1<=4035')",
++      "Bash(awk -F: '$1>=3988 && $1<=4034')",
++      "Bash(awk -F: '$1>=4260 && $1<=4295')",
++      "Bash(awk -F: '$1>=3940 && $1<=3960')",
++      "Bash(awk -F: '$1>=3946 && $1<=4340')",
++      "Bash(git restore *)",
++      "Bash(git stash *)",
++      "Bash(git *)"
+     ]
+   }
+ }
+diff --git a/src/components/AddressSearch.jsx b/src/components/AddressSearch.jsx
+index c1edb02..445f784 100644
+--- a/src/components/AddressSearch.jsx
++++ b/src/components/AddressSearch.jsx
+@@ -116,11 +116,11 @@ export function AddressSearch({ value, onChange, onApartmentsLoaded, onAddressSe
+           return;
+         }
+ 
+-        const apts = await fetchApartments(code);
++        const { apartments: apts, meta } = await fetchApartments(code);
+         if (apts.length === 0) {
+           setError("Korterite andmeid ei leitud. Sisesta käsitsi.");
+         } else {
+-          onApartmentsLoaded(apts);
++          onApartmentsLoaded(apts, meta);
+         }
+       } catch (err) {
+         console.error("[AddressSearch] korterite laadimine ebaõnnestus:", err);
+diff --git a/src/domain/planSchema.js b/src/domain/planSchema.js
+index 0a3e58e..ed3ef2d 100644
+--- a/src/domain/planSchema.js
++++ b/src/domain/planSchema.js
+@@ -35,6 +35,14 @@ export function mkInvestmentItem({
+   };
+ }
+ 
++export function mkRfUsageItem({
++  linkedAssetConditionId = null,
++  remondifondistKaetavSumma = 0,
++  markus = "",
++} = {}) {
++  return { id: uid(), linkedAssetConditionId, remondifondistKaetavSumma, markus };
++}
++
+ export function mkLoan({
+   name = "",
+   principalEUR = 0,
+@@ -44,8 +52,27 @@ export function mkLoan({
+   startYM = "",
+   reservePct = 0,
+   sepiiriostudInvId = null,
++  // Tab 2 metaandmed ja perioodikulu väljad
++  laenuandja = "",
++  laenuandjaKirjeldus = "",
++  eesmärk = "",
++  eesmärkKirjeldus = "",
++  pohiosPerioodis = 0,
++  intressPerioodis = 0,
++  teenustasudPerioodis = 0,
++  allocationBasis = "m2",
++  legalBasisSeadus = true,
++  legalBasisBylaws = false,
++  legalBasisSpecialAgreement = false,
++  legalBasisMuu = false,
++  legalBasisTaepsustus = "",
+ } = {}) {
+-  return { id: uid(), name, principalEUR, annualRatePct, termMonths, type, startYM, reservePct, sepiiriostudInvId };
++  return {
++    id: uid(), name, principalEUR, annualRatePct, termMonths, type, startYM, reservePct, sepiiriostudInvId,
++    laenuandja, laenuandjaKirjeldus, eesmärk, eesmärkKirjeldus,
++    pohiosPerioodis, intressPerioodis, teenustasudPerioodis,
++    allocationBasis, legalBasisSeadus, legalBasisBylaws, legalBasisSpecialAgreement, legalBasisMuu, legalBasisTaepsustus,
++  };
+ }
+ 
+ export function defaultPlan({ year = new Date().getFullYear() } = {}) {
+@@ -71,10 +98,11 @@ export function defaultPlan({ year = new Date().getFullYear() } = {}) {
+       items: [],
+     },
+     funds: {
+-      repairFund: { monthlyRateEurPerM2: 0 },
++      repairFund: { monthlyRateEurPerM2: 0, usageItems: [] },
+       reserve: { plannedEUR: 0 },
+     },
+     loans: [],
++    removedDefaultKommunaalCategories: [],
+     openingBalances: {
+       repairFundEUR: 0,
+       reserveEUR: 0,
+diff --git a/src/engine/allocationBasisWiring.test.js b/src/engine/allocationBasisWiring.test.js
+index 997c3cc..05680e2 100644
+--- a/src/engine/allocationBasisWiring.test.js
++++ b/src/engine/allocationBasisWiring.test.js
+@@ -63,6 +63,53 @@ describe("allocationPolicies → computePlan wiring", () => {
+     expect(getEffectiveAllocationBasis(plan.allocationPolicies.reserve)).toBe("m2");
+   });
+ 
++  it('maintenance overrideBasis="apartment" + legalBasis="pohikiri" → jaotub korteri kaupa (sama mis "korter")', () => {
++    const planKorter = mkPlanWithTwoApartments();
++    planKorter.allocationPolicies.maintenance.overrideBasis = "korter";
++    planKorter.allocationPolicies.maintenance.legalBasis = "pohikiri";
++
++    const planApartment = mkPlanWithTwoApartments();
++    planApartment.allocationPolicies.maintenance.overrideBasis = "apartment";
++    planApartment.allocationPolicies.maintenance.legalBasis = "pohikiri";
++
++    const resK = computePlan(planKorter);
++    const resA = computePlan(planApartment);
++    expect(resA.apartmentPayments[0].operationalMonthlyEUR).toBeCloseTo(resK.apartmentPayments[0].operationalMonthlyEUR, 5);
++    expect(resA.apartmentPayments[1].operationalMonthlyEUR).toBeCloseTo(resK.apartmentPayments[1].operationalMonthlyEUR, 5);
++  });
++
++  it('"apartment" korral jagatakse summa korterite arvuga võrdselt', () => {
++    const plan = mkPlanWithTwoApartments();
++    plan.allocationPolicies.maintenance.overrideBasis = "apartment";
++    plan.allocationPolicies.maintenance.legalBasis = "pohikiri";
++    const res = computePlan(plan);
++    const [a, b] = res.apartmentPayments;
++    expect(a.operationalMonthlyEUR).toBeCloseTo(b.operationalMonthlyEUR, 2);
++  });
++
++  it('"apartment" remondifondis → jaotub korteri kaupa (sama mis "korter")', () => {
++    const planKorter = mkPlanWithTwoApartments();
++    planKorter.allocationPolicies.remondifond.overrideBasis = "korter";
++    planKorter.allocationPolicies.remondifond.legalBasis = "pohikiri";
++
++    const planApartment = mkPlanWithTwoApartments();
++    planApartment.allocationPolicies.remondifond.overrideBasis = "apartment";
++    planApartment.allocationPolicies.remondifond.legalBasis = "pohikiri";
++
++    const resK = computePlan(planKorter);
++    const resA = computePlan(planApartment);
++    expect(resA.apartmentPayments[0].repairFundMonthlyEUR).toBeCloseTo(resK.apartmentPayments[0].repairFundMonthlyEUR, 5);
++    expect(resA.apartmentPayments[1].repairFundMonthlyEUR).toBeCloseTo(resK.apartmentPayments[1].repairFundMonthlyEUR, 5);
++  });
++
++  it('"m2" alus jääb pindalapõhiseks — "apartment" ei mõjuta m² jaotust', () => {
++    const plan = mkPlanWithTwoApartments();
++    // vaikimisi m2, ei seta overrideBasis-i
++    const res = computePlan(plan);
++    const [a, b] = res.apartmentPayments;
++    expect(a.operationalMonthlyEUR / b.operationalMonthlyEUR).toBeCloseTo(30 / 70, 3);
++  });
++
+   it('regressioon: ainult toggle ON (overrideBasis="korter", legalBasis=null) ei muuda computePlan väljundit', () => {
+     // Kasutaja avab erandi UI ('toggle ON') aga ei ole veel alust kinnitanud.
+     // State sisaldab overrideBasis="korter" + legalBasis=null → arithmetic peab jääma
+diff --git a/src/engine/computePlan.js b/src/engine/computePlan.js
+index 087ebe0..af457a7 100644
+--- a/src/engine/computePlan.js
++++ b/src/engine/computePlan.js
+@@ -203,10 +203,21 @@ export function computePlan(plan, { loanStatus = "APPROVED" } = {}) {
+       (ln.startYM || `${year}-01`)
+     );
+     const svc = loanServiceInPeriod(sched, period.start, period.end);
+-    const servicingPeriodEUR = round2(svc.total);
++
++    // Manual period amounts (Tab 2 fields) take precedence over amortization schedule
++    // when the user has explicitly entered them. Planned loans (sepiiriostudInvId) always
++    // use the amortization schedule since no actual payments have been made yet.
++    const manualPrincipal = round2(N(ln.pohiosPerioodis));
++    const manualInterest = round2(N(ln.intressPerioodis));
++    const feesPeriodEUR = round2(N(ln.teenustasudPerioodis));
++    const hasManual = !ln.sepiiriostudInvId && (manualPrincipal > 0 || manualInterest > 0);
++
++    const principalPeriodEUR = hasManual ? manualPrincipal : round2(svc.principal);
++    const interestPeriodEUR = hasManual ? manualInterest : round2(svc.interest);
++    const servicingPeriodEUR = round2(principalPeriodEUR + interestPeriodEUR + feesPeriodEUR);
+     const servicingMonthlyEUR = round2(servicingPeriodEUR / monthEq);
+     const reservePeriodEUR = round2(servicingPeriodEUR * N(ln.reservePct) / 100);
+-    return { id: ln.id, servicingPeriodEUR, servicingMonthlyEUR, reservePeriodEUR };
++    return { id: ln.id, servicingPeriodEUR, servicingMonthlyEUR, reservePeriodEUR, principalPeriodEUR, interestPeriodEUR, feesPeriodEUR };
+   });
+ 
+   const loanItems = mapLoanItems(baseLoans);
+@@ -254,7 +265,7 @@ export function computePlan(plan, { loanStatus = "APPROVED" } = {}) {
+   const maintenanceBasis = getEffectiveAllocationBasis(p.allocationPolicies?.maintenance);
+   const repairFundBasis = getEffectiveAllocationBasis(p.allocationPolicies?.remondifond);
+   const shareFor = (basis, apt) => {
+-    if (basis === "korter") return apartmentsCount > 0 ? 1 / apartmentsCount : 0;
++    if (basis === "korter" || basis === "apartment") return apartmentsCount > 0 ? 1 / apartmentsCount : 0;
+     return totAreaM2 > 0 ? N(apt.areaM2) / totAreaM2 : 0;
+   };
+ 
+diff --git a/src/services/ehrService.js b/src/services/ehrService.js
+index 9bf5265..4093223 100644
+--- a/src/services/ehrService.js
++++ b/src/services/ehrService.js
+@@ -68,10 +68,12 @@ export async function fetchBuildingCode(adsOid) {
+ }
+ 
+ /**
+- * Korterite andmed — EHR ehitisregistri buildingData
++ * Korterite andmed + hoone metaandmed — EHR ehitisregistri buildingData
+  * @param {string} ehrCode — hoone EHR kood (nt "120726980")
+- * @returns {Promise<Array<{ number: string, area: number }>>}
+- * Sorteeritud loomuliku sortimise järgi (1, 2, 3, …, 10, 11)
++ * @returns {Promise<{ apartments: Array<{ number: string, area: number, koetavPind: number|null }>, meta: object }>}
++ * apartments on sorteeritud loomuliku sortimise järgi (1, 2, 3, …, 10, 11)
++ * apartments[].koetavPind — korteri köetav pind m² (ehitiseOsaPohiandmed.koetavPind), null kui puudub
++ * meta.* on null kui EHR vastuses välja ei leitud
+  */
+ export async function fetchApartments(ehrCode) {
+   const url = `https://livekluster.ehr.ee/api/building/v2/buildingData?ehr_code=${encodeURIComponent(ehrCode)}`;
+@@ -83,28 +85,42 @@ export async function fetchApartments(ehrCode) {
+     const apartments = [];
+     // EHR v2 vastus: ehitis on otse top-level, mitte ehpilesResult sees
+     const ehitis = data?.ehitis;
+-    if (!ehitis) return apartments;
++    if (!ehitis) return { apartments, meta: { ehrKood: ehrCode } };
+ 
+     const kehanded = ehitis.ehitiseKehand?.kehand;
+-    if (!Array.isArray(kehanded)) return apartments;
+-
+-    for (const kehand of kehanded) {
+-      const osad = kehand.ehitiseOsad?.ehitiseOsa;
+-      if (!Array.isArray(osad)) continue;
+-      for (const osa of osad) {
+-        if (osa.liik === "K" && osa.tahis) {
+-          // pind asub ehitiseOsaPohiandmed sees
+-          const pind = osa.ehitiseOsaPohiandmed?.pind;
+-          apartments.push({
+-            number: osa.tahis,
+-            area: parseFloat(pind) || 0,
+-          });
++    if (Array.isArray(kehanded)) {
++      for (const kehand of kehanded) {
++        const osad = kehand.ehitiseOsad?.ehitiseOsa;
++        if (!Array.isArray(osad)) continue;
++        for (const osa of osad) {
++          if (osa.liik === "K" && osa.tahis) {
++            // pind ja koetavPind asuvad ehitiseOsaPohiandmed sees
++            const osap = osa.ehitiseOsaPohiandmed ?? {};
++            const koetavRaw = parseFloat(osap.koetavPind);
++            apartments.push({
++              number: osa.tahis,
++              area: parseFloat(osap.pind) || 0,
++              koetavPind: isNaN(koetavRaw) ? null : koetavRaw,
++            });
++          }
+         }
+       }
+     }
+ 
+     apartments.sort((a, b) => naturalCompare(a.number, b.number));
+-    return apartments;
++
++    // Hoone metaandmed — EHR v2 tegelikud väljanimed (kontrollitud 104023768 näitel)
++    // suletudNetopind ja koetavPind EI OLE siin — need summeeritakse korterite tasemelt
++    const p = ehitis.ehitisePohiandmed ?? {};   // NB: ehitisePohiandmed, mitte ehitisPohiandmed
++    const andmed = ehitis.ehitiseAndmed ?? {};   // esmaneKasutus = ehitusaasta
++
++    const meta = {
++      ehrKood: ehrCode,
++      ehitusaasta: andmed.esmaneKasutus ?? null,   // "1977"
++      korrusteArv: p.maxKorrusteArv ?? null,        // maxKorrusteArv, mitte korrusteArv
++    };
++
++    return { apartments, meta };
+   } catch (err) {
+     throw new Error(`Korterite päring ebaõnnestus: ${err.message}`);
+   }
+diff --git a/src/utils/jaotusalus.test.js b/src/utils/jaotusalus.test.js
+index 1c0369e..dd2fffa 100644
+--- a/src/utils/jaotusalus.test.js
++++ b/src/utils/jaotusalus.test.js
+@@ -6,20 +6,43 @@ import { kulureaOsa, jaotusalusSilt, computeRemondifondiArvutus, KOMMUNAALTEENUS
+ // ══════════════════════════════════════════════════════════════════════
+ 
+ describe("jaotusalusSilt helper", () => {
+-  it('"m2" => "m² järgi"', () => {
+-    expect(jaotusalusSilt("m2")).toBe("m² järgi");
++  it('"m2" => "Kaasomandi osa suuruse alusel"', () => {
++    expect(jaotusalusSilt("m2")).toBe("Kaasomandi osa suuruse alusel");
+   });
+ 
+-  it('"korter" => "korterite vahel võrdselt"', () => {
+-    expect(jaotusalusSilt("korter")).toBe("korterite vahel võrdselt");
++  it('"kaasomand" => "Kaasomandi osa suuruse alusel"', () => {
++    expect(jaotusalusSilt("kaasomand")).toBe("Kaasomandi osa suuruse alusel");
+   });
+ 
+-  it('puuduv (undefined) => "m² järgi"', () => {
+-    expect(jaotusalusSilt(undefined)).toBe("m² järgi");
++  it('"korter" => "Korteri kohta"', () => {
++    expect(jaotusalusSilt("korter")).toBe("Korteri kohta");
+   });
+ 
+-  it('null => "m² järgi"', () => {
+-    expect(jaotusalusSilt(null)).toBe("m² järgi");
++  it('"apartment" => "Korteri kohta"', () => {
++    expect(jaotusalusSilt("apartment")).toBe("Korteri kohta");
++  });
++
++  it('"muu" => "Muu"', () => {
++    expect(jaotusalusSilt("muu")).toBe("Muu");
++  });
++
++  it('"other" => "Muu"', () => {
++    expect(jaotusalusSilt("other")).toBe("Muu");
++  });
++
++  it('puuduv (undefined) => "Kaasomandi osa suuruse alusel"', () => {
++    expect(jaotusalusSilt(undefined)).toBe("Kaasomandi osa suuruse alusel");
++  });
++
++  it('null => "Kaasomandi osa suuruse alusel"', () => {
++    expect(jaotusalusSilt(null)).toBe("Kaasomandi osa suuruse alusel");
++  });
++
++  it('"m² järgi" ei esine enam jaotusaluse display-sõnastusena', () => {
++    const allValues = ["m2", "kaasomand", "korter", "apartment", "muu", "other", undefined, null];
++    for (const v of allValues) {
++      expect(jaotusalusSilt(v)).not.toBe("m² järgi");
++    }
+   });
+ });
+ 
+diff --git a/src/utils/majanduskavaCalc.js b/src/utils/majanduskavaCalc.js
+index 7aed0a0..80b408b 100644
+--- a/src/utils/majanduskavaCalc.js
++++ b/src/utils/majanduskavaCalc.js
+@@ -2,7 +2,14 @@
+ // Pure financial calculation functions extracted from MajanduskavaApp.jsx
+ 
+ export const KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus", "Muu kommunaalteenus"];
+-export const HALDUSTEENUSED = ["Haldus", "Raamatupidamine", "Koristus", "Kindlustus", "Hooldus", "Prügivedu", "Muu haldusteenus"];
++export const HALDUSTEENUSED = [
++  // Legacy values kept for backward compat with saved plans
++  "Haldus", "Hooldus", "Muu haldusteenus",
++  // Current Tab 2 haldus category values
++  "Valitseja / halduri tasu", "Raamatupidamine", "Koristus", "Kindlustus",
++  "Tehnosüsteemide hooldus", "Pangatasud", "Audit / revisjon", "Õigusabi",
++  "Heakord", "Liftihooldus", "Tuleohutuse kontroll / hooldus", "Prügivedu", "Muu teenus",
++];
+ export const LAENUMAKSED = ["Laenumakse"];
+ 
+ // KrtS § 41 lg 1 p 5 — kommunaalteenuste liigid.
+@@ -39,8 +46,9 @@ export function utilityRowStatus(row) {
+ // ja canonical "apartment" (rea-mudel allocationBasis). Backward-compat kiht, mitte
+ // uus paralleelne canonical mudel — eemaldatakse, kui allocationPolicies migreeritud.
+ export function jaotusalusSilt(jaotusalus) {
+-  if (jaotusalus === "korter" || jaotusalus === "apartment") return "korterite vahel võrdselt";
+-  return "m² järgi";
++  if (jaotusalus === "korter" || jaotusalus === "apartment") return "Korteri kohta";
++  if (jaotusalus === "muu" || jaotusalus === "other") return "Muu";
++  return "Kaasomandi osa suuruse alusel"; // m2, kaasomand, null, undefined
+ }
+ 
+ // Reapõhise kulurea efektiivne jaotusalus (Valik B).
+@@ -209,8 +217,12 @@ export function computeRemondifondiArvutus({
+   loanStatus,
+   monthEq,
+   costRows = [],
++  rfUsageItems = [],
++  planeeritudKogumine = null,
++  fondiMuuTulu = 0,
+ }) {
+   const saldoAlgus = Math.round(parseFloat(String(saldoAlgusRaw).replace(",", ".")) || 0);
++  const fondiMuuTuluRaw = Math.round(parseFloat(String(fondiMuuTulu || 0).replace(",", ".")) || 0);
+   const koikInv = investments;
+ 
+   const isConditional = (inv) => (inv.fundingPlan || []).some(fp => fp.source === "Laen");
+@@ -288,21 +300,30 @@ export function computeRemondifondiArvutus({
+       .reduce((sum, l) => sum + arvutaKuumakse(l.principalEUR, l.annualRatePct, parseInt(l.termMonths) || 0), 0);
+     const laenumaksedKuus = planeeritudLaenumaksedKuus + olemasolevLaenumaksedKuus;
+ 
+-    const maarKuusM2 = maarOverride ?? 0;
++    const plKogumine = planeeritudKogumine != null
++      ? Math.round(parseFloat(String(planeeritudKogumine).replace(",", ".")) || 0) : null;
++    const maarKuusM2Legacy = maarOverride ?? 0;
++    const laekuminePerioodis = (plKogumine != null && plKogumine > 0)
++      ? plKogumine
++      : Math.round(maarKuusM2Legacy * 12 * koguPind * mEq / 12);
++    const maarKuusM2 = (plKogumine != null && plKogumine > 0)
++      ? (koguPind > 0 && mEq > 0 ? laekuminePerioodis / (koguPind * mEq) : 0)
++      : maarKuusM2Legacy;
+     const maarAastasM2 = maarKuusM2 * 12;
+-    const laekuminePerioodis = Math.round(maarAastasM2 * koguPind * mEq / 12);
+-    const remondifondistKaetavadKokku = investRemondifondist + p2Remondifondist;
+-    const saldoLopp = saldoAlgus + laekuminePerioodis - remondifondistKaetavadKokku;
++    const rfUsageRemondifondist = Math.round(rfUsageItems.reduce((s, it) => s + (parseFloat(it.remondifondistKaetavSumma) || 0), 0));
++    const remondifondistKaetavadKokku = investRemondifondist + p2Remondifondist + rfUsageRemondifondist;
++    const saldoLopp = saldoAlgus + laekuminePerioodis + fondiMuuTuluRaw - remondifondistKaetavadKokku;
+     const katab = saldoLopp >= nextPeriodRfVajadus;
+ 
+     return {
+       saldoAlgus, maarAastasM2, koguPind, laekuminePerioodis,
+-      investRemondifondist, p2Remondifondist, remondifondistKaetavadKokku,
++      investRemondifondist, p2Remondifondist, rfUsageRemondifondist, remondifondistKaetavadKokku,
+       nextPeriodRfVajadus, katab,
+       saldoLopp, onLaen, invDetail,
+       laenumaksedKuus, planeeritudLaenumaksedKuus, olemasolevLaenumaksedKuus,
+       maarKuusM2,
+-      kasitsiMaar: maarOverride != null,
++      kasitsiMaar: maarOverride != null || (plKogumine != null && plKogumine > 0),
++      fondiMuuTulu: fondiMuuTuluRaw,
+     };
+   };
+ 
+@@ -325,3 +346,111 @@ export function computeRemondifondiArvutus({
+     loanApproved: loanStatus === "APPROVED",
+   };
+ }
++
++// ── Kommunaalteenuste vaikimisi ühikud ja standardread ──────────────────────
++export const KOMMUNAAL_VAIKE_UHIK = {
++  "Kütus": "m³",
++  "Soojus": "MWh",
++  "Vesi ja kanalisatsioon": "m³",
++  "Elekter": "kWh",
++};
++
++// KrtS § 41 lg 1 p 5 — kohustuslikud standardteenused uuel plaanil.
++// Kütus on vabatahtlik — lisa eraldi nupu kaudu.
++export const KOMMUNAAL_DEFAULT_CATEGORIES = ["Soojus", "Vesi ja kanalisatsioon", "Elekter"];
++
++const _uid = () => Math.random().toString(36).slice(2, 9);
++
++// Creates a fully-initialised kommunaal cost row with isDefault: true.
++export function makeKommunaalRow(category) {
++  return {
++    id: _uid(),
++    side: "COST",
++    category,
++    name: category,
++    utilityType: UTILITY_TYPE_BY_CATEGORY[category] || null,
++    kogus: "",
++    uhik: KOMMUNAAL_VAIKE_UHIK[category] || "",
++    uhikuHind: "",
++    summaInput: 0,
++    selgitus: "",
++    isDefault: true,
++    notApplicable: false,
++    forecastAdjustmentEnabled: false,
++    forecastAdjustmentType: null,
++    forecastAdjustmentPercent: null,
++    forecastAdjustmentNote: "",
++    allocationBasis: "m2",
++    legalBasisBylaws: false,
++    legalBasisSpecialAgreement: false,
++    allocationExplanation: "",
++    settledPostHoc: false,
++    fundingSource: "eelarve",
++    recursNextPeriod: false,
++    nextPeriodAmount: null,
++    legalBasisSeadus: true,
++    legalBasisMuu: false,
++    legalBasisTaepsustus: "",
++    allocationBasisMuuKirjeldus: "",
++    muuTeenusKirjeldus: "",
++    legal: { bucket: "OPERATIONAL", category: "MAINTENANCE", targetedFund: null },
++    calc: { type: "FIXED_PERIOD", params: { amountEUR: 0 } },
++  };
++}
++
++// Idempotent: seeds missing standard kommunaalread into a plan without duplicating.
++// Respects plan.removedDefaultKommunaalCategories — categories the user has intentionally removed.
++// "Tühjenda" resets removedDefaultKommunaalCategories: [] before calling this.
++export function seedDefaultKommunaalRows(plan) {
++  const removed = new Set(plan.removedDefaultKommunaalCategories || []);
++  const existing = new Set(
++    (plan.budget?.costRows || [])
++      .filter(r => KOMMUNAAL_DEFAULT_CATEGORIES.includes(r.category))
++      .map(r => r.category)
++  );
++  const missing = KOMMUNAAL_DEFAULT_CATEGORIES.filter(cat => !existing.has(cat) && !removed.has(cat));
++  if (missing.length === 0) return plan;
++  return {
++    ...plan,
++    budget: {
++      ...plan.budget,
++      costRows: [...(plan.budget?.costRows || []), ...missing.map(makeKommunaalRow)],
++    },
++  };
++}
++
++// Normalizes income row allocations — handles both new incomeAllocations model and
++// legacy incomeUse/targetFund/fundDirectedAmount fields.
++export function normalizeIncomeAllocations(row) {
++  const rowSumma = Math.round(parseFloat(row.summaInput) || 0);
++
++  if (Array.isArray(row.incomeAllocations) && row.incomeAllocations.length > 0) {
++    const allocs = row.incomeAllocations;
++    const totalAllocated = Math.round(allocs.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0));
++    const errors = [];
++    if (row.incomeAllocation === "targeted") {
++      allocs.forEach(a => {
++        if (!a.target) errors.push("Kõigil suunamistel peab olema sihtkoht.");
++        if (!(parseFloat(a.amount) > 0)) errors.push("Kõigil suunamistel peab olema summa.");
++        if ((parseFloat(a.amount) || 0) < 0) errors.push("Summa ei tohi olla negatiivne.");
++      });
++      if (rowSumma > 0 && totalAllocated !== rowSumma)
++        errors.push("Suunatud summad peavad kokku andma kogu tulu summa.");
++    }
++    return { allocations: allocs, totalAllocated, unallocatedAmount: rowSumma - totalAllocated, isValid: errors.length === 0, errors };
++  }
++
++  if (row.incomeAllocation === "targeted") {
++    return { allocations: [], totalAllocated: 0, unallocatedAmount: rowSumma, isValid: false, errors: ["Vähemalt üks suunamine peab olema."] };
++  }
++
++  // Legacy fallback: old incomeUse/targetFund/fundDirectedAmount model
++  if (row.incomeUse === "fund" && row.targetFund) {
++    const directed = (row.fundDirectedAmount !== "" && row.fundDirectedAmount != null)
++      ? Math.max(0, Math.min(Math.round(parseFloat(row.fundDirectedAmount) || 0), rowSumma))
++      : rowSumma;
++    return { allocations: [{ id: "__legacy__", target: row.targetFund, amount: directed, note: "" }], totalAllocated: directed, unallocatedAmount: rowSumma - directed, isValid: true, errors: [] };
++  }
++
++  return { allocations: [], totalAllocated: 0, unallocatedAmount: rowSumma, isValid: true, errors: [] };
++}
+diff --git a/src/utils/policyExceptionLocation.test.js b/src/utils/policyExceptionLocation.test.js
+index e124863..99e4cda 100644
+--- a/src/utils/policyExceptionLocation.test.js
++++ b/src/utils/policyExceptionLocation.test.js
+@@ -20,12 +20,16 @@ describe("Jaotusaluse erandi UI paigutus", () => {
+     expect(src).toContain("const renderPolicyException");
+   });
+ 
+-  it("renderPolicyException kutsutakse remondifondile, reservkapitalile ja maintenance'ile", () => {
+-    expect(src).toContain('renderPolicyException("remondifond")');
++  it("renderPolicyException kutsutakse reservkapitalile ja maintenance'ile", () => {
+     expect(src).toContain('renderPolicyException("reserve")');
+     expect(src).toContain('renderPolicyException("maintenance")');
+   });
+ 
++  it("remondifond kasutab oma inline jaotusaluse UI-d (patchRfPolicy)", () => {
++    expect(src).toContain("patchRfPolicy");
++    expect(src).toContain("Kulude jaotuse alus");
++  });
++
+   it("maintenance-erand on seotud ainult HALDUSTEENUSED kuluridadega", () => {
+     expect(src).toMatch(/HALDUSTEENUSED\.includes\(r\.category\)\s*&&\s*renderPolicyException\("maintenance"\)/);
+   });
+diff --git a/src/utils/printStructure.test.js b/src/utils/printStructure.test.js
+index 5cb7b69..bca0309 100644
+--- a/src/utils/printStructure.test.js
++++ b/src/utils/printStructure.test.js
+@@ -53,7 +53,7 @@ describe("print/PDF sektsioonide struktuur", () => {
+     const kaasomandIdx = src.indexOf('print-section-title">Ülevaade kaasomandi eseme seisukorrast ja kavandatavatest toimingutest');
+     expect(kaasomandIdx).toBeGreaterThan(-1);
+     // Fallback tekst peab olema olemas (kuvatakse kui seisukorra ridu pole)
+-    expect(src).toContain("Kaasomandi eseme seisukorra andmed on sisestamata.");
++    expect(src).toContain("Andmeid ei ole sisestatud.");
+   });
+ 
+   it("print-content plokk on isPrinting tingimusega", () => {
+@@ -70,7 +70,7 @@ describe("print/PDF sektsioonide struktuur", () => {
+     const p4Title = 'print-section-title">Reservkapitali ja remondifondi tehtavate maksete suurus';
+     const p4Idx = src.indexOf(p4Title);
+     expect(p4Idx).toBeGreaterThan(-1);
+-    const p4Region = src.slice(p4Idx, p4Idx + 2000);
++    const p4Region = src.slice(p4Idx, p4Idx + 3000);
+     // Kõik waterfall read peavad olema tingimusteta
+     expect(p4Region).toContain("Saldo perioodi alguses");
+     expect(p4Region).toContain("Laekumine perioodis");
+diff --git a/src/utils/reserveCapitalUI.test.js b/src/utils/reserveCapitalUI.test.js
+index 67568da..e2f0865 100644
+--- a/src/utils/reserveCapitalUI.test.js
++++ b/src/utils/reserveCapitalUI.test.js
+@@ -2,114 +2,156 @@ import { describe, it, expect } from "vitest";
+ import { computeReserveMin } from "./majanduskavaCalc";
+ 
+ // ══════════════════════════════════════════════════════════════════════
+-// Reservkapitali ploki regressioonitestid
++// Reservkapitali ploki invariandid
+ //
+ // Kontrollib:
+-// 1. computeReserveMin loogika ei muutunud
+-// 2. reservkapitali määr €/m²/kuu arvutatakse õigesti
+-// 3. algseis → kogumine → kasutamine → lõppseis voog on koherentne
+-// 4. katvus ja miinimum on arvutuslikult korrektsed
++// 1. computeReserveMin: nõutav reservkapital = aasta eeldatavad kulud / 12
++// 2. Aasta eeldatavad kulud tulevad kanonilisest arvutusest (costRows)
++// 3. Lõppsaldo = algsaldo + kogumine – kasutamine
++// 4. Hoiatus kui lõppsaldo < nõutav miinimum
++// 5. Planeeritud kogumine jääb kasutaja sisendiks (auto-fill eemaldatud)
++// 6. Remondifond ja laenud ei muutu
+ // ══════════════════════════════════════════════════════════════════════
+ 
+-describe("computeReserveMin ei muutu", () => {
+-  it("tagastab 1/12 aastakuludest KrtS § 8 järgi", () => {
+-    const costRows = [
+-      { summaInput: "12000" },
+-      { summaInput: "6000" },
+-    ];
++// ── 1 + 2. Nõutav reservkapital = aasta eeldatavad kulud / 12 ─────────────
++
++describe("nõutav reservkapital = aasta eeldatavad kulud / 12", () => {
++  it("12 kuu periood: noutavMiinimum = aastaKulud / 12", () => {
++    const costRows = [{ summaInput: "12000" }, { summaInput: "6000" }];
+     const r = computeReserveMin(costRows, 12);
+-    // periodiKulud = 18000, monthEq = 12 → noutavMiinimum = 18000/12 = 1500
+-    expect(r.noutavMiinimum).toBe(1500);
++    // aastaKulud = 18000, noutavMiinimum = 18000/12 = 1500
+     expect(r.aastaKulud).toBe(18000);
++    expect(r.noutavMiinimum).toBe(1500);
++    expect(r.noutavMiinimum).toBe(r.aastaKulud / 12);
+   });
+ 
+-  it("arvestab moonthEq-d (periood pole alati 12 kuud)", () => {
++  it("arvestab monthEq-d: 60 kuu periood", () => {
+     const costRows = [{ summaInput: "30000" }];
+     const r = computeReserveMin(costRows, 60);
+-    // periodiKulud = 30000, monthEq = 60 → noutavMiinimum = 30000/60 = 500
++    // periodiKulud = 30000, noutavMiinimum = 30000/60 = 500, aastaKulud = 6000
+     expect(r.noutavMiinimum).toBe(500);
+     expect(r.aastaKulud).toBe(6000);
++    expect(r.noutavMiinimum).toBe(r.aastaKulud / 12);
+   });
+ 
+-  it("tühja kuluridadega tagastab 0", () => {
++  it("tühja costRows-iga noutavMiinimum = 0", () => {
+     const r = computeReserveMin([], 12);
+     expect(r.noutavMiinimum).toBe(0);
+     expect(r.aastaKulud).toBe(0);
+   });
++
++  it("üks kuluread: noutavMiinimum = see kulu / 12 (12 kuu periood)", () => {
++    const costRows = [{ summaInput: "2400" }];
++    const r = computeReserveMin(costRows, 12);
++    expect(r.noutavMiinimum).toBe(200);
++    expect(r.aastaKulud).toBe(2400);
++  });
+ });
+ 
+-describe("reservkapitali määr €/m²/kuu", () => {
+-  // Arvutus UI-s: rkKogumine / mEq / koguPind
+-  const calcRkMaarKuusM2 = (rkKogumine, mEq, koguPind) =>
+-    koguPind > 0 ? rkKogumine / mEq / koguPind : 0;
++// ── 2. Aasta eeldatavad kulud tulevad costRows-ist, mitte käsitsi väljast ─
+ 
+-  it("arvutatakse õigesti tavajuhul", () => {
+-    // 1200 € kogumine, 12 kuud, 200 m²
+-    // → 1200 / 12 / 200 = 0.50 €/m²/kuu
+-    expect(calcRkMaarKuusM2(1200, 12, 200)).toBeCloseTo(0.50, 2);
++describe("aasta eeldatavad kulud tulevad kanonilisest arvutusest", () => {
++  it("sama costRows → sama aastaKulud sõltumata muudest sisenditest", () => {
++    const costRows = [{ summaInput: "24000" }];
++    const r1 = computeReserveMin(costRows, 12);
++    const r2 = computeReserveMin(costRows, 12);
++    expect(r1.aastaKulud).toBe(r2.aastaKulud);
++    expect(r1.aastaKulud).toBe(24000);
+   });
+ 
+-  it("arvestab mEq-d (periood pole alati 12 kuud)", () => {
+-    // 5000 € kogumine, 60 kuud, 300 m²
+-    // → 5000 / 60 / 300 ≈ 0.28 €/m²/kuu
+-    expect(calcRkMaarKuusM2(5000, 60, 300)).toBeCloseTo(0.2778, 3);
++  it("erinev costRows → erinev aastaKulud", () => {
++    const r1 = computeReserveMin([{ summaInput: "12000" }], 12);
++    const r2 = computeReserveMin([{ summaInput: "24000" }], 12);
++    expect(r1.aastaKulud).not.toBe(r2.aastaKulud);
+   });
++});
+ 
+-  it("koguPind = 0 → 0 (ei jaga nulliga)", () => {
+-    expect(calcRkMaarKuusM2(1200, 12, 0)).toBe(0);
++// ── 3. Lõppsaldo valem ────────────────────────────────────────────────────
++
++describe("reservkapitali lõppsaldo = algsaldo + kogumine − kasutamine", () => {
++  const calcSaldo = (saldoAlgus, kogumine, kasutamine) =>
++    (parseFloat(saldoAlgus) || 0) + (kogumine || 0) - (parseFloat(kasutamine) || 0);
++
++  it("täisarvud: 5000 + 1200 − 300 = 5900", () => {
++    expect(calcSaldo("5000", 1200, "300")).toBe(5900);
+   });
+ 
+-  it("kogumine = 0 → 0", () => {
+-    expect(calcRkMaarKuusM2(0, 12, 200)).toBe(0);
++  it("tühja algsaldoga: 0 + 1500 − 0 = 1500", () => {
++    expect(calcSaldo("", 1500, "0")).toBe(1500);
++  });
++
++  it("negatiivne tulemus: 1000 + 500 − 2000 = -500", () => {
++    expect(calcSaldo("1000", 500, "2000")).toBe(-500);
++  });
++
++  it("kasutamine 0: lõppsaldo = algsaldo + kogumine", () => {
++    expect(calcSaldo("3000", 1000, "0")).toBe(4000);
++  });
++
++  it("kõik 0: lõppsaldo = 0", () => {
++    expect(calcSaldo("", 0, "")).toBe(0);
+   });
+ });
+ 
+-describe("algseis-kogumine-kasutamine-lõppseis voog", () => {
+-  // Simuleerib UI IIFE loogikat
+-  const calcSaldo = (saldoAlgus, kogumine, kasutamine) => ({
+-    rkSaldoAlgus: parseFloat(saldoAlgus) || 0,
+-    rkKogumine: kogumine || 0,
+-    rkKasutamine: parseFloat(kasutamine) || 0,
+-    rkSaldoLopp: (parseFloat(saldoAlgus) || 0) + (kogumine || 0) - (parseFloat(kasutamine) || 0),
++// ── 4. Hoiatus kui lõppsaldo < nõutav miinimum ───────────────────────────
++
++describe("hoiatus kui lõppsaldo jääb alla nõutava miinimumi", () => {
++  const vastab = (rkSaldoLopp, noutavMiinimum) => rkSaldoLopp >= noutavMiinimum;
++
++  it("lõppsaldo < nõutav → ei vasta (hoiatus kuvatakse)", () => {
++    expect(vastab(1499, 1500)).toBe(false);
++  });
++
++  it("lõppsaldo = nõutav → vastab (hoiatust ei kuvata)", () => {
++    expect(vastab(1500, 1500)).toBe(true);
+   });
+ 
+-  it("lõppsaldo = algsaldo + kogumine - kasutamine", () => {
+-    const s = calcSaldo("5000", 1200, "300");
+-    expect(s.rkSaldoLopp).toBe(5900);
++  it("lõppsaldo > nõutav → vastab (hoiatust ei kuvata)", () => {
++    expect(vastab(2000, 1500)).toBe(true);
+   });
+ 
+-  it("tühja algsaldoga lõppsaldo = kogumine - kasutamine", () => {
+-    const s = calcSaldo("", 1500, "0");
+-    expect(s.rkSaldoLopp).toBe(1500);
++  it("lõppsaldo = 0, nõutav = 0 → vastab", () => {
++    expect(vastab(0, 0)).toBe(true);
+   });
+ 
+-  it("negatiivne lõppsaldo, kui kasutamine ületab algsaldo + kogumine", () => {
+-    const s = calcSaldo("1000", 500, "2000");
+-    expect(s.rkSaldoLopp).toBe(-500);
++  it("negatiivne lõppsaldo → ei vasta", () => {
++    expect(vastab(-1, 1500)).toBe(false);
+   });
+ });
+ 
+-describe("katvus ja miinimum", () => {
+-  it("katvusKuud = lõppsaldo / kuukulud", () => {
+-    const kuuKulud = 1500;
+-    const rkSaldoLopp = 4500;
+-    const katvusKuud = kuuKulud > 0 ? rkSaldoLopp / kuuKulud : 0;
+-    expect(katvusKuud).toBe(3);
++// ── 5. Planeeritud kogumine on kasutaja sisend (ei kirjutata üle) ─────────
++
++describe("planeeritud kogumine jääb kasutaja sisendiks", () => {
++  it("computeReserveMin ei sisalda 'plannedEUR' välja (ei otsusta kogumise üle)", () => {
++    const r = computeReserveMin([{ summaInput: "12000" }], 12);
++    expect(r).not.toHaveProperty("plannedEUR");
++  });
++
++  it("computeReserveMin ei sisalda 'kogumineEUR' ega 'autoFill' välja", () => {
++    const r = computeReserveMin([{ summaInput: "12000" }], 12);
++    expect(r).not.toHaveProperty("kogumineEUR");
++    expect(r).not.toHaveProperty("autoFill");
++  });
++
++  it("noutavMiinimum on ainult soovituslik piir, mitte kogumise ettekirjutus", () => {
++    const r = computeReserveMin([{ summaInput: "12000" }], 12);
++    // Funktsiooni väljund on ainult informatsioon, mitte käsk plan.funds.reserve.plannedEUR-i seada
++    expect(typeof r.noutavMiinimum).toBe("number");
++    expect(Object.keys(r)).toEqual(["aastaKulud", "noutavMiinimum"]);
+   });
++});
++
++// ── 6. €/m²/kuu abikuva (informatsioon) ──────────────────────────────────
+ 
+-  it("katvusLabel: >= 3 → Hea, >= 1.5 → Rahuldav, muidu → Riskantne", () => {
+-    const label = (kuud) => kuud >= 3 ? "Hea" : kuud >= 1.5 ? "Rahuldav" : "Riskantne";
+-    expect(label(3)).toBe("Hea");
+-    expect(label(5)).toBe("Hea");
+-    expect(label(1.5)).toBe("Rahuldav");
+-    expect(label(2.9)).toBe("Rahuldav");
+-    expect(label(1.4)).toBe("Riskantne");
+-    expect(label(0)).toBe("Riskantne");
++describe("reservkapitali €/m²/kuu kuvamine", () => {
++  const calcRkMaarKuusM2 = (rkKogumine, mEq, koguPind) =>
++    koguPind > 0 ? rkKogumine / mEq / koguPind : 0;
++
++  it("1200 € kogumine, 12 kuud, 200 m² → 0,50 €/m²/kuu", () => {
++    expect(calcRkMaarKuusM2(1200, 12, 200)).toBeCloseTo(0.50, 2);
+   });
+ 
+-  it("vastab miinimumile, kui lõppsaldo >= noutavMiinimum", () => {
+-    const noutavMiinimum = 1500;
+-    expect(1500 >= noutavMiinimum).toBe(true);
+-    expect(1499 >= noutavMiinimum).toBe(false);
++  it("koguPind = 0 → 0 (ei jaga nulliga)", () => {
++    expect(calcRkMaarKuusM2(1200, 12, 0)).toBe(0);
+   });
+ });
