@@ -357,6 +357,17 @@ export const KOMMUNAAL_VAIKE_UHIK = {
   "Elekter": "kWh",
 };
 
+// KrtS § 41 lg 1 p 5 — kütuse alamliigid ja nende ühikud.
+export const FUEL_TYPES = ["Maagaas", "Pellet", "Hakkepuit", "Kütteõli", "Vedelgaas", "Muu"];
+export const FUEL_TYPE_UNITS = {
+  "Maagaas":   ["m³"],
+  "Pellet":    ["t"],
+  "Hakkepuit": ["t", "rm"],
+  "Kütteõli":  ["l"],
+  "Vedelgaas": ["l", "t"],
+  "Muu":       [],
+};
+
 // KrtS § 41 lg 1 p 5 — kohustuslikud standardteenused uuel plaanil.
 export const KOMMUNAAL_DEFAULT_CATEGORIES = ["Soojus", "Vesi", "Kanalisatsioon", "Elekter", "Kütus"];
 
@@ -370,6 +381,7 @@ export function makeKommunaalRow(category) {
     category,
     name: category,
     utilityType: UTILITY_TYPE_BY_CATEGORY[category] || null,
+    fuelType: null,
     kogus: "",
     uhik: KOMMUNAAL_VAIKE_UHIK[category] || "",
     uhikuHind: "",

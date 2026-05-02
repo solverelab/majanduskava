@@ -5,6 +5,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import {
   KOMMUNAAL_DEFAULT_CATEGORIES, KOMMUNAALTEENUSED, makeKommunaalRow,
   seedDefaultKommunaalRows, utilityRowStatus, migrateLegacyKommunaalCategories,
+  FUEL_TYPES, FUEL_TYPE_UNITS,
 } from "./majanduskavaCalc";
 import { defaultPlan } from "../domain/planSchema";
 
@@ -166,6 +167,15 @@ describe("makeKommunaalRow: väljad", () => {
 
   it("summaInput on 0, mitte tühi string", () => {
     expect(makeKommunaalRow("Elekter").summaInput).toBe(0);
+  });
+
+  it("Kütuse rea fuelType on null vaikimisi", () => {
+    expect(makeKommunaalRow("Kütus").fuelType).toBeNull();
+  });
+
+  it("teiste kommunaalridade fuelType on null", () => {
+    expect(makeKommunaalRow("Soojus").fuelType).toBeNull();
+    expect(makeKommunaalRow("Elekter").fuelType).toBeNull();
   });
 });
 
@@ -581,6 +591,88 @@ describe("migrateLegacyKommunaalCategories: Vesi ja kanalisatsioon → Vesi", ()
     expect(result.removedDefaultKommunaalCategories).not.toContain("Vesi ja kanalisatsioon");
     expect(result.removedDefaultKommunaalCategories).toContain("Vesi");
     expect(result.removedDefaultKommunaalCategories).toContain("Kanalisatsioon");
+  });
+});
+
+// ── 11. FUEL_TYPES / FUEL_TYPE_UNITS konstantid ──────────────────────────────
+
+describe("FUEL_TYPES: kütuse liigid", () => {
+  it("sisaldab kõiki eeldatavaid liike", () => {
+    expect(FUEL_TYPES).toContain("Maagaas");
+    expect(FUEL_TYPES).toContain("Pellet");
+    expect(FUEL_TYPES).toContain("Hakkepuit");
+    expect(FUEL_TYPES).toContain("Kütteõli");
+    expect(FUEL_TYPES).toContain("Vedelgaas");
+    expect(FUEL_TYPES).toContain("Muu");
+  });
+});
+
+describe("FUEL_TYPE_UNITS: ühikud kütuse liigi järgi", () => {
+  it("Maagaas → m³", () => {
+    expect(FUEL_TYPE_UNITS["Maagaas"]).toEqual(["m³"]);
+  });
+
+  it("Pellet → t", () => {
+    expect(FUEL_TYPE_UNITS["Pellet"]).toEqual(["t"]);
+  });
+
+  it("Hakkepuit → t ja rm", () => {
+    expect(FUEL_TYPE_UNITS["Hakkepuit"]).toContain("t");
+    expect(FUEL_TYPE_UNITS["Hakkepuit"]).toContain("rm");
+  });
+
+  it("Kütteõli → l", () => {
+    expect(FUEL_TYPE_UNITS["Kütteõli"]).toEqual(["l"]);
+  });
+
+  it("Vedelgaas → l ja t", () => {
+    expect(FUEL_TYPE_UNITS["Vedelgaas"]).toContain("l");
+    expect(FUEL_TYPE_UNITS["Vedelgaas"]).toContain("t");
+  });
+
+  it("Muu → tühi massiiv (vabatekst)", () => {
+    expect(FUEL_TYPE_UNITS["Muu"]).toEqual([]);
+  });
+});
+
+// ── 12. Tab 3 UI: fuelType (allikainspektion) ────────────────────────────────
+
+describe("Tab 3 UI: Kütuse liigi väli", () => {
+  it("Tab 3-s on 'Kütuse liik' silt", () => {
+    expect(src).toContain("Kütuse liik");
+  });
+
+  it("Kütuse liigi valik kasutab FUEL_TYPES massiivi", () => {
+    const fuelIdx = src.indexOf("isKütus && (");
+    const fuelBlock = src.slice(fuelIdx, fuelIdx + 1200);
+    expect(fuelBlock).toContain("FUEL_TYPES");
+  });
+
+  it("fuelType muutus kasutab FUEL_TYPE_UNITS ühiku vahetamiseks", () => {
+    const fuelIdx = src.indexOf("isKütus && (");
+    const fuelBlock = src.slice(fuelIdx, fuelIdx + 800);
+    expect(fuelBlock).toContain("FUEL_TYPE_UNITS");
+  });
+
+  it("Muu fuelType puhul on ühik vabatekst-väli", () => {
+    const uhikFreeTekstIdx = src.indexOf("uhikuFreeTekst");
+    expect(uhikFreeTekstIdx).toBeGreaterThan(-1);
+  });
+
+  it("fuelType tühjendamisel sea uhik tühjaks — ei tohi kasutada KOMMUNAAL_VAIKE_UHIK vaikeväärtust", () => {
+    const fuelIdx = src.indexOf("isKütus && (");
+    const fuelBlock = src.slice(fuelIdx, fuelIdx + 800);
+    // Õige: tühjendamisel uhik = ""
+    expect(fuelBlock).toContain('uhik = ""');
+    // Vale: tühjendamisel ei tohi määrata vaikeväärtust
+    expect(fuelBlock).not.toContain('KOMMUNAAL_VAIKE_UHIK["Kütus"]');
+  });
+
+  it("fuelType vahetusel ei valita automaatselt uue liigi esimest ühikut — uhik jääb tühjaks", () => {
+    const fuelIdx = src.indexOf("isKütus && (");
+    const fuelBlock = src.slice(fuelIdx, fuelIdx + 800);
+    // Vale muster: allowedUnits[0] poleks tohtinud olla uhik vaikeväärtus
+    expect(fuelBlock).not.toContain("allowedUnits[0]");
   });
 });
 

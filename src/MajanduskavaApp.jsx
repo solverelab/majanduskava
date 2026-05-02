@@ -18,6 +18,7 @@ import {
   UTILITY_TYPE_BY_CATEGORY, utilityTypeForRow, utilityRowStatus,
   KOMMUNAALTEENUSED, HALDUSTEENUSED, LAENUMAKSED,
   seedDefaultKommunaalRows, makeKommunaalRow, KOMMUNAAL_DEFAULT_CATEGORIES,
+  FUEL_TYPES, FUEL_TYPE_UNITS,
   normalizeIncomeAllocations,
 } from "./utils/majanduskavaCalc";
 import { sortInvestmentsCanonical } from "./utils/sortInvestments";
@@ -1347,12 +1348,14 @@ export default function App() {
       patch.uhikuHind = "";
       patch.arvutus = undefined;
       patch.summaInput = 0;
+      patch.fuelType = null;
     } else {
       patch.arvutus = "aastas";
       patch.summaInput = 0;
       patch.kogus = undefined;
       patch.uhik = undefined;
       patch.uhikuHind = undefined;
+      patch.fuelType = null;
     }
     updateRow("COST", id, patch);
   };
@@ -1880,10 +1883,14 @@ export default function App() {
     const isKommunaal = KOMMUNAALTEENUSED.includes(r.category);
     const isMuuKomm   = r.category === "Muu kommunaalteenus";
     const isMuuHaldus = r.category === "Muu haldusteenus";
+    const isKütus     = r.category === "Kütus";
     // Haru A: mõõdetavad kommunaalteenused (Soojus, Vesi, Elekter, Kütus)
     const showKogusUhik = isKommunaal && !isMuuKomm;
     // Nimetus: ainult "Muu" kategooriate puhul — muud on ise oma nimetus
     const showNimetus = isMuuKomm || isMuuHaldus;
+    // Kütus: ühikuvalikud sõltuvad fuelType'ist
+    const fuelUhikud = isKütus && r.fuelType && r.fuelType !== "Muu" ? FUEL_TYPE_UNITS[r.fuelType] || [] : null;
+    const uhikuFreeTekst = isKütus && r.fuelType === "Muu";
 
     return (
       <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
@@ -1929,6 +1936,33 @@ export default function App() {
             </div>
           )}
 
+          {/* Kütuse liik — ainult Kütus kategooria puhul */}
+          {isKütus && (
+            <div style={{ width: 140 }}>
+              <div style={fieldLabel}>Kütuse liik</div>
+              <select
+                value={r.fuelType || ""}
+                onChange={(e) => {
+                  const newFuelType = e.target.value || null;
+                  const allowedUnits = newFuelType && newFuelType !== "Muu" ? (FUEL_TYPE_UNITS[newFuelType] || []) : [];
+                  let uhik = r.uhik;
+                  if (!newFuelType) {
+                    uhik = "";
+                  } else if (newFuelType === "Muu") {
+                    uhik = "";
+                  } else if (!allowedUnits.includes(r.uhik)) {
+                    uhik = "";
+                  }
+                  updateRow("COST", r.id, { fuelType: newFuelType, uhik });
+                }}
+                style={{ ...selectStyle, width: "100%" }}
+              >
+                <option value="">— vali liik —</option>
+                {FUEL_TYPES.map(ft => <option key={ft} value={ft}>{ft}</option>)}
+              </select>
+            </div>
+          )}
+
           {/* Haru A: Kogus × ühik (mõõdetavad kommunaalteenused) */}
           {showKogusUhik ? (
             <>
@@ -1951,15 +1985,24 @@ export default function App() {
               </div>
               <div style={{ width: 100 }}>
                 <div style={fieldLabel}>Ühik</div>
-                <select
-                  value={r.uhik || ""}
-                  onChange={(e) => updateRow("COST", r.id, { uhik: e.target.value })}
-                  style={{ ...selectStyle, width: "100%" }}
-                >
-                  {(KOMMUNAAL_UHIKUD[r.category] || []).map(u => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </select>
+                {uhikuFreeTekst ? (
+                  <input
+                    value={r.uhik || ""}
+                    onChange={(e) => updateRow("COST", r.id, { uhik: e.target.value })}
+                    placeholder="nt kg, koormat"
+                    style={{ ...inputStyle, width: "100%" }}
+                  />
+                ) : (
+                  <select
+                    value={r.uhik || ""}
+                    onChange={(e) => updateRow("COST", r.id, { uhik: e.target.value })}
+                    style={{ ...selectStyle, width: "100%" }}
+                  >
+                    {(fuelUhikud || KOMMUNAAL_UHIKUD[r.category] || []).map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div style={{ width: 140 }}>
                 <div style={fieldLabel}>Maksumus €/periood</div>
@@ -4101,7 +4144,10 @@ export default function App() {
                         {utilityRows.map(r => (
                           <tr key={r.id} style={tdSep}>
                             <td style={{ padding: "8px 12px 8px 0" }}>
-                              {r.category}{r.name ? <> · <span style={{ color: N.sub }}>{r.name}</span></> : null}
+                              {r.category}
+                              {r.category === "Kütus"
+                                ? (r.fuelType ? <> · <span style={{ color: N.sub }}>{r.fuelType}</span></> : null)
+                                : (r.name ? <> · <span style={{ color: N.sub }}>{r.name}</span></> : null)}
                               {r.settledPostHoc && <div style={{ fontSize: 12, color: N.dim }}>Tasutakse pärast kulude suuruse selgumist</div>}
                             </td>
                             <td style={{ padding: "8px 12px 8px 0", textAlign: "right", fontFamily: "monospace" }}>{r.kogus || <span style={{ color: "#999", fontStyle: "italic" }}>kogus määramata</span>}</td>
@@ -4876,7 +4922,10 @@ export default function App() {
                     {utilityRows.map(r => (
                       <tr key={r.id} style={{ borderBottom: "1px solid #ccc" }}>
                         <td style={{ padding: "4px 8px" }}>
-                          {r.category}{r.name ? <> · <span style={{ color: "#666" }}>{r.name}</span></> : null}
+                          {r.category}
+                          {r.category === "Kütus"
+                            ? (r.fuelType ? <> · <span style={{ color: "#666" }}>{r.fuelType}</span></> : null)
+                            : (r.name ? <> · <span style={{ color: "#666" }}>{r.name}</span></> : null)}
                           {r.settledPostHoc && <div style={{ fontSize: 12, color: "#666" }}>Tasutakse pärast kulude suuruse selgumist</div>}
                         </td>
                         <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{r.kogus || <span style={{ color: "#999", fontStyle: "italic" }}>kogus määramata</span>}</td>
