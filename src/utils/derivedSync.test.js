@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeReserveMin, computeRemondifondiArvutus } from "./majanduskavaCalc";
+import { computeReserveMin, computeRemondifondiArvutus, KOMMUNAALTEENUSED } from "./majanduskavaCalc";
 
 // ── Helpers: simulate useEffect updaters (same logic as App.jsx) ─────────────
 
@@ -23,7 +23,6 @@ function applyRepairFundSync(plan, maarAastasM2) {
 // Cost sync: syncs summaInput → calc.params.amountEUR
 function applyCostSync(plan, arvutaHaldusSumma) {
   let changed = false;
-  const KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus", "Muu kommunaalteenus"];
   const updated = plan.budget.costRows.map(r => {
     let summa;
     if (KOMMUNAALTEENUSED.includes(r.category)) {

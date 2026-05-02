@@ -1182,7 +1182,7 @@ export default function App() {
           return;
         }
 
-        setPlan(candidateState);
+        setPlan(seedDefaultKommunaalRows(candidateState));
         if (data.kyData) setKyData(data.kyData);
         setRepairFundSaldo(data.repairFundSaldo ?? "");
         if (data.remondifond) {

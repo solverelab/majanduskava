@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { checkPlanConsistency } from "./planConsistency";
+import { KOMMUNAALTEENUSED } from "./majanduskavaCalc";
 
 // ── Migration logic extracted from onImportJSON (pure, testable) ─────────────
-
-const KOMMUNAALTEENUSED = ["Soojus", "Vesi ja kanalisatsioon", "Elekter", "Kütus", "Muu kommunaalteenus"];
 
 let _uid = 0;
 const uid = () => `test-uid-${++_uid}`;
