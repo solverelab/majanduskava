@@ -641,3 +641,74 @@ describe("Tab 2 valideerimisfunktsioonid", () => {
     expect(hasErrors).toBe(false);
   });
 });
+
+// ── 9. korteriomanikeMaksedPerioodis: p2 katte valem ─────────────────────────
+//
+// Mirrors the fixed korteriomanikeMaksedPerioodis calculation:
+//   Math.max(0, haldusSum - muuTuluUldkuludeks) when apartments > 0
+
+function computeOmanikeMaksed(costRows, incomeRows, hasApartments = true) {
+  const haldusSum = costRows
+    .filter(r => HALDUSTEENUSED.includes(r.category))
+    .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+  const muuTuluUldkuludeks = incomeRows
+    .filter(r => (r.incomeAllocation || "general") === "general")
+    .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
+  return hasApartments ? Math.max(0, haldusSum - muuTuluUldkuludeks) : null;
+}
+
+describe("Tab 2 korteriomanike maksed perioodis: ainult p2 kulud − p2 tulu", () => {
+  it("ainult p2 halduskulud, muud tulud puuduvad → omanike maksed = halduskulud", () => {
+    const costRows = [
+      { id: "c1", category: "Koristus", summaInput: "2400" },
+      { id: "c2", category: "Valitseja / halduri tasu", summaInput: "1200" },
+    ];
+    expect(computeOmanikeMaksed(costRows, [])).toBe(3600);
+  });
+
+  it("p2 kulud 3600 − p2 muu tulu 1000 → omanike maksed 2600", () => {
+    const costRows = [{ id: "c1", category: "Koristus", summaInput: "3600" }];
+    const incomeRows = [{ id: "i1", summaInput: "1000", incomeAllocation: "general" }];
+    expect(computeOmanikeMaksed(costRows, incomeRows)).toBe(2600);
+  });
+
+  it("kommunaali (p5) ja laenumakse rida ei suurenda p2 omanike makseid", () => {
+    const haldusOnly = [{ id: "c1", category: "Koristus", summaInput: "2400" }];
+    const withExtras = [
+      { id: "c1", category: "Koristus", summaInput: "2400" },
+      { id: "c2", category: "Soojus", summaInput: "5000" },
+      { id: "c3", category: "Laenumakse", summaInput: "3000" },
+    ];
+    expect(computeOmanikeMaksed(haldusOnly, [])).toBe(computeOmanikeMaksed(withExtras, []));
+    expect(computeOmanikeMaksed(withExtras, [])).toBe(2400);
+  });
+
+  it("p2 tulu suurem kui p2 kulud → omanike maksed = 0 (ei lähe negatiivseks)", () => {
+    const costRows = [{ id: "c1", category: "Koristus", summaInput: "500" }];
+    const incomeRows = [{ id: "i1", summaInput: "1000", incomeAllocation: "general" }];
+    expect(computeOmanikeMaksed(costRows, incomeRows)).toBe(0);
+  });
+
+  it("kortereid pole → omanike maksed = null (arvutatakse hiljem)", () => {
+    const costRows = [{ id: "c1", category: "Koristus", summaInput: "2400" }];
+    expect(computeOmanikeMaksed(costRows, [], false)).toBeNull();
+  });
+});
+
+describe("Tab 2 korteriomanike maksed perioodis: lähtekoodi kontroll", () => {
+  let src;
+  beforeAll(async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    src = fs.readFileSync(path.resolve(__dirname, "../MajanduskavaApp.jsx"), "utf-8");
+  });
+
+  it("korteriomanikeMaksedPerioodis kasutab korteriomanikeMaksedHalduseks, mitte k.kokku", () => {
+    const start = src.indexOf("const korteriomanikeMaksedPerioodis");
+    const end = src.indexOf(";", start) + 1;
+    const stmt = src.slice(start, end);
+    expect(stmt).toContain("korteriomanikeMaksedHalduseks");
+    expect(stmt).not.toContain("k.kokku");
+    expect(stmt).not.toContain("korteriteKuumaksed.reduce");
+  });
+});

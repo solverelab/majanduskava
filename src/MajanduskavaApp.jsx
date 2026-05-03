@@ -2626,7 +2626,7 @@ export default function App() {
           const korteriomanikeMaksedHalduseks = Math.max(0, haldusSum - muuTuluUldkuludeks);
           const tuludKokku = korteriomanikeMaksedHalduseks + muudTuludSum;
           const korteriomanikeMaksedPerioodis = plan.building.apartments.length > 0
-            ? Math.round(korteriteKuumaksed.reduce((s, k) => s + k.kokku, 0) * (derived.period.monthEq || 12))
+            ? korteriomanikeMaksedHalduseks
             : null;
           const laenuPeriood = Math.round(kopiiriondvaade.laenumaksedKokku * (derived.period.monthEq || 12));
           const olemasolevadLaenudPeriood = existingLoans.reduce((s, l) => {
