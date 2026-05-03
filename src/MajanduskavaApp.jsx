@@ -2624,6 +2624,9 @@ export default function App() {
             .reduce((s, r) => s + (parseFloat(r.summaInput) || 0), 0);
           const korteriomanikeMaksedHalduseks = Math.max(0, haldusSum - muuTuluUldkuludeks);
           const tuludKokku = korteriomanikeMaksedHalduseks + muudTuludSum;
+          const korteriomanikeMaksedPerioodis = plan.building.apartments.length > 0
+            ? Math.round(korteriteKuumaksed.reduce((s, k) => s + k.kokku, 0) * (derived.period.monthEq || 12))
+            : null;
           const laenuPeriood = Math.round(kopiiriondvaade.laenumaksedKokku * (derived.period.monthEq || 12));
           const olemasolevadLaenudPeriood = existingLoans.reduce((s, l) => {
             const lnItem = (derived.loans?.items || []).find(item => item.id === l.id);
@@ -2641,8 +2644,22 @@ export default function App() {
               {/* ── 1. Tulud ── */}
               <div style={card}>
                 <div style={{ ...H2_STYLE, marginTop: 0 }}>Tulud</div>
+
+                {/* ── Korteriomanike maksed ── */}
                 <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 16, marginTop: 8 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 8, display: "flex", alignItems: "center" }}>Muud tulud<InfoTooltip text="Siia sisestatakse korteriühistu muud tulud. Korteriomanike maksed kujunevad kavandatud kulude, fondimaksete ja jaotuse aluste põhjal." /></div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 8 }}>Korteriomanike maksed</div>
+                  <div style={{ fontSize: 14, color: N.sub, marginBottom: 12 }}>Korteriomanike maksed arvutatakse kavandatud kulude, fondimaksete ja jaotuse aluste põhjal.</div>
+                  <div style={{ fontSize: 14, display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: N.sub }}>Korteriomanike maksed perioodis:</span>
+                    <span style={{ fontWeight: 600 }}>
+                      {korteriomanikeMaksedPerioodis !== null ? euro(korteriomanikeMaksedPerioodis) : "arvutatakse hiljem"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* ── Muud tulud ── */}
+                <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 16, marginTop: 16 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: N.text, marginBottom: 8 }}>Muud tulud</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     {plan.budget.incomeRows.map(r => {
                       const isMarkusOpenR = !!r.note || openRfMarkusId === ("income_" + r.id);
@@ -2688,13 +2705,28 @@ export default function App() {
                   <div style={{ marginTop: 12 }}>
                     <button style={btnAdd} onClick={() => addRow("INCOME")}>+ Lisa muu tulu</button>
                   </div>
-                  {muudTuludSum > 0 && (
-                    <div style={{ marginTop: 12, paddingTop: 8, borderTop: `1px solid ${N.rule}`, fontSize: 14, display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
-                      <span>Muud tulud perioodis:</span>
+                </div>
+
+                {/* ── Tulud kokkuvõte ── */}
+                <div style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 16, marginTop: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: N.sub, marginBottom: 8 }}>Tulud kokkuvõte</div>
+                  <div style={{ fontSize: 14, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: N.sub }}>Muud tulud perioodis:</span>
                       <span>{euro(muudTuludSum)}</span>
                     </div>
-                  )}
+                    <div style={{ display: "flex", justifyContent: "space-between", borderTop: `1px solid ${N.rule}`, paddingTop: 8, marginTop: 4, fontWeight: 600 }}>
+                      <span>Tulud kokku perioodis:</span>
+                      <span>
+                        {korteriomanikeMaksedPerioodis !== null
+                          ? euro(korteriomanikeMaksedPerioodis + muudTuludSum)
+                          : "arvutatakse hiljem"
+                        }
+                      </span>
+                    </div>
+                  </div>
                 </div>
+
               </div>
 
               {/* ── 2. Kulud ── */}
