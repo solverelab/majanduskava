@@ -2555,7 +2555,7 @@ export default function App() {
             const isMarkusOpen2 = !!r.selgitus || !!r.name || isMuuKategooria || openTab2TaepsustusId === r.id;
             return (
               <div key={r.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
                   <div style={{ width: 200 }}>
                     <div style={fieldLabel}>Kululiik</div>
                     <select value={r.category || ""} onChange={(e) => updateRow("COST", r.id, { category: e.target.value })} style={{ ...selectStyle, width: "100%" }}>
@@ -2570,37 +2570,37 @@ export default function App() {
                     <div style={fieldLabel}>Summa perioodis (€)</div>
                     <EuroInput value={r.summaInput} onChange={(v) => updateRow("COST", r.id, { summaInput: v })} style={numStyle} />
                   </div>
-                  <div style={{ alignSelf: "end" }}><button style={btnRemove} onClick={() => removeRow("COST", r.id)}>Eemalda kulu</button></div>
+                  <div>
+                    <div style={fieldLabel}>Kulude jaotuse alus</div>
+                    <select value={basis} onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "m2") updateRow("COST", r.id, { allocationBasis: "m2", legalBasisBylaws: false, legalBasisSpecialAgreement: false, allocationBasisMuuKirjeldus: "" });
+                      else if (v === "apartment") updateRow("COST", r.id, { allocationBasis: "apartment", legalBasisSeadus: false });
+                      else updateRow("COST", r.id, { allocationBasis: v });
+                    }} style={{ ...selectStyle, width: 220 }}>
+                      <option value="m2">Kaasomandi osa suurus</option>
+                      <option value="apartment">Korteri kohta</option>
+                      <option value="muu">Muu jaotus</option>
+                    </select>
+                  </div>
+                  <div><button style={btnRemove} onClick={() => removeRow("COST", r.id)}>Eemalda kulu</button></div>
                 </div>
+                {isErand && (
+                  <div style={{ marginTop: 8, padding: 8, background: N.muted, borderRadius: 6 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>Erandi alus</div>
+                    <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!r.legalBasisBylaws} onChange={(e) => updateRow("COST", r.id, { "legalBasisBylaws": e.target.checked })} />"Põhikiri"</label>
+                    <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!r.legalBasisSpecialAgreement} onChange={(e) => updateRow("COST", r.id, { "legalBasisSpecialAgreement": e.target.checked })} />"Kokkulepe"</label>
+                    <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!r.legalBasisMuu} onChange={(e) => updateRow("COST", r.id, { "legalBasisMuu": e.target.checked })} />Muu</label>
+                    {basis === "muu" && <div style={{ marginTop: 4 }}><div style={fieldLabel}>Jaotuse kirjeldus</div><input value={r.allocationBasisMuuKirjeldus || ""} onChange={(e) => updateRow("COST", r.id, { allocationBasisMuuKirjeldus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { allocationBasisMuuKirjeldus: next }))} placeholder="Kirjelda jaotusviisi" style={{ ...inputStyle, width: "100%" }} /></div>}
+                    <div style={{ marginTop: 4 }}><input value={r.legalBasisTaepsustus || ""} onChange={(e) => updateRow("COST", r.id, { legalBasisTaepsustus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { legalBasisTaepsustus: next }))} placeholder={taepsustusPlaceholder} style={{ ...inputStyle, width: "100%" }} /></div>
+                  </div>
+                )}
                 {isMuuTeenus && (
                   <div style={{ marginTop: 6 }}>
                     <div style={fieldLabel}>Kirjelda teenust</div>
                     <input value={r.muuTeenusKirjeldus || ""} onChange={(e) => updateRow("COST", r.id, { muuTeenusKirjeldus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { muuTeenusKirjeldus: next }))} placeholder="Kirjelda teenust" style={{ ...inputStyle, width: "100%" }} />
                   </div>
                 )}
-                <div style={{ marginTop: 8 }}>
-                  <div style={fieldLabel}>Kulude jaotuse alus</div>
-                  <select value={basis} onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === "m2") updateRow("COST", r.id, { allocationBasis: "m2", legalBasisBylaws: false, legalBasisSpecialAgreement: false, allocationBasisMuuKirjeldus: "" });
-                    else if (v === "apartment") updateRow("COST", r.id, { allocationBasis: "apartment", legalBasisSeadus: false });
-                    else updateRow("COST", r.id, { allocationBasis: v });
-                  }} style={{ ...selectStyle, width: 220 }}>
-                    <option value="m2">Kaasomandi osa suurus</option>
-                    <option value="apartment">Korteri kohta</option>
-                    <option value="muu">Muu jaotus</option>
-                  </select>
-                  {isErand && (
-                    <div style={{ marginTop: 8, padding: 8, background: N.muted, borderRadius: 6 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>Erandi alus</div>
-                      <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!r.legalBasisBylaws} onChange={(e) => updateRow("COST", r.id, { "legalBasisBylaws": e.target.checked })} />"Põhikiri"</label>
-                      <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!r.legalBasisSpecialAgreement} onChange={(e) => updateRow("COST", r.id, { "legalBasisSpecialAgreement": e.target.checked })} />"Kokkulepe"</label>
-                      <label style={{ display: "flex", gap: 6, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!r.legalBasisMuu} onChange={(e) => updateRow("COST", r.id, { "legalBasisMuu": e.target.checked })} />Muu</label>
-                      {basis === "muu" && <div style={{ marginTop: 4 }}><div style={fieldLabel}>Jaotuse kirjeldus</div><input value={r.allocationBasisMuuKirjeldus || ""} onChange={(e) => updateRow("COST", r.id, { allocationBasisMuuKirjeldus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { allocationBasisMuuKirjeldus: next }))} placeholder="Kirjelda jaotusviisi" style={{ ...inputStyle, width: "100%" }} /></div>}
-                      <div style={{ marginTop: 4 }}><input value={r.legalBasisTaepsustus || ""} onChange={(e) => updateRow("COST", r.id, { legalBasisTaepsustus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { legalBasisTaepsustus: next }))} placeholder={taepsustusPlaceholder} style={{ ...inputStyle, width: "100%" }} /></div>
-                    </div>
-                  )}
-                </div>
                 {!isMarkusOpen2 && <button onClick={() => setOpenTab2TaepsustusId(r.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: N.text, padding: "4px 0" }}>+ Lisa märkus</button>}
                 {isMarkusOpen2 && (
                   <div style={{ marginTop: 8 }}>
