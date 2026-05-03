@@ -1860,8 +1860,10 @@ export default function App() {
       const ok =
         activeIncomes.every(r => r.category && (parseFloat(r.summaInput) || 0) > 0) &&
         activeCosts.every(r => r.category && (parseFloat(r.summaInput) || 0) > 0 &&
-          (!r.category.startsWith("Muu ") || r.category === "Muu teenus" || r.category === "Muu haldusteenus" || r.selgitus?.trim())) &&
-        activeLoans.every(l => (l.laenuandja || l.name) && (parseFloat(l.pohiosPerioodis) || 0) + (parseFloat(l.intressPerioodis) || 0) + (parseFloat(l.teenustasudPerioodis) || 0) > 0);
+          (!r.category.startsWith("Muu ") || r.category === "Muu teenus" || r.category === "Muu haldusteenus" || r.selgitus?.trim()) &&
+          ((r.allocationBasis || "m2") === "m2" || r.legalBasisBylaws || r.legalBasisSpecialAgreement || r.legalBasisMuu)) &&
+        activeLoans.every(l => (l.laenuandja || l.name) && (parseFloat(l.pohiosPerioodis) || 0) + (parseFloat(l.intressPerioodis) || 0) + (parseFloat(l.teenustasudPerioodis) || 0) > 0 &&
+          ((l.allocationBasis || "m2") === "m2" || l.legalBasisBylaws || l.legalBasisSpecialAgreement || l.legalBasisMuu));
       return ok ? "valid" : "invalid";
     })(),
     // 3: Kommunaalid

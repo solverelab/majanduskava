@@ -747,3 +747,48 @@ describe("Tab 2 'Muu ...' kulurea täpsustuse valideerimine", () => {
     expect(costRowOk({ category: "Muu haldusteenus", summaInput: "800", selgitus: "" })).toBe(true);
   });
 });
+
+// ── 11. Erandliku jaotusaluse õigusliku aluse valideerimine ──────────────────
+//
+// Mirrors activeCosts.every() in tabStatus[2] (post-fix):
+// allocationBasis !== "m2" nõuab legalBasisBylaws || legalBasisSpecialAgreement || legalBasisMuu.
+
+describe("Tab 2 kulurida: erandliku jaotusaluse õigusliku aluse valideerimine", () => {
+  const costRowTabOk = (r) =>
+    !!(r.category && (parseFloat(r.summaInput) || 0) > 0) &&
+    (!r.category.startsWith("Muu ") || r.category === "Muu teenus" || r.category === "Muu haldusteenus" || !!r.selgitus?.trim()) &&
+    ((r.allocationBasis || "m2") === "m2" || !!r.legalBasisBylaws || !!r.legalBasisSpecialAgreement || !!r.legalBasisMuu);
+
+  it("m2 jaotusalus ilma õigusliku aluseta → rida on OK", () => {
+    expect(costRowTabOk({ category: "Koristus", summaInput: "1200", allocationBasis: "m2" })).toBe(true);
+  });
+
+  it("allocationBasis puudub (vaikimisi m2) → rida on OK ilma õigusliku aluseta", () => {
+    expect(costRowTabOk({ category: "Koristus", summaInput: "1200" })).toBe(true);
+  });
+
+  it("'korteri kohta' ilma õigusliku aluseta → rida ei ole OK", () => {
+    expect(costRowTabOk({ category: "Koristus", summaInput: "1200", allocationBasis: "apartment",
+      legalBasisBylaws: false, legalBasisSpecialAgreement: false, legalBasisMuu: false })).toBe(false);
+  });
+
+  it("'korteri kohta' + põhikiri → rida on OK", () => {
+    expect(costRowTabOk({ category: "Koristus", summaInput: "1200", allocationBasis: "apartment",
+      legalBasisBylaws: true, legalBasisSpecialAgreement: false, legalBasisMuu: false })).toBe(true);
+  });
+
+  it("'korteri kohta' + kokkulepe → rida on OK", () => {
+    expect(costRowTabOk({ category: "Koristus", summaInput: "1200", allocationBasis: "apartment",
+      legalBasisBylaws: false, legalBasisSpecialAgreement: true, legalBasisMuu: false })).toBe(true);
+  });
+
+  it("'muu jaotus' ilma õigusliku aluseta → rida ei ole OK", () => {
+    expect(costRowTabOk({ category: "Koristus", summaInput: "1200", allocationBasis: "muu",
+      legalBasisBylaws: false, legalBasisSpecialAgreement: false, legalBasisMuu: false })).toBe(false);
+  });
+
+  it("'muu jaotus' + legalBasisMuu → rida on OK (katab tegeliku tarbimise jm muud — eraldi välja pole)", () => {
+    expect(costRowTabOk({ category: "Koristus", summaInput: "1200", allocationBasis: "muu",
+      legalBasisBylaws: false, legalBasisSpecialAgreement: false, legalBasisMuu: true })).toBe(true);
+  });
+});
