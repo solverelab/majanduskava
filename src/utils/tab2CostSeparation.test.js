@@ -273,10 +273,10 @@ describe("Tab 2 lähtekoodi struktuur", () => {
     expect(sec2Region).toContain('value="m2"');
   });
 
-  it("Tab 2 kuluridad kasutavad jaotusaluse sõnastusena 'Kaasomandi osa suuruse alusel'", () => {
-    // tab2KuluRida funktsioon (haldus + muud kulud) kasutab 'Kaasomandi osa suuruse alusel'
+  it("Tab 2 kuluridad kasutavad jaotusaluse sõnastusena 'Kaasomandi osa suurus'", () => {
+    // tab2KuluRida funktsioon (haldus + muud kulud) kasutab 'Kaasomandi osa suurus'
     const kuluridaFn = src.slice(src.indexOf("const tab2KuluRida"), src.indexOf("const existingLoans"));
-    expect(kuluridaFn).toContain("Kaasomandi osa suuruse alusel");
+    expect(kuluridaFn).toContain("Kaasomandi osa suurus");
     expect(kuluridaFn).not.toContain("Kaasomandi osa / m² arvestus");
     expect(kuluridaFn).not.toContain("Kaasomandi osa järgi (m² järgi)");
   });

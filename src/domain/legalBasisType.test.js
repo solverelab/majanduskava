@@ -28,7 +28,7 @@ describe("legalBasisType / legalBasisText metaväljad", () => {
 
   it("kokkuvõte: legalBasisType=DEFAULT_KRTS40_1 → kuvatakse 'Vaikimisi alus'", () => {
     const pol = defaultPlan().allocationPolicies.maintenance;
-    expect(summarizeAllocationPolicy(pol)).toBe("Jaotusalus: m² · Vaikimisi alus");
+    expect(summarizeAllocationPolicy(pol)).toBe("Jaotusalus: Kaasomandi osa suurus · Vaikimisi alus");
   });
 
   it("kokkuvõte: legalBasisType=BYLAWS_EXCEPTION + tühi tekst → 'Erand põhikirja järgi — alus täpsustamata'", () => {
@@ -60,7 +60,7 @@ describe("legalBasisType / legalBasisText metaväljad", () => {
   it("vana state (legalBasisType puudub) → crashita; kokkuvõte langeb tagasi varasemale vormingule", () => {
     const oldPol = { defaultBasis: "m2", overrideBasis: null, legalBasis: null, legalBasisNote: "" };
     expect(() => summarizeAllocationPolicy(oldPol)).not.toThrow();
-    expect(summarizeAllocationPolicy(oldPol)).toBe("Jaotusalus: m² · Vaikimisi alus");
+    expect(summarizeAllocationPolicy(oldPol)).toBe("Jaotusalus: Kaasomandi osa suurus · Vaikimisi alus");
   });
 
   it("patchAllocationPolicy säilitab legalBasisType väärtuse, mida pole patchitud", () => {

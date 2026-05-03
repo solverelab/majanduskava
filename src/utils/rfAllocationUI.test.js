@@ -20,8 +20,8 @@ beforeAll(async () => {
 // ── 1. Tab 5 alapealkiri ──────────────────────────────────────────────────────
 
 describe("Tab 5 alapealkiri", () => {
-  it("kuvab 'Jaotamine kaasomandi osa suuruse järgi'", () => {
-    expect(src).toContain("Jaotamine kaasomandi osa suuruse järgi");
+  it("kuvab 'Kaasomandi osa suurus' alapealkiri", () => {
+    expect(src).toContain("Kaasomandi osa suurus");
   });
 
   it("ei sisalda vana sõnastust 'Jaotamine korteri pindala järgi'", () => {
@@ -36,8 +36,8 @@ describe("Remondifondi jaotuse alus — pealkiri ja helper", () => {
     expect(rfSection).toContain("Kulude jaotuse alus");
   });
 
-  it("tavajuhtumi select-valik on 'Kaasomandi osa suuruse alusel'", () => {
-    expect(rfSection).toContain("Kaasomandi osa suuruse alusel");
+  it("tavajuhtumi select-valik on 'Kaasomandi osa suurus'", () => {
+    expect(rfSection).toContain("Kaasomandi osa suurus");
   });
 
   it("tavajuhtumi helper tekst eemaldatud — KrtS § 40 lg 1 viidet ei kuvata", () => {

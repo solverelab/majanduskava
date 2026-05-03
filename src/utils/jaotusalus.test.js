@@ -6,12 +6,12 @@ import { kulureaOsa, jaotusalusSilt, computeRemondifondiArvutus, KOMMUNAALTEENUS
 // ══════════════════════════════════════════════════════════════════════
 
 describe("jaotusalusSilt helper", () => {
-  it('"m2" => "Kaasomandi osa suuruse alusel"', () => {
-    expect(jaotusalusSilt("m2")).toBe("Kaasomandi osa suuruse alusel");
+  it('"m2" => "Kaasomandi osa suurus"', () => {
+    expect(jaotusalusSilt("m2")).toBe("Kaasomandi osa suurus");
   });
 
-  it('"kaasomand" => "Kaasomandi osa suuruse alusel"', () => {
-    expect(jaotusalusSilt("kaasomand")).toBe("Kaasomandi osa suuruse alusel");
+  it('"kaasomand" => "Kaasomandi osa suurus"', () => {
+    expect(jaotusalusSilt("kaasomand")).toBe("Kaasomandi osa suurus");
   });
 
   it('"korter" => "Korteri kohta"', () => {
@@ -30,12 +30,12 @@ describe("jaotusalusSilt helper", () => {
     expect(jaotusalusSilt("other")).toBe("Muu");
   });
 
-  it('puuduv (undefined) => "Kaasomandi osa suuruse alusel"', () => {
-    expect(jaotusalusSilt(undefined)).toBe("Kaasomandi osa suuruse alusel");
+  it('puuduv (undefined) => "Kaasomandi osa suurus"', () => {
+    expect(jaotusalusSilt(undefined)).toBe("Kaasomandi osa suurus");
   });
 
-  it('null => "Kaasomandi osa suuruse alusel"', () => {
-    expect(jaotusalusSilt(null)).toBe("Kaasomandi osa suuruse alusel");
+  it('null => "Kaasomandi osa suurus"', () => {
+    expect(jaotusalusSilt(null)).toBe("Kaasomandi osa suurus");
   });
 
   it('"m² järgi" ei esine enam jaotusaluse display-sõnastusena', () => {

@@ -3,22 +3,22 @@ import { describe, it, expect } from "vitest";
 import { summarizeAllocationPolicy } from "./allocationBasisDisplay";
 
 describe("summarizeAllocationPolicy", () => {
-  it("default (policy puudub) → `Jaotusalus: m² · Vaikimisi alus`", () => {
+  it("default (policy puudub) → `Jaotusalus: Kaasomandi osa suurus · Vaikimisi alus`", () => {
     expect(summarizeAllocationPolicy(undefined))
-      .toBe("Jaotusalus: m² · Vaikimisi alus");
+      .toBe("Jaotusalus: Kaasomandi osa suurus · Vaikimisi alus");
   });
 
-  it("default policy (override null) → `Jaotusalus: m² · Vaikimisi alus`", () => {
+  it("default policy (override null) → `Jaotusalus: Kaasomandi osa suurus · Vaikimisi alus`", () => {
     expect(summarizeAllocationPolicy({
       defaultBasis: "m2", overrideBasis: null, legalBasis: null, legalBasisNote: "",
-    })).toBe("Jaotusalus: m² · Vaikimisi alus");
+    })).toBe("Jaotusalus: Kaasomandi osa suurus · Vaikimisi alus");
   });
 
   it("override ilma legalBasis → endiselt `Vaikimisi alus` (helper fallback)", () => {
     // UI näitab neutraalset märget, kokkuvõte peegeldab fallback-olekut.
     expect(summarizeAllocationPolicy({
       defaultBasis: "m2", overrideBasis: "korter", legalBasis: null, legalBasisNote: "",
-    })).toBe("Jaotusalus: m² · Vaikimisi alus");
+    })).toBe("Jaotusalus: Kaasomandi osa suurus · Vaikimisi alus");
   });
 
   it("override + legalBasis=pohikiri → `Jaotusalus: korteri kohta · Õiguslik alus: pohikiri`", () => {

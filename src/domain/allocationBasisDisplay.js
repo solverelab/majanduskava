@@ -4,7 +4,7 @@
 import { getEffectiveAllocationBasis } from "./planSchema";
 
 const BASIS_LABELS = {
-  m2: "m²",
+  m2: "Kaasomandi osa suurus",
   korter: "korteri kohta",
 };
 

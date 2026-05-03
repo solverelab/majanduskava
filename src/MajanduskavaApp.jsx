@@ -54,7 +54,7 @@ function formatYMEE(ym) {
 // p3 jaotusaluse silt — lõppvaate p3 tarbeks, ei muuda arvutusi ega muud UI-d.
 // p3 lõppvaate jaoks arusaadavam m²-põhise jaotuse silt
 const p3AlusSilt = (basis) =>
-  (basis === "m2") ? "Kaasomandi osa suuruse alusel" : jaotusalusSilt(basis);
+  (basis === "m2") ? "Kaasomandi osa suurus" : jaotusalusSilt(basis);
 
 // ════════════════════════════════════════════════════════════════════════
 // Design tokens — single source of truth for the entire UI
@@ -2060,7 +2060,7 @@ export default function App() {
                   <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>
                     {desc.hasOverride
                       ? `Õiguslik alus: ${desc.legalBasis}${desc.legalBasisNote ? " — " + desc.legalBasisNote : ""}`
-                      : "Kaasomandi osa suuruse alusel"}
+                      : "Kaasomandi osa suurus"}
                   </div>
                 </>
               );
@@ -2078,7 +2078,7 @@ export default function App() {
                     <option value="apartment">korter</option>
                   </select>
                   <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>
-                    {selectedBasis === "apartment" ? "Korteri kohta" : "Kaasomandi osa suuruse alusel"}
+                    {selectedBasis === "apartment" ? "Korteri kohta" : "Kaasomandi osa suurus"}
                   </div>
                   {needsWarning && (
                     <div style={{ fontSize: 12, color: "#b45309", marginTop: 4 }}>
@@ -2587,7 +2587,7 @@ export default function App() {
                     else if (v === "apartment") updateRow("COST", r.id, { allocationBasis: "apartment", legalBasisSeadus: false });
                     else updateRow("COST", r.id, { allocationBasis: v });
                   }} style={{ ...selectStyle, width: 220 }}>
-                    <option value="m2">Kaasomandi osa suuruse alusel</option>
+                    <option value="m2">Kaasomandi osa suurus</option>
                     <option value="apartment">Korteri kohta</option>
                     <option value="muu">Muu jaotus</option>
                   </select>
@@ -2970,7 +2970,7 @@ export default function App() {
                         }}
                         style={{ ...selectStyle, width: "100%", maxWidth: 320 }}
                       >
-                        <option value="kaasomand">Kaasomandi osa suuruse alusel</option>
+                        <option value="kaasomand">Kaasomandi osa suurus</option>
                         <option value="apartment">Korteri kohta (€/korter/kuu)</option>
                         <option value="muu">Muu jaotusviis</option>
                       </select>
@@ -3340,7 +3340,7 @@ export default function App() {
                           Jaotusalus: {desc.basisLabel}
                           {desc.hasOverride
                             ? ` · Õiguslik alus: ${desc.legalBasis}${desc.legalBasisNote ? " — " + desc.legalBasisNote : ""}`
-                            : " · Kaasomandi osa suuruse alusel"}
+                            : " · Kaasomandi osa suurus"}
                         </div>
                       );
                     })()}
@@ -3651,7 +3651,7 @@ export default function App() {
             <div style={card}>
               {/* Pealkiri */}
               <div style={{ ...H2_STYLE, marginTop: 0 }}>Kuumaksed</div>
-              <div style={{ fontSize: 14, color: N.sub, marginBottom: 16 }}>Jaotamine kaasomandi osa suuruse järgi</div>
+              <div style={{ fontSize: 14, color: N.sub, marginBottom: 16 }}>Kaasomandi osa suurus</div>
 
               {/* Arvutusalused */}
               {derived.building.totAreaM2 > 0 && (() => {

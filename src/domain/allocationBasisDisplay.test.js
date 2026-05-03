@@ -3,22 +3,22 @@ import { describe, it, expect } from "vitest";
 import { describeAllocationPolicy, formatBasisLabel } from "./allocationBasisDisplay";
 
 describe("describeAllocationPolicy", () => {
-  it("policy puudub → m², hasOverride=false", () => {
+  it("policy puudub → Kaasomandi osa suurus, hasOverride=false", () => {
     const d = describeAllocationPolicy(undefined);
     expect(d.basis).toBe("m2");
-    expect(d.basisLabel).toBe("m²");
+    expect(d.basisLabel).toBe("Kaasomandi osa suurus");
     expect(d.hasOverride).toBe(false);
     expect(d.legalBasis).toBe(null);
   });
 
-  it("policy default ilma override → m², hasOverride=false", () => {
+  it("policy default ilma override → Kaasomandi osa suurus, hasOverride=false", () => {
     const d = describeAllocationPolicy({
       defaultBasis: "m2",
       overrideBasis: null,
       legalBasis: null,
     });
     expect(d.hasOverride).toBe(false);
-    expect(d.basisLabel).toBe("m²");
+    expect(d.basisLabel).toBe("Kaasomandi osa suurus");
   });
 
   it("override ilma legalBasis → ignoreeritakse, hasOverride=false", () => {
@@ -28,7 +28,7 @@ describe("describeAllocationPolicy", () => {
       legalBasis: null,
     });
     expect(d.hasOverride).toBe(false);
-    expect(d.basisLabel).toBe("m²");
+    expect(d.basisLabel).toBe("Kaasomandi osa suurus");
   });
 
   it("override + legalBasis → hasOverride=true, basis=korter", () => {
@@ -45,9 +45,9 @@ describe("describeAllocationPolicy", () => {
     expect(d.legalBasisNote).toBe("§12 lg 3");
   });
 
-  it("formatBasisLabel fallback → m²", () => {
-    expect(formatBasisLabel(undefined)).toBe("m²");
-    expect(formatBasisLabel("whatever")).toBe("m²");
+  it("formatBasisLabel fallback → Kaasomandi osa suurus", () => {
+    expect(formatBasisLabel(undefined)).toBe("Kaasomandi osa suurus");
+    expect(formatBasisLabel("whatever")).toBe("Kaasomandi osa suurus");
     expect(formatBasisLabel("korter")).toBe("korteri kohta");
   });
 });

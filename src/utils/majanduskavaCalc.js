@@ -49,7 +49,7 @@ export function utilityRowStatus(row) {
 export function jaotusalusSilt(jaotusalus) {
   if (jaotusalus === "korter" || jaotusalus === "apartment") return "Korteri kohta";
   if (jaotusalus === "muu" || jaotusalus === "other") return "Muu";
-  return "Kaasomandi osa suuruse alusel"; // m2, kaasomand, null, undefined
+  return "Kaasomandi osa suurus"; // m2, kaasomand, null, undefined
 }
 
 // Reapõhise kulurea efektiivne jaotusalus (Valik B).
