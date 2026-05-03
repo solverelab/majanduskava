@@ -2549,8 +2549,9 @@ export default function App() {
             const basis = r.allocationBasis || "m2";
             const isErand = basis === "apartment" || basis === "muu";
             const taepsustusPlaceholder = r.legalBasisBylaws ? "Nt põhikirja punkt" : r.legalBasisSpecialAgreement ? "Nt kokkuleppe kirjeldus" : r.legalBasisMuu ? "Nt muu õiguslik alus või selgitus" : "Lisa täpsustus";
-            const isMarkusOpen2 = !!r.selgitus || openTab2TaepsustusId === r.id;
             const isMuuTeenus = r.category === "Muu teenus" || r.category === "Muu haldusteenus";
+            const isMuuKategooria = !isMuuTeenus && !!r.category?.startsWith("Muu ");
+            const isMarkusOpen2 = !!r.selgitus || !!r.name || isMuuKategooria || openTab2TaepsustusId === r.id;
             return (
               <div key={r.id} style={{ borderTop: `1px solid ${N.rule}`, paddingTop: 12 }}>
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -2563,10 +2564,6 @@ export default function App() {
                       )}
                       {(kululiigid || HALDUS_UI_KULULIIGID).map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 120 }}>
-                    <div style={fieldLabel}>Nimetus</div>
-                    <input value={r.name || ""} onChange={(e) => updateRow("COST", r.id, { name: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { name: next }))} placeholder="Kirjelda lühidalt" style={inputStyle} />
                   </div>
                   <div style={{ width: 130 }}>
                     <div style={fieldLabel}>Summa perioodis (€)</div>
@@ -2606,7 +2603,13 @@ export default function App() {
                 {!isMarkusOpen2 && <button onClick={() => setOpenTab2TaepsustusId(r.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: N.text, padding: "4px 0" }}>+ Lisa märkus</button>}
                 {isMarkusOpen2 && (
                   <div style={{ marginTop: 8 }}>
-                    <div style={fieldLabel}>Märkus (valikuline)</div>
+                    {r.name?.trim() && (
+                      <div style={{ marginBottom: 6 }}>
+                        <div style={fieldLabel}>Nimetus</div>
+                        <input value={r.name} onChange={(e) => updateRow("COST", r.id, { name: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { name: next }))} style={inputStyle} />
+                      </div>
+                    )}
+                    <div style={fieldLabel}>{isMuuKategooria ? "Täpsustus" : "Märkus (valikuline)"}</div>
                     <input value={r.selgitus || ""} onChange={(e) => updateRow("COST", r.id, { selgitus: e.target.value })} onBlur={(e) => normalizeIfChanged(e.target.value, (next) => updateRow("COST", r.id, { selgitus: next }))} style={inputStyle} />
                     <button onClick={() => { updateRow("COST", r.id, { selgitus: "" }); setOpenTab2TaepsustusId(null); }} style={{ ...btnRemove, marginTop: 4 }}>Eemalda märkus</button>
                   </div>
