@@ -66,11 +66,11 @@ describe("Tab 2 tulu suunamise valideerimine (normalizeIncomeAllocations)", () =
     expect(norm.errors).toHaveLength(0);
   });
 
-  it("targeted ilma suunamisteta → isValid false", () => {
+  it("tühi incomeAllocations → isValid true, isDirected false (üldine KÜ tulu)", () => {
     const r = { ...base, incomeAllocation: "targeted" };
     const norm = normalizeIncomeAllocations(r);
-    expect(norm.isValid).toBe(false);
-    expect(norm.errors[0]).toContain("Vähemalt üks");
+    expect(norm.isValid).toBe(true);
+    expect(norm.isDirected).toBe(false);
   });
 
   it("targeted + repairFund suunamine + summa võrdub → isValid true", () => {
@@ -299,13 +299,13 @@ describe("Vana mitme-allokeeringuga rea käsitlus uues UI-s", () => {
   });
 
   it("fondiMuuTuluFromTab2 töötab korrektselt ka mitme allokeeringuga real (normalizeIncomeAllocations kaudu)", () => {
-    // Vana mitme-allokeeringuga rida: repairFund 600 + reserve 400
+    // Mitme-allokeeringuga rida: repairFund 600 + general 400
     const result = normalizeIncomeAllocations({
       summaInput: "1000",
       incomeAllocation: "targeted",
       incomeAllocations: [
         { id: "a", target: "repairFund", amount: "600", note: "" },
-        { id: "b", target: "reserve", amount: "400", note: "" },
+        { id: "b", target: "general", amount: "400", note: "" },
       ],
     });
     const repairTotal = result.allocations

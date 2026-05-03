@@ -39,10 +39,14 @@ describe("normalizeIncomeAllocations: general row", () => {
 // ── 2. normalizeIncomeAllocations: targeted, valideerimine ───────────────────
 
 describe("normalizeIncomeAllocations: targeted row valideerimine", () => {
-  it("targeted ilma allokeeringuteta → isValid false, 'Vähemalt üks suunamine'", () => {
+  it("tühi incomeAllocations (ka targeted-moodi puhul) → üldine KÜ tulu, isValid: true", () => {
     const norm = normalizeIncomeAllocations({ summaInput: "1000", incomeAllocation: "targeted", incomeAllocations: [] });
-    expect(norm.isValid).toBe(false);
-    expect(norm.errors[0]).toContain("Vähemalt üks");
+    expect(norm.allocations).toHaveLength(0);
+    expect(norm.isValid).toBe(true);
+    expect(norm.isDirected).toBe(false);
+    expect(norm.errors).toHaveLength(0);
+    expect(norm.totalAllocated).toBe(0);
+    expect(norm.unallocatedAmount).toBe(1000);
   });
 
   it("targeted + summa võrdub → isValid true", () => {
@@ -73,12 +77,12 @@ describe("normalizeIncomeAllocations: targeted row valideerimine", () => {
     expect(norm.errors.some(e => e.includes("sihtkoht"))).toBe(true);
   });
 
-  it("mitu allokeeringut summeritakse", () => {
+  it("mitu allokeeringut summeritakse (repairFund + general)", () => {
     const norm = normalizeIncomeAllocations({
       summaInput: "1000", incomeAllocation: "targeted",
       incomeAllocations: [
         { id: "a", target: "repairFund", amount: "600", note: "" },
-        { id: "b", target: "reserve", amount: "400", note: "" },
+        { id: "b", target: "general", amount: "400", note: "" },
       ],
     });
     expect(norm.isValid).toBe(true);

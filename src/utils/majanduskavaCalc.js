@@ -461,38 +461,83 @@ export function seedDefaultKommunaalRows(plan) {
   };
 }
 
-// Normalizes income row allocations — handles both new incomeAllocations model and
-// legacy incomeUse/targetFund/fundDirectedAmount fields.
+// Allowed allocation targets. "reserve" is intentionally excluded — reservkapital
+// linking is a separate work block.
+const INCOME_ALLOWED_TARGETS = new Set(["repairFund", "general", "other"]);
+
+// Normalizes income row allocations.
+// Primary source: incomeAllocations array (targets: repairFund | general | other).
+// Empty / missing incomeAllocations = general KÜ income (valid, not an error).
+// Legacy fallback: incomeUse / targetFund / fundDirectedAmount accepted for
+//   repairFund and general only — any other target (e.g. reserve) is flagged as error.
+// Returns { allocations, totalAllocated, unallocatedAmount, isDirected, isValid, errors }.
 export function normalizeIncomeAllocations(row) {
   const rowSumma = Math.round(parseFloat(row.summaInput) || 0);
 
   if (Array.isArray(row.incomeAllocations) && row.incomeAllocations.length > 0) {
     const allocs = row.incomeAllocations;
-    const totalAllocated = Math.round(allocs.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0));
     const errors = [];
-    if (row.incomeAllocation === "targeted") {
-      allocs.forEach(a => {
-        if (!a.target) errors.push("Kõigil suunamistel peab olema sihtkoht.");
-        if (!(parseFloat(a.amount) > 0)) errors.push("Kõigil suunamistel peab olema summa.");
-        if ((parseFloat(a.amount) || 0) < 0) errors.push("Summa ei tohi olla negatiivne.");
-      });
-      if (rowSumma > 0 && totalAllocated !== rowSumma)
-        errors.push("Suunatud summad peavad kokku andma kogu tulu summa.");
-    }
-    return { allocations: allocs, totalAllocated, unallocatedAmount: rowSumma - totalAllocated, isValid: errors.length === 0, errors };
+    allocs.forEach(a => {
+      const amt = parseFloat(a.amount) || 0;
+      if (!a.target) {
+        errors.push("Kõigil suunamistel peab olema sihtkoht.");
+      } else if (a.target === "reserve") {
+        errors.push("Reservkapitali suunamine ei ole selles tööplokis lubatud.");
+      } else if (!INCOME_ALLOWED_TARGETS.has(a.target)) {
+        errors.push("Kõigil suunamistel peab olema kehtiv sihtkoht.");
+      }
+      if (amt < 0) {
+        errors.push("Summa ei tohi olla negatiivne.");
+      } else if (!(amt > 0)) {
+        errors.push("Kõigil suunamistel peab olema summa.");
+      }
+    });
+    const totalAllocated = Math.round(allocs.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0));
+    if (errors.length === 0 && rowSumma > 0 && totalAllocated !== rowSumma)
+      errors.push("Suunatud summad peavad kokku andma kogu tulu summa.");
+    return {
+      allocations: allocs,
+      totalAllocated,
+      unallocatedAmount: rowSumma - totalAllocated,
+      isDirected: true,
+      isValid: errors.length === 0,
+      errors,
+    };
   }
 
-  if (row.incomeAllocation === "targeted") {
-    return { allocations: [], totalAllocated: 0, unallocatedAmount: rowSumma, isValid: false, errors: ["Vähemalt üks suunamine peab olema."] };
-  }
-
-  // Legacy fallback: old incomeUse/targetFund/fundDirectedAmount model
+  // Legacy fallback: old incomeUse/targetFund/fundDirectedAmount model.
+  // Only repairFund and general are supported; other targets (e.g. reserve) are flagged.
   if (row.incomeUse === "fund" && row.targetFund) {
+    if (!INCOME_ALLOWED_TARGETS.has(row.targetFund)) {
+      return {
+        allocations: [],
+        totalAllocated: 0,
+        unallocatedAmount: rowSumma,
+        isDirected: false,
+        isValid: false,
+        errors: [`Legacy suunamine sihtkohale "${row.targetFund}" ei ole toetatud.`],
+      };
+    }
     const directed = (row.fundDirectedAmount !== "" && row.fundDirectedAmount != null)
       ? Math.max(0, Math.min(Math.round(parseFloat(row.fundDirectedAmount) || 0), rowSumma))
       : rowSumma;
-    return { allocations: [{ id: "__legacy__", target: row.targetFund, amount: directed, note: "" }], totalAllocated: directed, unallocatedAmount: rowSumma - directed, isValid: true, errors: [] };
+    return {
+      allocations: [{ id: "__legacy__", target: row.targetFund, amount: directed, note: "" }],
+      totalAllocated: directed,
+      unallocatedAmount: rowSumma - directed,
+      isDirected: true,
+      isValid: true,
+      errors: [],
+    };
   }
 
-  return { allocations: [], totalAllocated: 0, unallocatedAmount: rowSumma, isValid: true, errors: [] };
+  // General KÜ income — empty or absent incomeAllocations with no legacy fund directive.
+  return {
+    allocations: [],
+    totalAllocated: 0,
+    unallocatedAmount: rowSumma,
+    isDirected: false,
+    isValid: true,
+    errors: [],
+  };
 }
