@@ -16,9 +16,15 @@ import { describe, it, expect } from "vitest";
 // Kohustuslikud väljad: nimi, registrikood, aadress, korteriteArv, suletudNetopind, periood
 // ehrKood EI ole kohustuslik (ei kuulu tab0AllFilled kontrollitavate hulka)
 
-function computeTab0Status({ hasPeriod, kyData }) {
+function computeTab0Status({ hasPeriod, period, kyData }) {
+  const periodOk = period != null
+    ? !!(period.start && period.end && period.start <= period.end)
+    : !!hasPeriod;
+  const anyPeriodTouched = period != null
+    ? !!(period.start || period.end)
+    : !!hasPeriod;
   const allRequired = !!(
-    hasPeriod &&
+    periodOk &&
     kyData.nimi?.trim() &&
     kyData.registrikood?.trim() &&
     kyData.aadress?.trim() &&
@@ -26,7 +32,7 @@ function computeTab0Status({ hasPeriod, kyData }) {
     parseFloat(kyData.suletudNetopind) > 0
   );
   const anyFilled = !!(
-    (hasPeriod) ||
+    anyPeriodTouched ||
     kyData.nimi ||
     kyData.registrikood ||
     kyData.aadress ||
@@ -235,5 +241,37 @@ describe("kohustuslike väljade nimekiri on täpne", () => {
   it("korterite arv ON kohustuslik (on puuduste loendis kui puudub)", () => {
     const missing = computeTab0Missing(FULL_PERIOD, { ...FULL_KY, korteriteArv: "" });
     expect(missing).toContain("Korterite arv");
+  });
+});
+
+// ── 7. Perioodi järjekorra valideerimine ─────────────────────────────────────
+
+describe("Tab 0 perioodi järjekorra valideerimine", () => {
+  it("start > end + kõik muud väljad täidetud → invalid (punane, mitte roheline)", () => {
+    expect(computeTab0Status({
+      period: { start: "2026-12-31", end: "2026-01-01" },
+      kyData: FULL_KY,
+    })).toBe("invalid");
+  });
+
+  it("start <= end + kõik muud väljad täidetud → valid (roheline)", () => {
+    expect(computeTab0Status({
+      period: { start: "2026-01-01", end: "2026-12-31" },
+      kyData: FULL_KY,
+    })).toBe("valid");
+  });
+
+  it("start === end + kõik muud väljad täidetud → valid", () => {
+    expect(computeTab0Status({
+      period: { start: "2026-06-01", end: "2026-06-01" },
+      kyData: FULL_KY,
+    })).toBe("valid");
+  });
+
+  it("start > end, ülejäänud väljad tühjad → invalid (ei notStarted, sest periood on täidetud)", () => {
+    expect(computeTab0Status({
+      period: { start: "2026-12-31", end: "2026-01-01" },
+      kyData: EMPTY_KY,
+    })).toBe("invalid");
   });
 });

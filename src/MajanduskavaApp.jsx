@@ -1819,7 +1819,8 @@ export default function App() {
     parseFloat(kyData.suletudNetopind) > 0 &&
     kyData.korteriteArv &&
     plan.period.start &&
-    plan.period.end
+    plan.period.end &&
+    plan.period.start <= plan.period.end
   );
   const tab0AnyTouched = Boolean(
     kyData.registrikood?.trim() ||
