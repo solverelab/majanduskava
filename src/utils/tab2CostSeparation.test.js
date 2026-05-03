@@ -314,7 +314,8 @@ describe("Tab 2 jaotusaluse UI — tavajuht ja erandi alus", () => {
 
   const tab2Region = () => {
     const tab2Start = src.indexOf("sec === 2");
-    return src.slice(tab2Start, tab2Start + 40000);
+    const tab4Start = src.indexOf("sec === 4 &&");
+    return src.slice(tab2Start, tab4Start > tab2Start ? tab4Start : tab2Start + 40000);
   };
 
   it("tavajuhtumi helper tekst eemaldatud — KrtS § 40 lg 1 viidet ei kuvata", () => {
@@ -375,7 +376,8 @@ describe("Tab 2 täpsustus-toggle muster", () => {
 
   const tab2Region = () => {
     const tab2Start = src.indexOf("sec === 2");
-    return src.slice(tab2Start, tab2Start + 40000);
+    const tab4Start = src.indexOf("sec === 4 &&");
+    return src.slice(tab2Start, tab4Start > tab2Start ? tab4Start : tab2Start + 40000);
   };
 
   it('"Selgitus (valikuline)" label ei esine Tab 2 piirkonnas', () => {
