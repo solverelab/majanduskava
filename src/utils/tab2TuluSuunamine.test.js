@@ -112,11 +112,12 @@ describe("normalizeIncomeAllocations: legacy andmemudel", () => {
     expect(norm.totalAllocated).toBe(600);
   });
 
-  it("legacy fundDirectedAmount on capped tulurea summaga", () => {
+  it("legacy fundDirectedAmount > tulurea summa → isValid: false, error", () => {
     const norm = normalizeIncomeAllocations({
       summaInput: "500", incomeUse: "fund", targetFund: "repairFund", fundDirectedAmount: "9999",
     });
-    expect(norm.allocations[0].amount).toBe(500);
+    expect(norm.isValid).toBe(false);
+    expect(norm.errors.length).toBeGreaterThan(0);
   });
 
   it("legacy incomeUse=fund ilma targetFundita → tühjad allokeeringud", () => {

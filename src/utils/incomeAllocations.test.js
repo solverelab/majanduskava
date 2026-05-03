@@ -134,11 +134,21 @@ describe("legacy incomeUse/targetFund/fundDirectedAmount → repairFund fallback
     expect(n.unallocatedAmount).toBe(900);
   });
 
-  it("legacy fundDirectedAmount on capped tulurea summaga", () => {
+  it("tulu summa 1000, fundDirectedAmount 1200 → isValid: false, error", () => {
+    const n = normalizeIncomeAllocations({
+      summaInput: "1000", incomeUse: "fund", targetFund: "repairFund", fundDirectedAmount: "1200",
+    });
+    expect(n.isValid).toBe(false);
+    expect(n.errors.length).toBeGreaterThan(0);
+    expect(n.allocations).toHaveLength(0);
+  });
+
+  it("legacy fundDirectedAmount > rowSumma → isValid: false, error (9999 vs 500)", () => {
     const n = normalizeIncomeAllocations({
       summaInput: "500", incomeUse: "fund", targetFund: "repairFund", fundDirectedAmount: "9999",
     });
-    expect(n.allocations[0].amount).toBe(500);
+    expect(n.isValid).toBe(false);
+    expect(n.errors.length).toBeGreaterThan(0);
   });
 
   it("incomeUse=fund + targetFund=null → tühjad allokeeringud, üldine KÜ tulu", () => {

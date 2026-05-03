@@ -519,12 +519,22 @@ export function normalizeIncomeAllocations(row) {
       };
     }
     const directed = (row.fundDirectedAmount !== "" && row.fundDirectedAmount != null)
-      ? Math.max(0, Math.min(Math.round(parseFloat(row.fundDirectedAmount) || 0), rowSumma))
+      ? Math.round(parseFloat(row.fundDirectedAmount) || 0)
       : rowSumma;
+    if (directed > rowSumma) {
+      return {
+        allocations: [],
+        totalAllocated: 0,
+        unallocatedAmount: rowSumma,
+        isDirected: false,
+        isValid: false,
+        errors: [`Legacy fundDirectedAmount (${directed} €) ületab tulurea summa (${rowSumma} €).`],
+      };
+    }
     return {
-      allocations: [{ id: "__legacy__", target: row.targetFund, amount: directed, note: "" }],
-      totalAllocated: directed,
-      unallocatedAmount: rowSumma - directed,
+      allocations: [{ id: "__legacy__", target: row.targetFund, amount: Math.max(0, directed), note: "" }],
+      totalAllocated: Math.max(0, directed),
+      unallocatedAmount: rowSumma - Math.max(0, directed),
       isDirected: true,
       isValid: true,
       errors: [],
