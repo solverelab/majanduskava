@@ -1815,7 +1815,7 @@ export default function App() {
   const tab0AllFilled = Boolean(
     kyData.registrikood?.trim() &&
     kyData.nimi?.trim() &&
-    kyData.aadress?.trim() &&
+    kyData.kyAadress?.trim() &&
     parseFloat(kyData.suletudNetopind) > 0 &&
     kyData.korteriteArv &&
     plan.period.start &&
@@ -1824,7 +1824,7 @@ export default function App() {
   const tab0AnyTouched = Boolean(
     kyData.registrikood?.trim() ||
     kyData.nimi?.trim() ||
-    kyData.aadress?.trim() ||
+    kyData.kyAadress?.trim() ||
     parseFloat(kyData.suletudNetopind) > 0 ||
     kyData.korteriteArv ||
     plan.period.start ||
@@ -3820,7 +3820,7 @@ export default function App() {
             <div style={{ ...card, padding: 24 }}>
               {kyData.nimi && <div style={{ padding: "4px 0" }}>{kyData.nimi}</div>}
               {kyData.registrikood && <div style={{ padding: "4px 0", color: N.sub }}>{kyData.registrikood}</div>}
-              {kyData.aadress && <div style={{ padding: "4px 0", color: N.sub }}>{kyData.aadress}</div>}
+              {kyData.kyAadress && <div style={{ padding: "4px 0", color: N.sub }}>{kyData.kyAadress}</div>}
               <div style={{ padding: "4px 0" }}>
                 <span style={{ color: N.sub }}>Periood: </span>
                 {formatDateEE(plan.period.start)} – {formatDateEE(plan.period.end)}
@@ -4319,7 +4319,7 @@ export default function App() {
               if (!plan.period.start || !plan.period.end) missing.push("Majanduskava periood");
               if (!kyData.nimi?.trim()) missing.push("KÜ nimi");
               if (!kyData.registrikood?.trim()) missing.push("Registrikood");
-              if (!kyData.aadress?.trim()) missing.push("Hoone aadress");
+              if (!kyData.kyAadress?.trim()) missing.push("KÜ aadress");
               if (!(parseFloat(kyData.suletudNetopind) > 0)) missing.push("Kaasomandi osad kokku");
               if (missing.length === 0) return null;
               return (
@@ -4565,14 +4565,14 @@ export default function App() {
         {/* ── Print-only: all sections rendered for print ── */}
       {isPrinting && (
         <div className="print-content">
-          {(kyData.nimi || kyData.registrikood || kyData.aadress) && (
+          {(kyData.nimi || kyData.registrikood || kyData.kyAadress) && (
             <div style={{ textAlign: "center", marginBottom: 16 }}>
               {kyData.nimi && <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>{kyData.nimi}</h1>}
               {kyData.registrikood && (
                 <div style={{ fontSize: 14, color: N.sub, marginTop: 4 }}>{kyData.registrikood}</div>
               )}
-              {kyData.aadress && (
-                <div style={{ fontSize: 14, color: N.sub, marginTop: kyData.registrikood ? 2 : 4 }}>{kyData.aadress}</div>
+              {kyData.kyAadress && (
+                <div style={{ fontSize: 14, color: N.sub, marginTop: kyData.registrikood ? 2 : 4 }}>{kyData.kyAadress}</div>
               )}
             </div>
           )}
