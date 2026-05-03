@@ -1859,7 +1859,8 @@ export default function App() {
       if (!activeIncomes.length && !activeCosts.length && !activeLoans.length) return "";
       const ok =
         activeIncomes.every(r => r.category && (parseFloat(r.summaInput) || 0) > 0) &&
-        activeCosts.every(r => r.category && (parseFloat(r.summaInput) || 0) > 0) &&
+        activeCosts.every(r => r.category && (parseFloat(r.summaInput) || 0) > 0 &&
+          (!r.category.startsWith("Muu ") || r.category === "Muu teenus" || r.category === "Muu haldusteenus" || r.selgitus?.trim())) &&
         activeLoans.every(l => (l.laenuandja || l.name) && (parseFloat(l.pohiosPerioodis) || 0) + (parseFloat(l.intressPerioodis) || 0) + (parseFloat(l.teenustasudPerioodis) || 0) > 0);
       return ok ? "valid" : "invalid";
     })(),

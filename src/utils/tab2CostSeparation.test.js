@@ -712,3 +712,38 @@ describe("Tab 2 korteriomanike maksed perioodis: lähtekoodi kontroll", () => {
     expect(stmt).not.toContain("korteriteKuumaksed.reduce");
   });
 });
+
+// ── 10. "Muu ..." kulurea täpsustuse valideerimiskontroll ────────────────────
+//
+// Mirrors activeCosts.every() in tabStatus[2].
+
+describe("Tab 2 'Muu ...' kulurea täpsustuse valideerimine", () => {
+  // Mirrors activeCosts.every() in tabStatus[2] (post-fix)
+  const costRowOk = (r) =>
+    !!(r.category && (parseFloat(r.summaInput) || 0) > 0) &&
+    (!r.category.startsWith("Muu ") || r.category === "Muu teenus" || r.category === "Muu haldusteenus" || !!r.selgitus?.trim());
+
+  it("'Muu majandamiskulu' + summa + tühi selgitus → rida ei ole OK", () => {
+    expect(costRowOk({ category: "Muu majandamiskulu", summaInput: "500", selgitus: "" })).toBe(false);
+  });
+
+  it("'Muu majandamiskulu' + summa + ainult tühikud → rida ei ole OK", () => {
+    expect(costRowOk({ category: "Muu majandamiskulu", summaInput: "500", selgitus: "   " })).toBe(false);
+  });
+
+  it("'Muu majandamiskulu' + summa + täidetud selgitus → rida on OK", () => {
+    expect(costRowOk({ category: "Muu majandamiskulu", summaInput: "500", selgitus: "desinfitseerimine" })).toBe(true);
+  });
+
+  it("tavakategooria 'Koristus' ilma selgituseta → rida on OK", () => {
+    expect(costRowOk({ category: "Koristus", summaInput: "1200", selgitus: "" })).toBe(true);
+  });
+
+  it("'Muu teenus' ilma selgituseta → rida on OK (eriloogika kehtib)", () => {
+    expect(costRowOk({ category: "Muu teenus", summaInput: "800", selgitus: "" })).toBe(true);
+  });
+
+  it("'Muu haldusteenus' ilma selgituseta → rida on OK (eriloogika kehtib)", () => {
+    expect(costRowOk({ category: "Muu haldusteenus", summaInput: "800", selgitus: "" })).toBe(true);
+  });
+});
