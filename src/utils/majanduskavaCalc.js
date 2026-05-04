@@ -30,6 +30,27 @@ export function utilityTypeForRow(row) {
   return row.utilityType || UTILITY_TYPE_BY_CATEGORY[row.category] || null;
 }
 
+// KrtS § 40 lg 2 kommunaalteenuste arveldusviiside kanooniline loend.
+// "advance_*" — ettemaks; "posthoc_by_consumption_*" — tegeliku kulu järgi.
+export const UTILITY_SETTLEMENT_MODES = [
+  "advance_by_coownership",
+  "advance_by_apartment",
+  "posthoc_by_consumption_bylaws",
+  "posthoc_by_consumption_agreement",
+  "posthoc_by_flat_rate",
+];
+
+// Tagastab true kui kommunaalrea arveldusmudel on konsistentne.
+// Puuduv utilitySettlementMode loetakse "advance_by_coownership"-ks (legacy-ühilduvus).
+export function kommunaalRowSettlementValid(r) {
+  const mode = r.utilitySettlementMode || "advance_by_coownership";
+  if (!UTILITY_SETTLEMENT_MODES.includes(mode)) return false;
+  if (mode === "posthoc_by_consumption_bylaws" || mode === "posthoc_by_consumption_agreement") {
+    if (!r.consumptionDeterminationMethod?.trim()) return false;
+  }
+  return true;
+}
+
 // P 5 rea täielikkuse kontroll.
 // Tagastab { isUtility, complete, missing[] }.
 export function utilityRowStatus(row) {
@@ -398,6 +419,8 @@ export function makeKommunaalRow(category) {
     legalBasisSpecialAgreement: false,
     allocationExplanation: "",
     settledPostHoc: false,
+    utilitySettlementMode: "advance_by_coownership",
+    consumptionDeterminationMethod: "",
     fundingSource: "eelarve",
     recursNextPeriod: false,
     nextPeriodAmount: null,

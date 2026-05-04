@@ -6,6 +6,7 @@ import {
   KOMMUNAAL_DEFAULT_CATEGORIES, KOMMUNAALTEENUSED, makeKommunaalRow,
   seedDefaultKommunaalRows, utilityRowStatus, migrateLegacyKommunaalCategories,
   FUEL_TYPES, FUEL_TYPE_UNITS,
+  UTILITY_SETTLEMENT_MODES, kommunaalRowSettlementValid,
 } from "./majanduskavaCalc";
 import { defaultPlan } from "../domain/planSchema";
 
@@ -725,5 +726,90 @@ describe("Tab 2 nuppude tekstid vastavad Tab 1 mustrile", () => {
   it("Tab 2-s pole tulude eraldi Tühjenda nuppu (incomeRows: [] kustutav askConfirm)", () => {
     // Duplikaatne tulude Tühjenda on eemaldatud — ainult clearBtn(2) üleval
     expect(tab2Block).not.toContain("Kas soovid tuluread kustutada?");
+  });
+});
+
+// ── 13. utilitySettlementMode ja consumptionDeterminationMethod ───────────────
+
+describe("makeKommunaalRow: utilitySettlementMode vaikimisi väljad", () => {
+  it("utilitySettlementMode vaikimisi on 'advance_by_coownership'", () => {
+    expect(makeKommunaalRow("Soojus").utilitySettlementMode).toBe("advance_by_coownership");
+  });
+
+  it("consumptionDeterminationMethod vaikimisi on tühi string", () => {
+    expect(makeKommunaalRow("Elekter").consumptionDeterminationMethod).toBe("");
+  });
+
+  it("kõik vaikimisi read sisaldavad utilitySettlementMode välja", () => {
+    KOMMUNAAL_DEFAULT_CATEGORIES.forEach(cat => {
+      expect(makeKommunaalRow(cat).utilitySettlementMode).toBeDefined();
+    });
+  });
+});
+
+describe("UTILITY_SETTLEMENT_MODES: loend", () => {
+  it("sisaldab täpselt 5 väärtust", () => {
+    expect(UTILITY_SETTLEMENT_MODES).toHaveLength(5);
+  });
+
+  it("sisaldab 'advance_by_coownership'", () => {
+    expect(UTILITY_SETTLEMENT_MODES).toContain("advance_by_coownership");
+  });
+
+  it("sisaldab 'posthoc_by_consumption_bylaws'", () => {
+    expect(UTILITY_SETTLEMENT_MODES).toContain("posthoc_by_consumption_bylaws");
+  });
+
+  it("sisaldab 'posthoc_by_consumption_agreement'", () => {
+    expect(UTILITY_SETTLEMENT_MODES).toContain("posthoc_by_consumption_agreement");
+  });
+});
+
+describe("kommunaalRowSettlementValid: arveldusmudeli valideerimine", () => {
+  it("puuduv utilitySettlementMode → kehtiv (legacy ühilduvus)", () => {
+    expect(kommunaalRowSettlementValid({ summaInput: 1000 })).toBe(true);
+  });
+
+  it("'advance_by_coownership' → kehtiv", () => {
+    expect(kommunaalRowSettlementValid({ utilitySettlementMode: "advance_by_coownership" })).toBe(true);
+  });
+
+  it("'advance_by_apartment' → kehtiv", () => {
+    expect(kommunaalRowSettlementValid({ utilitySettlementMode: "advance_by_apartment" })).toBe(true);
+  });
+
+  it("'posthoc_by_flat_rate' → kehtiv", () => {
+    expect(kommunaalRowSettlementValid({ utilitySettlementMode: "posthoc_by_flat_rate" })).toBe(true);
+  });
+
+  it("'posthoc_by_consumption_bylaws' + consumptionDeterminationMethod täidetud → kehtiv", () => {
+    expect(kommunaalRowSettlementValid({
+      utilitySettlementMode: "posthoc_by_consumption_bylaws",
+      consumptionDeterminationMethod: "Veearvestid",
+    })).toBe(true);
+  });
+
+  it("'posthoc_by_consumption_agreement' + consumptionDeterminationMethod täidetud → kehtiv", () => {
+    expect(kommunaalRowSettlementValid({
+      utilitySettlementMode: "posthoc_by_consumption_agreement",
+      consumptionDeterminationMethod: "Soojusarvestid",
+    })).toBe(true);
+  });
+
+  it("'posthoc_by_consumption_bylaws' + tühi consumptionDeterminationMethod → mittekehtiv", () => {
+    expect(kommunaalRowSettlementValid({
+      utilitySettlementMode: "posthoc_by_consumption_bylaws",
+      consumptionDeterminationMethod: "",
+    })).toBe(false);
+  });
+
+  it("'posthoc_by_consumption_agreement' + puuduv consumptionDeterminationMethod → mittekehtiv", () => {
+    expect(kommunaalRowSettlementValid({
+      utilitySettlementMode: "posthoc_by_consumption_agreement",
+    })).toBe(false);
+  });
+
+  it("tundmatu utilitySettlementMode → mittekehtiv", () => {
+    expect(kommunaalRowSettlementValid({ utilitySettlementMode: "invalid_mode" })).toBe(false);
   });
 });

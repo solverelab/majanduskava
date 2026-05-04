@@ -16,6 +16,7 @@ import {
   computeKopiiriondvaade, computeReserveMin, computeRemondifondiArvutus,
   investmentStatus, kulureaOsa, jaotusalusSilt, getEffectiveRowAllocationBasis,
   UTILITY_TYPE_BY_CATEGORY, utilityTypeForRow, utilityRowStatus,
+  UTILITY_SETTLEMENT_MODES, kommunaalRowSettlementValid,
   KOMMUNAALTEENUSED, HALDUSTEENUSED, LAENUMAKSED,
   seedDefaultKommunaalRows, makeKommunaalRow, KOMMUNAAL_DEFAULT_CATEGORIES,
   FUEL_TYPES, FUEL_TYPE_UNITS,
@@ -1303,7 +1304,7 @@ export default function App() {
         calc: { type: "FIXED_PERIOD", params: { amountEUR: 0 } },
       }),
       ...(side === "COST"
-        ? { category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0, selgitus: "", forecastAdjustmentEnabled: false, forecastAdjustmentType: null, forecastAdjustmentPercent: null, forecastAdjustmentNote: "", allocationBasis: "m2", legalBasisSeadus: true, legalBasisBylaws: false, legalBasisSpecialAgreement: false, legalBasisMuu: false, allocationExplanation: "", settledPostHoc: false, fundingSource: "eelarve", recursNextPeriod: false, nextPeriodAmount: null }
+        ? { category: "", kogus: "", uhik: "", uhikuHind: "", arvutus: "aastas", summaInput: 0, selgitus: "", forecastAdjustmentEnabled: false, forecastAdjustmentType: null, forecastAdjustmentPercent: null, forecastAdjustmentNote: "", allocationBasis: "m2", legalBasisSeadus: true, legalBasisBylaws: false, legalBasisSpecialAgreement: false, legalBasisMuu: false, allocationExplanation: "", settledPostHoc: false, utilitySettlementMode: "advance_by_coownership", consumptionDeterminationMethod: "", fundingSource: "eelarve", recursNextPeriod: false, nextPeriodAmount: null }
         : { category: "", arvutus: "aastas", summaInput: "", incomeAllocation: "general", incomeAllocations: [], incomeUse: "general", targetFund: null, fundDirectedAmount: "" }),
       ...overrides,
     };
@@ -1867,7 +1868,13 @@ export default function App() {
       return ok ? "valid" : "invalid";
     })(),
     // 3: Kommunaalid
-    kommunaalRows.some(r => (parseFloat(r.summaInput) || 0) > 0) ? "valid" : kommunaalRows.length > 0 ? "invalid" : "",
+    (() => {
+      if (kommunaalRows.length === 0) return "";
+      const hasPositive = kommunaalRows.some(r => (parseFloat(r.summaInput) || 0) > 0);
+      if (!hasPositive) return "invalid";
+      const allSettlementOk = kommunaalRows.every(r => kommunaalRowSettlementValid(r));
+      return allSettlementOk ? "valid" : "invalid";
+    })(),
     // 4: Fondid
     plan.funds.repairFund.monthlyRateEurPerM2 > 0 ? "valid" : "",
     // 5: Planeeritav laen
