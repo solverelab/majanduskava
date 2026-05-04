@@ -1917,7 +1917,7 @@ export default function App() {
 
           {/* Kategooria */}
           <div style={{ width: 180 }}>
-            <div style={fieldLabel}>Kategooria</div>
+            <div style={fieldLabel}>{isKommunaal ? "Teenuse liik" : "Kategooria"}</div>
             <select
               value={r.category || ""}
               onChange={(e) => handleKuluKategooriaChange(r.id, e.target.value)}
@@ -1976,9 +1976,12 @@ export default function App() {
                 }}
                 style={{ ...selectStyle, width: "100%" }}
               >
-                <option value="">— vali liik —</option>
+                <option value="">Vali...</option>
                 {FUEL_TYPES.map(ft => <option key={ft} value={ft}>{ft}</option>)}
               </select>
+              {!r.fuelType && (
+                <div style={{ fontSize: 12, color: N.dim, marginTop: 3 }}>nt gaas, pellet, õli</div>
+              )}
             </div>
           )}
 
@@ -1986,7 +1989,7 @@ export default function App() {
           {showKogusUhik ? (
             <>
               <div style={{ width: 100 }}>
-                <div style={fieldLabel}>Kogus</div>
+                <div style={fieldLabel}>{isKommunaal ? "Prognoositav kogus" : "Kogus"}</div>
                 <NumberInput
                   value={r.kogus}
                   onChange={(v) => updateRow("COST", r.id, { kogus: v })}
@@ -2024,7 +2027,7 @@ export default function App() {
                 )}
               </div>
               <div style={{ width: 140 }}>
-                <div style={fieldLabel}>Maksumus €/periood</div>
+                <div style={fieldLabel}>{isKommunaal ? "Prognoositav maksumus (€)" : "Maksumus €/periood"}</div>
                 <EuroInput
                   value={r.summaInput || 0}
                   onChange={(v) => updateRow("COST", r.id, { summaInput: v })}
@@ -2035,7 +2038,7 @@ export default function App() {
           ) : (
             /* Haru B: kõik ülejäänud — ainult summa */
             <div style={{ width: 140 }}>
-              <div style={fieldLabel}>{isMuuKomm ? "€/periood" : "Maksumus €/periood"}</div>
+              <div style={fieldLabel}>{isMuuKomm ? "Prognoositav maksumus (€)" : "Maksumus €/periood"}</div>
               <EuroInput
                 value={r.summaInput || 0}
                 onChange={(v) => updateRow("COST", r.id, {
@@ -2067,47 +2070,64 @@ export default function App() {
             </div>
           )}
 
-          <div style={{ width: 100 }}>
-            <div style={fieldLabel}>Jaotamise alus</div>
-            {HALDUSTEENUSED.includes(r.category) ? (() => {
-              const desc = describeAllocationPolicy(plan.allocationPolicies?.maintenance);
-              return (
-                <>
-                  <div style={{ ...selectStyle, width: "100%", display: "flex", alignItems: "center", background: N.muted, color: N.text }}>
-                    {desc.basisLabel}
-                  </div>
-                  <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>
-                    {desc.hasOverride
-                      ? `Õiguslik alus: ${desc.legalBasis}${desc.legalBasisNote ? " — " + desc.legalBasisNote : ""}`
-                      : "Kaasomandi osa suurus"}
-                  </div>
-                </>
-              );
-            })() : (() => {
-              const selectedBasis = r.allocationBasis || "m2";
-              const needsWarning = selectedBasis !== "m2" && getEffectiveRowAllocationBasis(r) === "m2";
-              return (
-                <>
-                  <select
-                    value={selectedBasis}
-                    onChange={(e) => updateRow("COST", r.id, { allocationBasis: e.target.value })}
-                    style={{ ...selectStyle, width: "100%" }}
-                  >
-                    <option value="m2">m²</option>
-                    <option value="apartment">korter</option>
-                  </select>
-                  <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>
-                    {selectedBasis === "apartment" ? "Korteri kohta" : "Kaasomandi osa suurus"}
-                  </div>
-                  {needsWarning && (
-                    <div style={{ fontSize: 12, color: "#b45309", marginTop: 4 }}>
-                      Õiguslik alus märkimata — arvutuses rakendatakse seadusjärgset alust (m²).
+          {isKommunaal && (
+            <div style={{ minWidth: 190, flex: 1 }}>
+              <div style={fieldLabel}>Tasumise/arvestuse kord</div>
+              <select
+                value={r.utilitySettlementMode || "advance_by_coownership"}
+                onChange={(e) => updateRow("COST", r.id, { utilitySettlementMode: e.target.value })}
+                style={{ ...selectStyle, width: "100%" }}
+              >
+                {KOMMUNAAL_ARVESTUS_VALIKUD.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {!isKommunaal && (
+            <div style={{ width: 100 }}>
+              <div style={fieldLabel}>Jaotamise alus</div>
+              {HALDUSTEENUSED.includes(r.category) ? (() => {
+                const desc = describeAllocationPolicy(plan.allocationPolicies?.maintenance);
+                return (
+                  <>
+                    <div style={{ ...selectStyle, width: "100%", display: "flex", alignItems: "center", background: N.muted, color: N.text }}>
+                      {desc.basisLabel}
                     </div>
-                  )}
-                </>
-              );
-            })()}
-          </div>
+                    <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>
+                      {desc.hasOverride
+                        ? `Õiguslik alus: ${desc.legalBasis}${desc.legalBasisNote ? " — " + desc.legalBasisNote : ""}`
+                        : "Kaasomandi osa suurus"}
+                    </div>
+                  </>
+                );
+              })() : (() => {
+                const selectedBasis = r.allocationBasis || "m2";
+                const needsWarning = selectedBasis !== "m2" && getEffectiveRowAllocationBasis(r) === "m2";
+                return (
+                  <>
+                    <select
+                      value={selectedBasis}
+                      onChange={(e) => updateRow("COST", r.id, { allocationBasis: e.target.value })}
+                      style={{ ...selectStyle, width: "100%" }}
+                    >
+                      <option value="m2">m²</option>
+                      <option value="apartment">korter</option>
+                    </select>
+                    <div style={{ fontSize: 12, color: N.dim, marginTop: 4 }}>
+                      {selectedBasis === "apartment" ? "Korteri kohta" : "Kaasomandi osa suurus"}
+                    </div>
+                    {needsWarning && (
+                      <div style={{ fontSize: 12, color: "#b45309", marginTop: 4 }}>
+                        Õiguslik alus märkimata — arvutuses rakendatakse seadusjärgset alust (m²).
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          )}
 
           {!hideRemove && (
             <div style={{ alignSelf: "end", marginLeft: "auto" }}>
@@ -2143,19 +2163,9 @@ export default function App() {
         )}
 
         {isKommunaal && (
-          <div style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 12, color: N.dim, marginBottom: 4 }}>Tasumise/arvestuse kord</div>
-            <select
-              value={r.utilitySettlementMode || "advance_by_coownership"}
-              onChange={(e) => updateRow("COST", r.id, { utilitySettlementMode: e.target.value })}
-              style={{ fontSize: 13, padding: "4px 6px", borderRadius: 4, border: `1px solid ${N.rule}`, background: "#fff" }}
-            >
-              {KOMMUNAAL_ARVESTUS_VALIKUD.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+          <>
             {r.utilitySettlementMode?.startsWith("posthoc_by_consumption_") && (
-              <div style={{ marginTop: 6 }}>
+              <div style={{ marginTop: 8 }}>
                 <div style={{ fontSize: 12, color: N.dim, marginBottom: 4 }}>Tarbimise kindlakstegemise viis</div>
                 <input
                   type="text"
@@ -2166,7 +2176,21 @@ export default function App() {
                 />
               </div>
             )}
-          </div>
+            <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: N.sub }}>
+              <span>Jaotamise alus:</span>
+              <select
+                value={r.allocationBasis || "m2"}
+                onChange={(e) => updateRow("COST", r.id, { allocationBasis: e.target.value })}
+                style={{ fontSize: 13, padding: "2px 6px", borderRadius: 4, border: `1px solid ${N.rule}` }}
+              >
+                <option value="m2">m²</option>
+                <option value="apartment">korter</option>
+              </select>
+              {(r.allocationBasis || "m2") !== "m2" && getEffectiveRowAllocationBasis(r) === "m2" && (
+                <span style={{ fontSize: 12, color: "#b45309" }}>Õiguslik alus märkimata</span>
+              )}
+            </div>
+          </>
         )}
 
         <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px dashed ${N.rule}` }}>
@@ -2179,7 +2203,7 @@ export default function App() {
                   onClick={() => setOpenCostExplanationId(r.id)}
                   style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: N.sub, textDecoration: "underline", padding: 0 }}
                 >
-                  Lisa selgitus (valikuline)
+                  {isKommunaal ? "+ Lisa märkus" : "Lisa selgitus (valikuline)"}
                 </button>
               );
             }
@@ -3577,9 +3601,9 @@ export default function App() {
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button style={btnRemove} onClick={clearKommunaalid}>Tühjenda</button>
               </div>
-              <h1 style={H1_STYLE}>Kütuse, soojuse, vee- ja kanalisatsiooniteenuse ning elektri prognoositav kogus ja maksumus</h1>
+              <h1 style={H1_STYLE}>Kommunaalteenuste prognoos</h1>
+              <div style={{ fontSize: 13, color: N.sub, marginBottom: 8 }}>Sisesta KrtS § 41 p 5 alusel kütuse, soojuse, vee, kanalisatsiooni ja elektri prognoositav kogus ja maksumus. Kui kulu tasutakse pärast tegeliku suuruse selgumist, vali põhikirja või kokkuleppe alusel sobiv tasumise/arvestuse kord.</div>
               <div style={card}>
-                <div style={{ ...H2_STYLE, marginTop: 0 }}>Kommunaalteenused</div>
                 {allKommunaalRead.length === 0 && (
                   <div style={{ fontSize: 14, color: N.sub, padding: "8px 0" }}>Kommunaalteenuste ridu pole lisatud.</div>
                 )}
