@@ -326,6 +326,14 @@ const P5_KOMMUNAALTEENUSED = ["Soojus", "Vesi", "Kanalisatsioon", "Elekter", "K�
 
 const LAENU_LIIGID = ["Remondilaen", "Investeerimislaen", "Kapitalirent", "Laen omanikelt", "Muu"];
 
+const KOMMUNAAL_ARVESTUS_VALIKUD = [
+  { value: "advance_by_coownership",           label: "Ettemakse kaasomandi osa järgi" },
+  { value: "posthoc_by_coownership_bylaws",    label: "Põhikirja järgi pärast tegeliku kulu selgumist" },
+  { value: "posthoc_by_coownership_agreement", label: "Kokkuleppe järgi pärast tegeliku kulu selgumist" },
+  { value: "posthoc_by_consumption_bylaws",    label: "Tarbitud teenuse mahu järgi põhikirja alusel" },
+  { value: "posthoc_by_consumption_agreement", label: "Tarbitud teenuse mahu järgi kokkuleppe alusel" },
+];
+
 const ESEMED = [
   "Katus",
   "Fassaad",
@@ -2136,50 +2144,26 @@ export default function App() {
 
         {isKommunaal && (
           <div style={{ marginTop: 8 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: N.sub, cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={r.settledPostHoc || false}
-                onChange={(e) => updateRow("COST", r.id, { settledPostHoc: e.target.checked })}
-              />
-              <span>Tasumine pärast kulude suuruse selgumist</span>
-            </label>
-            <div style={{ fontSize: 12, color: N.dim, marginTop: 4, marginLeft: 24 }}>
-              Kui põhikirja või korteriomanike kokkuleppega on ette nähtud tegelikust tarbimisest sõltuvate kulude tasumine pärast kulude suuruse selgumist, määratakse majanduskavas kindlaks ainult muud kulud (näiteks haldus-, hooldus-, remondi- ja reservkulud).
-            </div>
-            {r.settledPostHoc && (
-              <div style={{ fontSize: 13, color: N.sub, marginTop: 4, marginLeft: 24 }}>
-                See kulu ei lähe kuumakse ettemaksu hulka.
-              </div>
-            )}
-            {(r.settledPostHoc || r.allocationBasis !== "m2") && (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ fontSize: 12, color: N.dim, marginBottom: 6 }}>
-                  Seadusjärgsest erinev kord peab tuginema põhikirjale või korteriomanike kokkuleppele.
-                </div>
-                <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: N.sub, cursor: "pointer" }}>
-                    <input
-                      type="checkbox"
-                      checked={r.legalBasisBylaws || false}
-                      onChange={(e) => updateRow("COST", r.id, { legalBasisBylaws: e.target.checked })}
-                    />
-                    <span>Põhikirjas</span>
-                  </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: N.sub, cursor: "pointer" }}>
-                    <input
-                      type="checkbox"
-                      checked={r.legalBasisSpecialAgreement || false}
-                      onChange={(e) => updateRow("COST", r.id, { legalBasisSpecialAgreement: e.target.checked })}
-                    />
-                    <span>Kokkuleppes</span>
-                  </label>
-                </div>
-                {r.settledPostHoc && !r.legalBasisBylaws && !r.legalBasisSpecialAgreement && (
-                  <div style={{ fontSize: 12, color: N.sub, marginTop: 4 }}>
-                    Kontrolli, kas see kord on põhikirjas või kokkuleppes ette nähtud.
-                  </div>
-                )}
+            <div style={{ fontSize: 12, color: N.dim, marginBottom: 4 }}>Tasumise/arvestuse kord</div>
+            <select
+              value={r.utilitySettlementMode || "advance_by_coownership"}
+              onChange={(e) => updateRow("COST", r.id, { utilitySettlementMode: e.target.value })}
+              style={{ fontSize: 13, padding: "4px 6px", borderRadius: 4, border: `1px solid ${N.rule}`, background: "#fff" }}
+            >
+              {KOMMUNAAL_ARVESTUS_VALIKUD.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            {r.utilitySettlementMode?.startsWith("posthoc_by_consumption_") && (
+              <div style={{ marginTop: 6 }}>
+                <div style={{ fontSize: 12, color: N.dim, marginBottom: 4 }}>Tarbimise kindlakstegemise viis</div>
+                <input
+                  type="text"
+                  value={r.consumptionDeterminationMethod || ""}
+                  onChange={(e) => updateRow("COST", r.id, { consumptionDeterminationMethod: e.target.value })}
+                  placeholder="nt arvesti, mõõteseade, teenusepakkuja arvestus"
+                  style={{ fontSize: 13, padding: "4px 8px", borderRadius: 4, border: `1px solid ${N.rule}`, width: "100%", maxWidth: 360 }}
+                />
               </div>
             )}
           </div>
@@ -3603,43 +3587,15 @@ export default function App() {
                   {defaultRows.map(r => (
                     <Fragment key={r.id}>
                       {kuluRidaEditor(r, ["kommunaal"], P5_KOMMUNAALTEENUSED, true)}
-                      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", padding: "4px 0 4px 0" }}>
-                        <label style={{ fontSize: 14, color: N.sub, display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}>
-                          <input
-                            type="checkbox"
-                            checked={!!r.settledPostHoc}
-                            onChange={(e) => setPlan(p => ({ ...p, budget: { ...p.budget, costRows: p.budget.costRows.map(x => x.id === r.id ? { ...x, settledPostHoc: e.target.checked } : x) } }))}
-                          />
-                          Tasumine pärast kulude suuruse selgumist
-                        </label>
-                        {r.settledPostHoc && (<>
-                          <label style={{ fontSize: 14, color: N.sub, display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}>
-                            <input
-                              type="checkbox"
-                              checked={!!r.legalBasisBylaws}
-                              onChange={(e) => setPlan(p => ({ ...p, budget: { ...p.budget, costRows: p.budget.costRows.map(x => x.id === r.id ? { ...x, legalBasisBylaws: e.target.checked } : x) } }))}
-                            />
-                            Põhikirjajärgne alus
-                          </label>
-                          <label style={{ fontSize: 14, color: N.sub, display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}>
-                            <input
-                              type="checkbox"
-                              checked={!!r.legalBasisSpecialAgreement}
-                              onChange={(e) => setPlan(p => ({ ...p, budget: { ...p.budget, costRows: p.budget.costRows.map(x => x.id === r.id ? { ...x, legalBasisSpecialAgreement: e.target.checked } : x) } }))}
-                            />
-                            Erikokkuleppe alusel
-                          </label>
-                        </>)}
-                        <div style={{ marginLeft: "auto" }}>
-                          <button
-                            style={btnRemove}
-                            onClick={() => setPlan(p => ({
-                              ...p,
-                              budget: { ...p.budget, costRows: p.budget.costRows.filter(x => x.id !== r.id) },
-                              removedDefaultKommunaalCategories: [...new Set([...(p.removedDefaultKommunaalCategories || []), r.category])],
-                            }))}
-                          >Eemalda rida</button>
-                        </div>
+                      <div style={{ display: "flex", justifyContent: "flex-end", padding: "4px 0" }}>
+                        <button
+                          style={btnRemove}
+                          onClick={() => setPlan(p => ({
+                            ...p,
+                            budget: { ...p.budget, costRows: p.budget.costRows.filter(x => x.id !== r.id) },
+                            removedDefaultKommunaalCategories: [...new Set([...(p.removedDefaultKommunaalCategories || []), r.category])],
+                          }))}
+                        >Eemalda rida</button>
                       </div>
                     </Fragment>
                   ))}

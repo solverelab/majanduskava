@@ -31,13 +31,14 @@ export function utilityTypeForRow(row) {
 }
 
 // KrtS § 40 lg 2 kommunaalteenuste arveldusviiside kanooniline loend.
-// "advance_*" — ettemaks; "posthoc_by_consumption_*" — tegeliku kulu järgi.
+// "advance_*" — ettemaks; "posthoc_by_coownership_*" — pärast tegeliku kulu selgumist kaasomandi osa järgi;
+// "posthoc_by_consumption_*" — tarbimismahu järgi (nõuab consumptionDeterminationMethod).
 export const UTILITY_SETTLEMENT_MODES = [
   "advance_by_coownership",
-  "advance_by_apartment",
+  "posthoc_by_coownership_bylaws",
+  "posthoc_by_coownership_agreement",
   "posthoc_by_consumption_bylaws",
   "posthoc_by_consumption_agreement",
-  "posthoc_by_flat_rate",
 ];
 
 // Tagastab true kui kommunaalrea arveldusmudel on konsistentne.

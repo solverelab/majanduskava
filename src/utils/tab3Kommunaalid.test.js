@@ -270,26 +270,22 @@ describe("Tab 3 UI: isDefault eraldab standardread erandridadest", () => {
     expect(sec3Block).not.toContain("Ei kohaldu");
   });
 
-  it("defaultRows renderduses on 'Tasumine pärast kulude suuruse selgumist' checkbox", () => {
-    const sec3Idx = src.indexOf("sec === 3 && (() => {");
-    const sec3End = src.indexOf("sec === 5 && (", sec3Idx);
-    const sec3Block = src.slice(sec3Idx, sec3End);
-    const defaultLoopIdx = sec3Block.indexOf("defaultRows.map");
-    const extraLoopIdx = sec3Block.indexOf("extraRows.map");
-    const defaultLoop = sec3Block.slice(defaultLoopIdx, extraLoopIdx);
-    expect(defaultLoop).toContain("Tasumine pärast kulude suuruse selgumist");
-    expect(defaultLoop).toContain("settledPostHoc");
+  it("kuluRidaEditor kuvab kommunaalreale 'Tasumise/arvestuse kord' dropdowni", () => {
+    const editorIdx = src.indexOf("const kuluRidaEditor =");
+    const editorEnd = src.indexOf("\n  const kuluRidaEditor", editorIdx + 1) > editorIdx
+      ? src.indexOf("\n  const kuluRidaEditor", editorIdx + 1)
+      : src.indexOf("\n  const tab2KuluRida", editorIdx);
+    const editorBody = src.slice(editorIdx, editorEnd);
+    expect(editorBody).toContain("Tasumise/arvestuse kord");
+    expect(editorBody).toContain("utilitySettlementMode");
   });
 
-  it("defaultRows settledPostHoc checkbox sisaldab legalBasisBylaws ja legalBasisSpecialAgreement", () => {
-    const sec3Idx = src.indexOf("sec === 3 && (() => {");
-    const sec3End = src.indexOf("sec === 5 && (", sec3Idx);
-    const sec3Block = src.slice(sec3Idx, sec3End);
-    const defaultLoopIdx = sec3Block.indexOf("defaultRows.map");
-    const extraLoopIdx = sec3Block.indexOf("extraRows.map");
-    const defaultLoop = sec3Block.slice(defaultLoopIdx, extraLoopIdx);
-    expect(defaultLoop).toContain("legalBasisBylaws");
-    expect(defaultLoop).toContain("legalBasisSpecialAgreement");
+  it("kuluRidaEditor kommunaalreale kuvab KOMMUNAAL_ARVESTUS_VALIKUD valikud ja consumptionDeterminationMethod", () => {
+    const editorIdx = src.indexOf("const kuluRidaEditor =");
+    const editorEnd = src.indexOf("\n  const tab2KuluRida", editorIdx);
+    const editorBody = src.slice(editorIdx, editorEnd);
+    expect(editorBody).toContain("KOMMUNAAL_ARVESTUS_VALIKUD");
+    expect(editorBody).toContain("consumptionDeterminationMethod");
   });
 
   it("defaultRows renderduses on 'Eemalda rida' nupp", () => {
@@ -756,12 +752,28 @@ describe("UTILITY_SETTLEMENT_MODES: loend", () => {
     expect(UTILITY_SETTLEMENT_MODES).toContain("advance_by_coownership");
   });
 
+  it("sisaldab 'posthoc_by_coownership_bylaws'", () => {
+    expect(UTILITY_SETTLEMENT_MODES).toContain("posthoc_by_coownership_bylaws");
+  });
+
+  it("sisaldab 'posthoc_by_coownership_agreement'", () => {
+    expect(UTILITY_SETTLEMENT_MODES).toContain("posthoc_by_coownership_agreement");
+  });
+
   it("sisaldab 'posthoc_by_consumption_bylaws'", () => {
     expect(UTILITY_SETTLEMENT_MODES).toContain("posthoc_by_consumption_bylaws");
   });
 
   it("sisaldab 'posthoc_by_consumption_agreement'", () => {
     expect(UTILITY_SETTLEMENT_MODES).toContain("posthoc_by_consumption_agreement");
+  });
+
+  it("ei sisalda eemaldatud 'advance_by_apartment'", () => {
+    expect(UTILITY_SETTLEMENT_MODES).not.toContain("advance_by_apartment");
+  });
+
+  it("ei sisalda eemaldatud 'posthoc_by_flat_rate'", () => {
+    expect(UTILITY_SETTLEMENT_MODES).not.toContain("posthoc_by_flat_rate");
   });
 });
 
@@ -774,12 +786,12 @@ describe("kommunaalRowSettlementValid: arveldusmudeli valideerimine", () => {
     expect(kommunaalRowSettlementValid({ utilitySettlementMode: "advance_by_coownership" })).toBe(true);
   });
 
-  it("'advance_by_apartment' → kehtiv", () => {
-    expect(kommunaalRowSettlementValid({ utilitySettlementMode: "advance_by_apartment" })).toBe(true);
+  it("'posthoc_by_coownership_bylaws' → kehtiv (consumptionDeterminationMethod ei nõuta)", () => {
+    expect(kommunaalRowSettlementValid({ utilitySettlementMode: "posthoc_by_coownership_bylaws" })).toBe(true);
   });
 
-  it("'posthoc_by_flat_rate' → kehtiv", () => {
-    expect(kommunaalRowSettlementValid({ utilitySettlementMode: "posthoc_by_flat_rate" })).toBe(true);
+  it("'posthoc_by_coownership_agreement' → kehtiv (consumptionDeterminationMethod ei nõuta)", () => {
+    expect(kommunaalRowSettlementValid({ utilitySettlementMode: "posthoc_by_coownership_agreement" })).toBe(true);
   });
 
   it("'posthoc_by_consumption_bylaws' + consumptionDeterminationMethod täidetud → kehtiv", () => {
@@ -811,5 +823,13 @@ describe("kommunaalRowSettlementValid: arveldusmudeli valideerimine", () => {
 
   it("tundmatu utilitySettlementMode → mittekehtiv", () => {
     expect(kommunaalRowSettlementValid({ utilitySettlementMode: "invalid_mode" })).toBe(false);
+  });
+
+  it("eemaldatud 'advance_by_apartment' → mittekehtiv", () => {
+    expect(kommunaalRowSettlementValid({ utilitySettlementMode: "advance_by_apartment" })).toBe(false);
+  });
+
+  it("eemaldatud 'posthoc_by_flat_rate' → mittekehtiv", () => {
+    expect(kommunaalRowSettlementValid({ utilitySettlementMode: "posthoc_by_flat_rate" })).toBe(false);
   });
 });
