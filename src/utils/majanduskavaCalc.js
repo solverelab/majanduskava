@@ -52,6 +52,27 @@ export function kommunaalRowSettlementValid(r) {
   return true;
 }
 
+// Tagastab true kui kommunaalrea tasumiskord on posthoc (pärast tegeliku kulu selgumist).
+// Kasutab utilitySettlementMode välja; langeb tagasi settledPostHoc boolean-ile legacy andmete puhul.
+export function isUtilityPostHoc(row) {
+  if (row.utilitySettlementMode) return row.utilitySettlementMode.startsWith("posthoc_");
+  return row.settledPostHoc === true;
+}
+
+const _SETTLEMENT_LABELS = {
+  posthoc_by_coownership_bylaws:    "Tasutakse pärast tegeliku kulu selgumist põhikirja alusel kaasomandi osa järgi",
+  posthoc_by_coownership_agreement: "Tasutakse pärast tegeliku kulu selgumist kokkuleppe alusel kaasomandi osa järgi",
+  posthoc_by_consumption_bylaws:    "Tasutakse pärast tegeliku kulu selgumist põhikirja alusel tarbitud teenuse mahu järgi",
+  posthoc_by_consumption_agreement: "Tasutakse pärast tegeliku kulu selgumist kokkuleppe alusel tarbitud teenuse mahu järgi",
+};
+
+// Tagastab kommunaalrea posthoc teksti prindis. Tühi string kui ettemaks.
+export function utilitySettlementLabel(row) {
+  if (row.utilitySettlementMode) return _SETTLEMENT_LABELS[row.utilitySettlementMode] || "";
+  if (row.settledPostHoc === true) return "Tasutakse pärast kulude suuruse selgumist";
+  return "";
+}
+
 // P 5 rea täielikkuse kontroll.
 // Tagastab { isUtility, complete, missing[] }.
 export function utilityRowStatus(row) {
@@ -152,7 +173,7 @@ export function computeKopiiriondvaade(costRows, incomeRows, loans, monthEq, loa
     const v = Math.max(0, parseFloat(r.summaInput) || 0);
     return {
       kategooria: r.category,
-      settledPostHoc: r.settledPostHoc === true,
+      isPostHoc: isUtilityPostHoc(r),
       summaKuus: KOMMUNAALTEENUSED.includes(r.category)
         ? v / mEq
         : r.arvutus === "aastas" ? v / 12
@@ -177,7 +198,7 @@ export function computeKopiiriondvaade(costRows, incomeRows, loans, monthEq, loa
   }));
 
   const kommunaalKokku = Math.round(kulud
-    .filter(k => KOMMUNAALTEENUSED.includes(k.kategooria) && !k.settledPostHoc)
+    .filter(k => KOMMUNAALTEENUSED.includes(k.kategooria) && !k.isPostHoc)
     .reduce((sum, k) => sum + (parseFloat(k.summaKuus) || 0), 0));
 
   const haldusKokku = Math.round(kulud
@@ -185,7 +206,7 @@ export function computeKopiiriondvaade(costRows, incomeRows, loans, monthEq, loa
     .reduce((sum, k) => sum + (parseFloat(k.summaKuus) || 0), 0));
 
   const kommunaalPeriood = costRows
-    .filter(r => KOMMUNAALTEENUSED.includes(r.category) && !r.settledPostHoc)
+    .filter(r => KOMMUNAALTEENUSED.includes(r.category) && !isUtilityPostHoc(r))
     .reduce((sum, r) => sum + (Math.round(parseFloat(r.summaInput) || 0)), 0);
 
   const haldusPeriood = costRows

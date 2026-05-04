@@ -17,6 +17,7 @@ import {
   investmentStatus, kulureaOsa, jaotusalusSilt, getEffectiveRowAllocationBasis,
   UTILITY_TYPE_BY_CATEGORY, utilityTypeForRow, utilityRowStatus,
   UTILITY_SETTLEMENT_MODES, kommunaalRowSettlementValid,
+  isUtilityPostHoc, utilitySettlementLabel,
   KOMMUNAALTEENUSED, HALDUSTEENUSED, LAENUMAKSED,
   seedDefaultKommunaalRows, makeKommunaalRow, KOMMUNAAL_DEFAULT_CATEGORIES,
   FUEL_TYPES, FUEL_TYPE_UNITS,
@@ -648,8 +649,8 @@ export default function App() {
       const jaotusalus = HALDUSTEENUSED.includes(r.category)
         ? maintenanceBasis
         : getEffectiveRowAllocationBasis(r);
-      // KrtS § 40 lg 2 ls 2: kui kommunaalrida on settledPostHoc, ei lisata seda ettemaksetesse.
-      return { category: r.category, kuus, jaotusalus, settledPostHoc: r.settledPostHoc === true };
+      // KrtS § 40 lg 2 ls 2: kui kommunaalrida on posthoc, ei lisata seda ettemaksetesse.
+      return { category: r.category, kuus, jaotusalus, isPostHoc: isUtilityPostHoc(r) };
     });
 
     return apts.map(k => {
@@ -661,7 +662,7 @@ export default function App() {
       for (const kr of kulureadKuus) {
         const osa = kulureaOsa(kr.jaotusalus, pind, koguPind, aptCount);
         if (KOMMUNAALTEENUSED.includes(kr.category)) {
-          if (!kr.settledPostHoc) kommunaal += kr.kuus * osa;
+          if (!kr.isPostHoc) kommunaal += kr.kuus * osa;
         } else if (HALDUSTEENUSED.includes(kr.category)) {
           haldus += kr.kuus * osa;
         }
@@ -4086,7 +4087,7 @@ export default function App() {
                             {showSelectedNote && <div style={{ fontSize: 12, color: "#b45309" }}>Valitud: {p3AlusSilt(selectedBasis)} (õiguslik alus puudub)</div>}
                             {r.legalBasisBylaws && <div style={{ fontSize: 12, color: N.dim }}>Õiguslik alus: põhikiri</div>}
                             {r.legalBasisSpecialAgreement && <div style={{ fontSize: 12, color: N.dim }}>Õiguslik alus: erikokkulepe</div>}
-                            {r.settledPostHoc && <div style={{ fontSize: 12, color: N.dim }}>Tasutakse pärast kulude suuruse selgumist</div>}
+                            {utilitySettlementLabel(r) && <div style={{ fontSize: 12, color: N.dim }}>{utilitySettlementLabel(r)}</div>}
                             {r.selgitus && <div style={{ fontSize: 12, color: N.dim }}>{r.selgitus}</div>}
                           </td>
                         </tr>
@@ -4174,7 +4175,7 @@ export default function App() {
                               {r.category === "Kütus"
                                 ? (r.fuelType ? <> · <span style={{ color: N.sub }}>{r.fuelType}</span></> : null)
                                 : (r.name ? <> · <span style={{ color: N.sub }}>{r.name}</span></> : null)}
-                              {r.settledPostHoc && <div style={{ fontSize: 12, color: N.dim }}>Tasutakse pärast kulude suuruse selgumist</div>}
+                              {utilitySettlementLabel(r) && <div style={{ fontSize: 12, color: N.dim }}>{utilitySettlementLabel(r)}</div>}
                             </td>
                             <td style={{ padding: "8px 12px 8px 0", textAlign: "right", fontFamily: "monospace" }}>{r.kogus || <span style={{ color: "#999", fontStyle: "italic" }}>kogus määramata</span>}</td>
                             <td style={{ padding: "8px 12px 8px 0" }}>{r.uhik || ""}</td>
@@ -4816,7 +4817,7 @@ export default function App() {
                         {showSelectedNote && <div style={{ fontSize: 12, color: "#666" }}>Valitud: {p3AlusSilt(selectedBasis)} (õiguslik alus puudub)</div>}
                         {r.legalBasisBylaws && <div style={{ fontSize: 12, color: "#666" }}>Õiguslik alus: põhikiri</div>}
                         {r.legalBasisSpecialAgreement && <div style={{ fontSize: 12, color: "#666" }}>Õiguslik alus: erikokkulepe</div>}
-                        {r.settledPostHoc && <div style={{ fontSize: 12, color: "#666" }}>Tasutakse pärast kulude suuruse selgumist</div>}
+                        {utilitySettlementLabel(r) && <div style={{ fontSize: 12, color: "#666" }}>{utilitySettlementLabel(r)}</div>}
                         {r.selgitus && <div style={{ fontSize: 12, color: "#666" }}>{r.selgitus}</div>}
                       </td>
                     </tr>
@@ -4952,7 +4953,7 @@ export default function App() {
                           {r.category === "Kütus"
                             ? (r.fuelType ? <> · <span style={{ color: "#666" }}>{r.fuelType}</span></> : null)
                             : (r.name ? <> · <span style={{ color: "#666" }}>{r.name}</span></> : null)}
-                          {r.settledPostHoc && <div style={{ fontSize: 12, color: "#666" }}>Tasutakse pärast kulude suuruse selgumist</div>}
+                          {utilitySettlementLabel(r) && <div style={{ fontSize: 12, color: "#666" }}>{utilitySettlementLabel(r)}</div>}
                         </td>
                         <td style={{ padding: "4px 8px", textAlign: "right", fontFamily: "monospace" }}>{r.kogus || <span style={{ color: "#999", fontStyle: "italic" }}>kogus määramata</span>}</td>
                         <td style={{ padding: "4px 8px" }}>{r.uhik || ""}</td>
@@ -4970,7 +4971,7 @@ export default function App() {
           {(() => {
             const notes = [];
             const rows = plan.budget.costRows.filter(r => (parseFloat(r.summaInput) || 0) > 0);
-            const paymentRows = rows.filter(r => !r.settledPostHoc);
+            const paymentRows = rows.filter(r => !isUtilityPostHoc(r));
             if (paymentRows.some(r => r.legalBasisBylaws)) notes.push("Jaotatakse põhikirja alusel.");
             if (paymentRows.some(r => r.legalBasisSpecialAgreement)) notes.push("Jaotatakse erikokkuleppe alusel.");
             const rowEffectiveBasis = (r) => HALDUSTEENUSED.includes(r.category)

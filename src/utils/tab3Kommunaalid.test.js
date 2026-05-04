@@ -7,6 +7,7 @@ import {
   seedDefaultKommunaalRows, utilityRowStatus, migrateLegacyKommunaalCategories,
   FUEL_TYPES, FUEL_TYPE_UNITS,
   UTILITY_SETTLEMENT_MODES, kommunaalRowSettlementValid,
+  isUtilityPostHoc, utilitySettlementLabel,
 } from "./majanduskavaCalc";
 import { defaultPlan } from "../domain/planSchema";
 
@@ -831,5 +832,116 @@ describe("kommunaalRowSettlementValid: arveldusmudeli valideerimine", () => {
 
   it("eemaldatud 'posthoc_by_flat_rate' → mittekehtiv", () => {
     expect(kommunaalRowSettlementValid({ utilitySettlementMode: "posthoc_by_flat_rate" })).toBe(false);
+  });
+});
+
+// ── 14. isUtilityPostHoc ──────────────────────────────────────────────────────
+
+describe("isUtilityPostHoc: posthoc staatuse tuvastus", () => {
+  it("puuduv utilitySettlementMode, settledPostHoc puudub → false", () => {
+    expect(isUtilityPostHoc({})).toBe(false);
+  });
+
+  it("puuduv utilitySettlementMode, settledPostHoc=false → false", () => {
+    expect(isUtilityPostHoc({ settledPostHoc: false })).toBe(false);
+  });
+
+  it("puuduv utilitySettlementMode, settledPostHoc=true → true (legacy fallback)", () => {
+    expect(isUtilityPostHoc({ settledPostHoc: true })).toBe(true);
+  });
+
+  it("tühi utilitySettlementMode, settledPostHoc=true → true (legacy fallback)", () => {
+    expect(isUtilityPostHoc({ utilitySettlementMode: "", settledPostHoc: true })).toBe(true);
+  });
+
+  it("'advance_by_coownership' → false", () => {
+    expect(isUtilityPostHoc({ utilitySettlementMode: "advance_by_coownership" })).toBe(false);
+  });
+
+  it("'posthoc_by_coownership_bylaws' → true", () => {
+    expect(isUtilityPostHoc({ utilitySettlementMode: "posthoc_by_coownership_bylaws" })).toBe(true);
+  });
+
+  it("'posthoc_by_coownership_agreement' → true", () => {
+    expect(isUtilityPostHoc({ utilitySettlementMode: "posthoc_by_coownership_agreement" })).toBe(true);
+  });
+
+  it("'posthoc_by_consumption_bylaws' → true", () => {
+    expect(isUtilityPostHoc({ utilitySettlementMode: "posthoc_by_consumption_bylaws" })).toBe(true);
+  });
+
+  it("'posthoc_by_consumption_agreement' → true", () => {
+    expect(isUtilityPostHoc({ utilitySettlementMode: "posthoc_by_consumption_agreement" })).toBe(true);
+  });
+
+  it("utilitySettlementMode alistab settledPostHoc — mode=advance, settledPostHoc=true → false", () => {
+    expect(isUtilityPostHoc({ utilitySettlementMode: "advance_by_coownership", settledPostHoc: true })).toBe(false);
+  });
+
+  it("makeKommunaalRow vaikimisi isUtilityPostHoc=false", () => {
+    expect(isUtilityPostHoc(makeKommunaalRow("Soojus"))).toBe(false);
+  });
+});
+
+// ── 15. utilitySettlementLabel ────────────────────────────────────────────────
+
+describe("utilitySettlementLabel: print tekst", () => {
+  it("puuduv utilitySettlementMode, settledPostHoc puudub → tühi string", () => {
+    expect(utilitySettlementLabel({})).toBe("");
+  });
+
+  it("'advance_by_coownership' → tühi string", () => {
+    expect(utilitySettlementLabel({ utilitySettlementMode: "advance_by_coownership" })).toBe("");
+  });
+
+  it("legacy settledPostHoc=true → 'Tasutakse pärast kulude suuruse selgumist'", () => {
+    expect(utilitySettlementLabel({ settledPostHoc: true })).toBe("Tasutakse pärast kulude suuruse selgumist");
+  });
+
+  it("'posthoc_by_coownership_bylaws' → korrektne eestikeelne tekst", () => {
+    expect(utilitySettlementLabel({ utilitySettlementMode: "posthoc_by_coownership_bylaws" }))
+      .toBe("Tasutakse pärast tegeliku kulu selgumist põhikirja alusel kaasomandi osa järgi");
+  });
+
+  it("'posthoc_by_coownership_agreement' → korrektne eestikeelne tekst", () => {
+    expect(utilitySettlementLabel({ utilitySettlementMode: "posthoc_by_coownership_agreement" }))
+      .toBe("Tasutakse pärast tegeliku kulu selgumist kokkuleppe alusel kaasomandi osa järgi");
+  });
+
+  it("'posthoc_by_consumption_bylaws' → korrektne eestikeelne tekst", () => {
+    expect(utilitySettlementLabel({ utilitySettlementMode: "posthoc_by_consumption_bylaws" }))
+      .toBe("Tasutakse pärast tegeliku kulu selgumist põhikirja alusel tarbitud teenuse mahu järgi");
+  });
+
+  it("'posthoc_by_consumption_agreement' → korrektne eestikeelne tekst", () => {
+    expect(utilitySettlementLabel({ utilitySettlementMode: "posthoc_by_consumption_agreement" }))
+      .toBe("Tasutakse pärast tegeliku kulu selgumist kokkuleppe alusel tarbitud teenuse mahu järgi");
+  });
+
+  it("tühi utilitySettlementMode, settledPostHoc=true → legacy tekst (fallback)", () => {
+    expect(utilitySettlementLabel({ utilitySettlementMode: "", settledPostHoc: true }))
+      .toBe("Tasutakse pärast kulude suuruse selgumist");
+  });
+
+  it("utilitySettlementMode alistab settledPostHoc — mode=advance, settledPostHoc=true → tühi string", () => {
+    expect(utilitySettlementLabel({ utilitySettlementMode: "advance_by_coownership", settledPostHoc: true })).toBe("");
+  });
+
+  it("tundmatu mode → tühi string (ei jookse kokku)", () => {
+    expect(utilitySettlementLabel({ utilitySettlementMode: "unknown_mode" })).toBe("");
+  });
+
+  it("kõik posthoc mode'id annavad mittettühja teksti", () => {
+    const posthocModes = UTILITY_SETTLEMENT_MODES.filter(m => m.startsWith("posthoc_"));
+    posthocModes.forEach(mode => {
+      expect(utilitySettlementLabel({ utilitySettlementMode: mode }).length).toBeGreaterThan(0);
+    });
+  });
+
+  it("advance mode'id annavad tühja teksti", () => {
+    const advanceModes = UTILITY_SETTLEMENT_MODES.filter(m => m.startsWith("advance_"));
+    advanceModes.forEach(mode => {
+      expect(utilitySettlementLabel({ utilitySettlementMode: mode })).toBe("");
+    });
   });
 });
